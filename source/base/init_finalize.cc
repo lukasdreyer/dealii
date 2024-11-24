@@ -49,6 +49,10 @@
 #  include <p4est_bits.h>
 #endif
 
+#ifdef DEAL_II_WITH_T8CODE
+#  include <t8.h>
+#endif
+
 #ifdef DEAL_II_TRILINOS_WITH_ZOLTAN
 #  include <zoltan_cpp.h>
 #endif
@@ -156,6 +160,16 @@ InitFinalize::InitFinalize([[maybe_unused]] int    &argc,
       p4est_init(nullptr, SC_LP_SILENT);
     }
 #endif
+
+// Initialize t8code and libsc components
+#ifdef DEAL_II_WITH_T8CODE
+  if (static_cast<bool>(libraries & InitializeLibrary::T8CODE))
+    {
+      sc_init(MPI_COMM_WORLD, 0, 0, nullptr, SC_LP_SILENT);
+      t8_init( SC_LP_SILENT);
+    }
+#endif
+
 
   constructor_has_already_run = true;
 
@@ -402,6 +416,12 @@ InitFinalize::finalize()
         sc_finalize();
 #endif
 
+#ifdef DEAL_II_WITH_T8CODE
+      // now end t8code and libsc
+      // Note: t8code has no finalize function yet ??
+      if (static_cast<bool>(libraries & InitializeLibrary::T8CODE))
+        sc_finalize();
+#endif
 
       // Finalize Kokkos
       if (static_cast<bool>(libraries & InitializeLibrary::Kokkos))

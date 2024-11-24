@@ -1,0 +1,55 @@
+// ------------------------------------------------------------------------
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+// Copyright (C) 2016 - 2020 by the deal.II authors
+//
+// This file is part of the deal.II library.
+//
+// Part of the source code is dual licensed under Apache-2.0 WITH
+// LLVM-exception OR LGPL-2.1-or-later. Detailed license information
+// governing the source code and code contributions can be found in
+// LICENSE.md and CONTRIBUTING.md at the top level directory of deal.II.
+//
+// ------------------------------------------------------------------------
+
+
+for (deal_II_dimension : DIMENSIONS)
+  {
+#ifdef DEAL_II_WITH_T8CODE
+
+    namespace internal
+    \{
+      namespace t8code
+      \{
+#  if deal_II_dimension > 1
+
+        template void
+        init_element_children<deal_II_dimension>(
+          const types<deal_II_dimension>::element &t8code_cell,
+          types<deal_II_dimension>::element (&t8code_children)
+            [GeometryInfo<deal_II_dimension>::max_children_per_cell]);
+
+        template void
+        init_coarse_element<deal_II_dimension>(
+          types<deal_II_dimension>::element &elem);
+
+        template bool
+        element_is_equal<deal_II_dimension>(
+          const types<deal_II_dimension>::element &e1,
+          const types<deal_II_dimension>::element &e2);
+
+        template bool
+        element_is_ancestor<deal_II_dimension>(
+          const types<deal_II_dimension>::element &e1,
+          const types<deal_II_dimension>::element &e2);
+
+        template bool
+        tree_exists_locally<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *parallel_forest,
+          const types<deal_II_dimension>::topidx  coarse_grid_cell);
+
+#  endif
+      \}
+    \}
+#endif  // DEAL_II_WITH_T8CODE
+  }

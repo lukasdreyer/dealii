@@ -60,7 +60,11 @@ enum class InitializeLibrary
   /**
    * Initialize/finalize P4EST and SC.
    */
-  P4EST = 32
+  P4EST = 32,
+  /**
+   * Initialize/finalize T8CODE and SC.
+   */
+  T8CODE = 64
 };
 
 

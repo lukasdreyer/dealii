@@ -671,7 +671,7 @@ namespace Utilities
                      argv,
                      InitializeLibrary::MPI | InitializeLibrary::Kokkos |
                        InitializeLibrary::SLEPc | InitializeLibrary::PETSc |
-                       InitializeLibrary::Zoltan | InitializeLibrary::P4EST,
+                       InitializeLibrary::Zoltan | InitializeLibrary::P4EST | InitializeLibrary::T8CODE,
                      max_num_threads)
     {}
 

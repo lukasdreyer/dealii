@@ -22,6 +22,7 @@ set(_unity_include_src
   tria_base.cc
   shared_tria.cc
   p4est_wrappers.cc
+  t8code_wrappers.cc
   field_transfer.cc
   )
 
@@ -48,6 +49,7 @@ set(_inst
   shared_tria.inst.in
   tria_base.inst.in
   p4est_wrappers.inst.in
+  t8code_wrappers.inst.in
   )
 
 file(GLOB _header
