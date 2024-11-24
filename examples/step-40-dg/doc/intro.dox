@@ -1,0 +1,19 @@
+<i>This program was contributed by 
+<br>
+Combines step-12 and step-40
+</i>
+
+
+@note As a prerequisite of this program, you need to have both PETSc and the
+p4est/t8code library installed. The installation of deal.II
+together with these two additional libraries is described in the <a
+href="../../readme.html" target="body">README</a> file. Note also that
+to work properly, this program needs access to the Hypre
+preconditioner package implementing algebraic multigrid; it can be
+installed as part of PETSc but has to be explicitly enabled during
+PETSc configuration; see the page linked to from the installation
+instructions for PETSc.
+
+
+<a name="step-40-dg-Intro"></a>
+<h1>Introduction</h1>
