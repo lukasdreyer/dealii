@@ -23,7 +23,7 @@
 #include <deal.II/base/observer_pointer.h>
 #include <deal.II/base/template_constraints.h>
 
-#include <deal.II/distributed/p4est_wrappers.h>
+#include <deal.II/distributed/t8code_wrappers.h>
 #include <deal.II/distributed/tria_base.h>
 
 #include <deal.II/grid/tria.h>
@@ -37,13 +37,8 @@
 #include <utility>
 #include <vector>
 
-#ifdef DEAL_II_WITH_P4EST
-#  include <p4est.h>
-#  include <p4est_connectivity.h>
-#  include <p4est_ghost.h>
-#  include <p8est.h>
-#  include <p8est_connectivity.h>
-#  include <p8est_ghost.h>
+#ifdef DEAL_II_WITH_T8CODE
+
 #endif
 
 DEAL_II_NAMESPACE_OPEN
@@ -96,7 +91,7 @@ namespace internal
 
 
 
-#ifdef DEAL_II_WITH_P4EST
+#ifdef DEAL_II_WITH_T8CODE
 
 namespace parallel
 {
@@ -117,7 +112,7 @@ namespace parallel
      * @ref ConceptMeshType "MeshType concept".
      *
      * @note This class does not support anisotropic refinement, because it
-     * relies on the p4est library that does not support this. Attempts to
+     * relies on the t8code library that does not support this. Attempts to
      * refine cells anisotropically will result in errors.
      *
      * @note There is currently no support for distributing 1d triangulations.
@@ -356,7 +351,7 @@ namespace parallel
         default_setting = 0x0,
         /**
          * If set, the deal.II mesh will be reconstructed from the coarse mesh
-         * every time a repartitioning in p4est happens. This can be a bit more
+         * every time a repartitioning in t8code happens. This can be a bit more
          * expensive, but guarantees the same memory layout and therefore cell
          * ordering in the deal.II mesh. As assembly is done in the deal.II
          * cell ordering, this flag is required to get reproducible behavior
@@ -376,12 +371,12 @@ namespace parallel
          */
         no_automatic_repartitioning = 0x4,
         /**
-         * Setting this flag will communicate vertices to p4est. This way one
+         * Setting this flag will communicate vertices to t8code. This way one
          * can use the 'find_point_owner_rank()' to find the MPI rank of the
          * active cell that owns an arbitrary point in case all attached
          * manifolds are flat.
          */
-        communicate_vertices_to_p4est = 0x8
+        communicate_vertices_to_t8code = 0x8
       };
 
 
@@ -444,19 +439,19 @@ namespace parallel
       is_multilevel_hierarchy_constructed() const override;
 
       /**
-       * Return if vertices will be communicated to p4est.
+       * Return if vertices will be communicated to t8code.
        */
       bool
-      are_vertices_communicated_to_p4est() const;
+      are_vertices_communicated_to_t8code() const;
 
       /**
        * Transfer data across forests.
        *
        * Besides the actual @p parallel_forest, which has been already refined
        * and repartitioned, this function also needs information about its
-       * previous state, i.e. the locally owned intervals in p4est's
+       * previous state, i.e. the locally owned intervals in t8code's
        * sc_array of each processor. This information needs to be memcopyied
-       * out of the old p4est object and has to be provided via the parameter
+       * out of the old t8code object and has to be provided via the parameter
        * @p previous_global_first_quadrant.
        *
        * Data has to be previously packed with
@@ -464,9 +459,9 @@ namespace parallel
        */
       void
       execute_transfer(
-        const typename dealii::internal::p4est::types<dim>::forest
+        const typename dealii::internal::t8code::types::forest
           *parallel_forest,
-        const typename dealii::internal::p4est::types<dim>::gloidx
+        const typename dealii::internal::t8code::types::gloidx
           *previous_global_first_quadrant);
 
       /**
@@ -476,9 +471,9 @@ namespace parallel
        * parallel::distributed::Triangulation but only if the serial
        * Triangulation has never been refined.
        */
-      virtual void
-      copy_triangulation(
-        const dealii::Triangulation<dim, spacedim> &other_tria) override;
+//      virtual void
+//      copy_triangulation(
+//        const dealii::Triangulation<dim, spacedim> &other_tria) override;
 
       /**
        * Create a triangulation as documented in the base class.
@@ -509,7 +504,7 @@ namespace parallel
        * mesh.
        *
        * @note This function calls `find_point_owner_rank(const std::vector<Point<dim>> &points)`
-       * (requires p4est v2.2 and higher). Please see the documentation of
+       * (requires t8code v2.2 and higher). Please see the documentation of
        * `find_point_owner_rank(const std::vector<Point<dim>> &points)`.
        */
       types::subdomain_id
@@ -522,9 +517,9 @@ namespace parallel
        *
        * @note The query points do not need to be owned locally or in the ghost layer.
        *
-       * @note This function can only be used with p4est v2.2 and higher, flat manifolds
+       * @note This function can only be used with t8code v2.2 and higher, flat manifolds
        * and requires the settings flag
-       * `Settings::communicate_vertices_to_p4est` to be set.
+       * `Settings::communicate_vertices_to_t8code` to be set.
        *
        * @note The algorithm is free of communication.
        *
@@ -630,16 +625,9 @@ namespace parallel
       /**
        * Return the local memory consumption in bytes.
        */
-      virtual std::size_t
-      memory_consumption() const override;
+//      virtual std::size_t
+//      memory_consumption() const override;
 
-      /**
-       * Return the local memory consumption contained in the p4est data
-       * structures alone. This is already contained in memory_consumption()
-       * but made available separately for debugging purposes.
-       */
-      virtual std::size_t
-      memory_consumption_p4est() const;
 
       /**
        * A
@@ -648,10 +636,10 @@ namespace parallel
        * the given file base name that contain the mesh in VTK format.
        *
        * More than anything else, this function is useful for debugging the
-       * interface between deal.II and p4est.
+       * interface between deal.II and t8code.
        *
        * @note To use the function the flag
-       * `Settings::communicate_vertices_to_p4est` must be set.
+       * `Settings::communicate_vertices_to_t8code` must be set.
        */
       void
       write_mesh_vtk(const std::string &file_basename) const;
@@ -673,8 +661,8 @@ namespace parallel
        * cell-based data can be saved using
        * DistributedTriangulationBase::DataTransfer::register_data_attach().
        */
-      virtual void
-      save(const std::string &file_basename) const override;
+//      virtual void
+//      save(const std::string &file_basename) const override;
 
       /**
        * Load the refinement information saved with save() back in. The mesh
@@ -695,47 +683,47 @@ namespace parallel
        * DistributedTriangulationBase::DataTransfer::notify_ready_to_unpack()
        * after calling load().
        */
-      virtual void
-      load(const std::string &file_basename) override;
+//      virtual void
+//      load(const std::string &file_basename) override;
 
       /**
        * Load the refinement information from a given parallel forest. This
        * forest might be obtained from the function call to
-       * parallel::distributed::Triangulation::get_p4est().
+       * parallel::distributed::Triangulation::get_t8code().
        */
-      void
-      load(const typename dealii::internal::p4est::types<dim>::forest *forest);
+//      void
+//      load(const typename dealii::internal::t8code::types::forest *forest);
 
       /**
        * Return a permutation vector for the order the coarse cells are handed
-       * off to p4est. For example the value of the $i$th element in this
+       * off to t8code. For example the value of the $i$th element in this
        * vector is the index of the deal.II coarse cell (counting from
-       * begin(0)) that corresponds to the $i$th tree managed by p4est.
+       * begin(0)) that corresponds to the $i$th tree managed by t8code.
        */
       const std::vector<types::global_dof_index> &
-      get_p4est_tree_to_coarse_cell_permutation() const;
+      get_t8code_tree_to_coarse_cell_permutation() const;
 
       /**
        * Return a permutation vector for the mapping from the coarse deal
-       * cells to the p4est trees. This is the inverse of
-       * get_p4est_tree_to_coarse_cell_permutation.
+       * cells to the t8code trees. This is the inverse of
+       * get_t8code_tree_to_coarse_cell_permutation.
        */
       const std::vector<types::global_dof_index> &
-      get_coarse_cell_to_p4est_tree_permutation() const;
+      get_coarse_cell_to_t8code_tree_permutation() const;
 
       /**
-       * This returns a pointer to the internally stored p4est object (of type
-       * p4est_t or p8est_t depending on @p dim).
+       * This returns a pointer to the internally stored t8code object (of type
+       * t8code_t or p8est_t depending on @p dim).
        *
-       * @warning If you modify the p4est object, internal data structures
+       * @warning If you modify the t8code object, internal data structures
        * can become inconsistent.
        */
-      const typename dealii::internal::p4est::types<dim>::forest *
-      get_p4est() const;
+      const typename dealii::internal::t8code::types::forest *
+      get_t8code() const;
 
       /**
        * In addition to the action in the base class Triangulation, this
-       * function joins faces in the p4est forest for periodic boundary
+       * function joins faces in the t8code forest for periodic boundary
        * conditions. As a result, each pair of faces will differ by at most one
        * refinement level and ghost neighbors will be available across these
        * faces.
@@ -750,12 +738,12 @@ namespace parallel
        * @note Before this function can be used the Triangulation has to be
        * initialized and must not be refined. Calling this function more than
        * once is possible, but not recommended: The function destroys and
-       * rebuilds the p4est forest each time it is called.
+       * rebuilds the t8code forest each time it is called.
        */
-      virtual void
-      add_periodicity(
-        const std::vector<dealii::GridTools::PeriodicFacePair<cell_iterator>> &)
-        override;
+//      virtual void
+//      add_periodicity(
+//        const std::vector<dealii::GridTools::PeriodicFacePair<cell_iterator>> &)
+//        override;
 
 
     private:
@@ -770,35 +758,41 @@ namespace parallel
       bool triangulation_has_content;
 
       /**
-       * A data structure that holds the connectivity between trees. Since
+       * A data structure that holds the cmesh between trees. Since
        * each tree is rooted in a coarse grid cell, this data structure holds
-       * the connectivity between the cells of the coarse grid.
+       * the cmesh between the cells of the coarse grid.
        */
-      typename dealii::internal::p4est::types<dim>::connectivity *connectivity;
+      typename dealii::internal::t8code::types::cmesh cmesh;
+
+
+
+      typename dealii::internal::t8code::types::scheme_collection *scheme_collection;
+
+
 
       /**
        * A data structure that holds the local part of the global
        * triangulation.
        */
-      typename dealii::internal::p4est::types<dim>::forest *parallel_forest;
+      typename dealii::internal::t8code::types::forest parallel_forest;
 
       /**
        * A data structure that holds some information about the ghost cells of
        * the triangulation.
        */
-      typename dealii::internal::p4est::types<dim>::ghost *parallel_ghost;
+      typename dealii::internal::t8code::types::ghost *parallel_ghost;
 
       /**
-       * Go through all p4est trees and record the relations between locally
-       * owned p4est quadrants and active deal.II cells in the private member
+       * Go through all t8code trees and record the relations between locally
+       * owned t8code quadrants and active deal.II cells in the private member
        * vector local_cell_relations.
        *
        * The vector contains an active cell iterator for every locally owned
-       * p4est quadrant, as well as a CellStatus flag to describe their
+       * t8code quadrant, as well as a CellStatus flag to describe their
        * relation.
        *
        * The stored vector will be ordered by the occurrence of quadrants in
-       * the corresponding local sc_array of the parallel_forest. p4est requires
+       * the corresponding local sc_array of the parallel_forest. t8code requires
        * this specific ordering for its transfer functions. Therefore, the size
        * of this vector will be equal to the number of locally owned quadrants
        * in the parallel_forest object.
@@ -813,8 +807,8 @@ namespace parallel
       update_cell_relations();
 
       /**
-       * Two arrays that store which p4est tree corresponds to which coarse
-       * grid cell and vice versa. We need these arrays because p4est goes
+       * Two arrays that store which t8code tree corresponds to which coarse
+       * grid cell and vice versa. We need these arrays because t8code goes
        * with the original order of coarse cells when it sets up its forest,
        * and then applies the Morton ordering within each tree. But if coarse
        * grid cells are badly ordered this may mean that individual parts of
@@ -822,19 +816,19 @@ namespace parallel
        * cells that are not geometrically close. Consequently, we apply a
        * hierarchical preordering according to
        * SparsityTools::reorder_hierarchical() to ensure that the part of the
-       * forest stored by p4est is located on geometrically close coarse grid
+       * forest stored by t8code is located on geometrically close coarse grid
        * cells.
        */
       std::vector<types::global_dof_index>
-        coarse_cell_to_p4est_tree_permutation;
+        coarse_cell_to_t8code_tree_permutation;
       std::vector<types::global_dof_index>
-        p4est_tree_to_coarse_cell_permutation;
+        t8code_tree_to_coarse_cell_permutation;
 
       /**
-       * Return a pointer to the p4est tree that belongs to the given
+       * Return a pointer to the t8code tree that belongs to the given
        * dealii_coarse_cell_index()
        */
-      typename dealii::internal::p4est::types<dim>::tree *
+      typename dealii::internal::t8code::types::tree *
       init_tree(const int dealii_coarse_cell_index) const;
 
       /**
@@ -842,19 +836,18 @@ namespace parallel
        * storage schemes.
        */
       void
-      setup_coarse_cell_to_p4est_tree_permutation();
+      setup_coarse_cell_to_t8code_tree_permutation();
 
       /**
        * Take the contents of a newly created triangulation we are attached to
-       * and copy it to p4est data structures.
+       * and copy it to t8code data structures.
        *
        * This function exists in 2d and 3d variants.
        */
-      void copy_new_triangulation_to_p4est(std::integral_constant<int, 2>);
-      void copy_new_triangulation_to_p4est(std::integral_constant<int, 3>);
+      void copy_new_triangulation_to_t8code();
 
       /**
-       * Copy the local part of the refined forest from p4est into the
+       * Copy the local part of the refined forest from t8code into the
        * attached triangulation.
        */
       void
@@ -870,7 +863,7 @@ namespace parallel
        * repartition cycle. Note that the number of entries does not need to
        * be equal to either n_active_cells() or n_locally_owned_active_cells(),
        * because the triangulation is not updated yet. The weights are sorted
-       * in the order that p4est will encounter them while iterating over
+       * in the order that t8code will encounter them while iterating over
        * them.
        */
       std::vector<unsigned int>
@@ -888,13 +881,13 @@ namespace parallel
       std::vector<bool>
       mark_locally_active_vertices_on_level(const int level) const;
 
-      virtual unsigned int
-      coarse_cell_id_to_coarse_cell_index(
-        const types::coarse_cell_id coarse_cell_id) const override;
-
-      virtual types::coarse_cell_id
-      coarse_cell_index_to_coarse_cell_id(
-        const unsigned int coarse_cell_index) const override;
+//      virtual unsigned int
+//      coarse_cell_id_to_coarse_cell_index(
+//        const types::coarse_cell_id coarse_cell_id) const override;
+//
+//      virtual types::coarse_cell_id
+//      coarse_cell_index_to_coarse_cell_id(
+//        const unsigned int coarse_cell_index) const override;
 
       template <int, int, class>
       friend class dealii::FETools::internal::ExtrapolateImplementation;
@@ -904,130 +897,11 @@ namespace parallel
     };
 
 
-    /**
-     * Specialization of the general template for the 1d case. There is
-     * currently no support for distributing 1d triangulations. Consequently,
-     * all this class does is throw an exception.
-     *
-     * @dealiiConceptRequires{(concepts::is_valid_dim_spacedim<1, spacedim>)}
-     */
-    template <int spacedim>
-    DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<1, spacedim>))
-    class Triangulation<1, spacedim>
-      : public dealii::parallel::DistributedTriangulationBase<1, spacedim>
-    {
-    public:
-      /**
-       * dummy settings
-       */
-      enum Settings
-      {
-        default_setting                          = 0x0,
-        mesh_reconstruction_after_repartitioning = 0x1,
-        construct_multigrid_hierarchy            = 0x2,
-        no_automatic_repartitioning              = 0x4,
-        communicate_vertices_to_p4est            = 0x8
-      };
-
-      /**
-       * Constructor. The argument denotes the MPI communicator to be used for
-       * the triangulation.
-       */
-      Triangulation(
-        const MPI_Comm mpi_communicator,
-        const typename dealii::Triangulation<1, spacedim>::MeshSmoothing
-                       smooth_grid = (dealii::Triangulation<1, spacedim>::none),
-        const Settings settings    = default_setting);
-
-      /**
-       * Destructor.
-       */
-      virtual ~Triangulation() override;
-
-      /**
-       * Return a permutation vector for the order the coarse cells are
-       * handed of to p4est. For example the first element i in this vector
-       * denotes that the first cell in hierarchical ordering is the ith deal
-       * cell starting from begin(0).
-       */
-      const std::vector<types::global_dof_index> &
-      get_p4est_tree_to_coarse_cell_permutation() const;
-
-      /**
-       * This function is not implemented, but needs to be present for the
-       * compiler.
-       */
-      virtual void
-      load(const std::string &filename) override;
-
-      /**
-       * This function is not implemented, but needs to be present for the
-       * compiler.
-       */
-      virtual void
-      save(const std::string &filename) const override;
-
-      /**
-       * This function is not implemented, but needs to be present for the
-       * compiler.
-       */
-      virtual bool
-      is_multilevel_hierarchy_constructed() const override;
-
-      /**
-       * This function is not implemented, but needs to be present for the
-       * compiler.
-       */
-      bool
-      are_vertices_communicated_to_p4est() const;
-
-      /**
-       * This function is not implemented, but needs to be present for the
-       * compiler.
-       */
-      void
-      update_cell_relations();
-
-      /**
-       * Dummy arrays. This class isn't usable but the compiler wants to see
-       * these variables at a couple places anyway.
-       */
-      std::vector<types::global_dof_index>
-        coarse_cell_to_p4est_tree_permutation;
-      std::vector<types::global_dof_index>
-        p4est_tree_to_coarse_cell_permutation;
-
-      /**
-       * This method, which is only implemented for dim = 2 or 3,
-       * needs a stub because it is used in dof_handler_policy.cc
-       */
-      virtual std::map<unsigned int, std::set<dealii::types::subdomain_id>>
-      compute_level_vertices_with_ghost_neighbors(
-        const unsigned int level) const;
-
-      /**
-       * Like above, this method, which is only implemented for dim = 2 or 3,
-       * needs a stub because it is used in dof_handler_policy.cc
-       */
-      virtual std::vector<bool>
-      mark_locally_active_vertices_on_level(const unsigned int level) const;
-
-      virtual unsigned int
-      coarse_cell_id_to_coarse_cell_index(
-        const types::coarse_cell_id coarse_cell_id) const override;
-
-      virtual types::coarse_cell_id
-      coarse_cell_index_to_coarse_cell_id(
-        const unsigned int coarse_cell_index) const override;
-
-      template <int, int>
-      friend class TemporarilyMatchRefineFlags;
-    };
   } // namespace distributed
 } // namespace parallel
 
 
-#else // DEAL_II_WITH_P4EST
+#else // DEAL_II_WITH_T8CODE
 
 namespace parallel
 {
@@ -1035,14 +909,14 @@ namespace parallel
   {
     /**
      * Dummy class the compiler chooses for parallel distributed
-     * triangulations if we didn't actually configure deal.II with the p4est
+     * triangulations if we didn't actually configure deal.II with the t8code
      * library. The existence of this class allows us to refer to
      * parallel::distributed::Triangulation objects throughout the library
      * even if it is disabled.
      *
      * Since the constructor of this class is deleted, no such objects
      * can actually be created as this would be pointless given that
-     * p4est is not available.
+     * t8code is not available.
      *
      * @dealiiConceptRequires{(concepts::is_valid_dim_spacedim<dim, spacedim>)}
      */
@@ -1061,7 +935,7 @@ namespace parallel
         mesh_reconstruction_after_repartitioning = 0x1,
         construct_multigrid_hierarchy            = 0x2,
         no_automatic_repartitioning              = 0x4,
-        communicate_vertices_to_p4est            = 0x8
+        communicate_vertices_to_t8code            = 0x8
       };
 
       /**
@@ -1090,7 +964,7 @@ namespace parallel
        * this class.
        */
       bool
-      are_vertices_communicated_to_p4est() const
+      are_vertices_communicated_to_t8code() const
       {
         return false;
       }
@@ -1133,15 +1007,15 @@ namespace parallel
   {
     /**
      * This class temporarily modifies the refine and coarsen flags of all
-     * active cells to match the p4est oracle.
+     * active cells to match the t8code oracle.
      *
      * The modification only happens on parallel::distributed::Triangulation
      * objects, and persists for the lifetime of an instantiation of this
      * class.
      *
      * The TemporarilyMatchRefineFlags class should only be used in
-     * combination with the Triangulation::Signals::post_p4est_refinement
-     * signal. At this stage, the p4est oracle already has been refined, but
+     * combination with the Triangulation::Signals::post_t8code_refinement
+     * signal. At this stage, the t8code oracle already has been refined, but
      * the triangulation is still unchanged. After the modification, all
      * refine and coarsen flags describe how the triangulation will actually
      * be refined.
@@ -1159,7 +1033,7 @@ namespace parallel
        * provided Triangulation is of type
        * parallel::distributed::Triangulation.
        *
-       * Adjusts them to be consistent with the p4est oracle.
+       * Adjusts them to be consistent with the t8code oracle.
        */
       TemporarilyMatchRefineFlags(dealii::Triangulation<dim, spacedim> &tria);
 
