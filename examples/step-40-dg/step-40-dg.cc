@@ -414,11 +414,12 @@ namespace Step40DG
   {
     TimerOutput::Scope t(computing_timer, "setup");
 
-    std::cout<<"n_levels"<<triangulation.n_levels();
-    std::cout<<"n_active"<<triangulation.n_active_cells();
-    std::cout<<"n_global_active_cells"<<triangulation.n_global_active_cells();
+    std::cout<<"n_levels"<<triangulation.n_levels()<<std::endl;
+    std::cout<<"n_active"<<triangulation.n_active_cells()<<std::endl;
+    std::cout<<"n_global_active_cells"<<triangulation.n_global_active_cells()<<std::endl;
 
 
+    dof_handler.reinit(triangulation);
     dof_handler.distribute_dofs(fe);
 
     pcout << "   Number of active cells:       "
