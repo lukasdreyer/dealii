@@ -65,7 +65,7 @@ namespace LA
 #include <deal.II/lac/sparse_matrix.h>
 
 
-//#include <deal.II/lac/affine_constraints.h>
+// #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 
 
@@ -191,7 +191,9 @@ namespace Step40DG
 
     for (unsigned int i = 0; i < values.size(); ++i)
       {
-        if (points[i][0] < 1./3 || (points[i][0] > 2./3 && points[i][1] < 1./3) || (points[i][1]>2./3))
+        if (points[i][0] < 1. / 3 ||
+            (points[i][0] > 2. / 3 && points[i][1] < 1. / 3) ||
+            (points[i][1] > 2. / 3))
           values[i] = 1.;
         else
           values[i] = 0.;
@@ -336,10 +338,10 @@ namespace Step40DG
     MPI_Comm mpi_communicator;
 
     parallel::distributed::Triangulation<dim> triangulation;
-    const MappingQ1<dim> mapping;
+    const MappingQ1<dim>                      mapping;
 
-    const FE_DGQ<dim> fe;
-    DoFHandler<dim>   dof_handler;
+    const FE_DGQ<dim>         fe;
+    DoFHandler<dim>           dof_handler;
     AffineConstraints<double> constraints;
 
     const QGauss<dim>     quadrature;
@@ -354,7 +356,6 @@ namespace Step40DG
 
     ConditionalOStream pcout;
     TimerOutput        computing_timer;
-
   };
 
 
@@ -412,6 +413,11 @@ namespace Step40DG
   void AdvectionProblem<dim>::setup_system()
   {
     TimerOutput::Scope t(computing_timer, "setup");
+
+    std::cout<<"n_levels"<<triangulation.n_levels();
+    std::cout<<"n_active"<<triangulation.n_active_cells();
+    std::cout<<"n_global_active_cells"<<triangulation.n_global_active_cells();
+
 
     dof_handler.distribute_dofs(fe);
 
@@ -745,9 +751,9 @@ namespace Step40DG
 
 
     LA::SolverGMRES::AdditionalData additional_data;
-//    additional_data.max_basis_size = 100;
+    //    additional_data.max_basis_size = 100;
     LA::SolverGMRES solver(solver_control, additional_data);
-    //LA::MPI::PreconditionBlockSSOR preconditioner;
+    // LA::MPI::PreconditionBlockSSOR preconditioner;
     TrilinosWrappers::PreconditionBlockSSOR preconditioner;
 
     preconditioner.initialize(system_matrix, fe.n_dofs_per_cell());
@@ -801,10 +807,8 @@ namespace Step40DG
         std::pow(cell->diameter(), 1 + 1.0 * dim / 2);
 
     // Finally they serve as refinement indicator.
-    parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(triangulation,
-                                                    gradient_indicator,
-                                                    0.3,
-                                                    0.1);
+    parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(
+      triangulation, gradient_indicator, 0.3, 0.1);
 
     triangulation.execute_coarsening_and_refinement();
   }
@@ -854,7 +858,9 @@ namespace Step40DG
 
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
-    data_out.add_data_vector(locally_relevant_solution, "u", DataOut<dim>::type_dof_data);
+    data_out.add_data_vector(locally_relevant_solution,
+                             "u",
+                             DataOut<dim>::type_dof_data);
 
     data_out.build_patches(mapping);
 
@@ -876,7 +882,6 @@ namespace Step40DG
                                           VectorTools::Linfty_norm);
       std::cout << "  L-infinity norm: " << l_infty << std::endl;
     }
-
   }
 
 
@@ -905,7 +910,7 @@ namespace Step40DG
           << " on " << Utilities::MPI::n_mpi_processes(mpi_communicator)
           << " MPI rank(s)..." << std::endl;
 
-    const unsigned int n_cycles = 5;
+    const unsigned int n_cycles = 1;
     for (unsigned int cycle = 0; cycle < n_cycles; ++cycle)
       {
         pcout << "Cycle " << cycle << std::endl;
@@ -913,18 +918,18 @@ namespace Step40DG
         if (cycle == 0)
           {
             GridGenerator::hyper_cube(triangulation);
-            triangulation.refine_global(3);
+//            triangulation.refine_global(3);
           }
         else
-          refine_grid();
+//          refine_grid();
 
         pcout << "  Number of active cells:       "
-                  << triangulation.n_active_cells() << std::endl;
+              << triangulation.n_active_cells() << std::endl;
 
         setup_system();
 
         pcout << "  Number of degrees of freedom: " << dof_handler.n_dofs()
-                  << std::endl;
+              << std::endl;
 
         assemble_system();
         solve();
@@ -932,7 +937,7 @@ namespace Step40DG
         output_results(cycle);
       }
   }
-} // namespace Step40
+} // namespace Step40DG
 
 
 

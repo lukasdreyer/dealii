@@ -2191,6 +2191,7 @@ void DoFHandler<dim, spacedim>::distribute_dofs(
       // disable hp-mode if only a single finite element has been registered
       if (hp_capability_enabled && !contains_multiple_fes)
         {
+          std::cout<<"set hp_capability to false"<<std::endl;
           hp_capability_enabled = false;
 
           // unsubscribe connections to signals that are only relevant for
@@ -2893,7 +2894,7 @@ template <int dim, int spacedim>
 DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 void DoFHandler<dim, spacedim>::pre_distributed_transfer_action()
 {
-#  ifndef DEAL_II_WITH_P4EST
+#  ifndef DEAL_II_WITH_T8CODE
   Assert(false,
          ExcMessage(
            "You are attempting to use a functionality that is only available "
@@ -2991,7 +2992,7 @@ template <int dim, int spacedim>
 DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 void DoFHandler<dim, spacedim>::post_distributed_transfer_action()
 {
-#  ifndef DEAL_II_WITH_P4EST
+#  ifndef DEAL_II_WITH_T8CODE
   DEAL_II_ASSERT_UNREACHABLE();
 #  else
   update_active_fe_table();
@@ -3023,7 +3024,7 @@ template <int dim, int spacedim>
 DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 void DoFHandler<dim, spacedim>::prepare_for_serialization_of_active_fe_indices()
 {
-#  ifndef DEAL_II_WITH_P4EST
+#  ifndef DEAL_II_WITH_T8CODE
   Assert(false,
          ExcMessage(
            "You are attempting to use a functionality that is only available "
@@ -3081,7 +3082,7 @@ template <int dim, int spacedim>
 DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 void DoFHandler<dim, spacedim>::deserialize_active_fe_indices()
 {
-#  ifndef DEAL_II_WITH_P4EST
+#  ifndef DEAL_II_WITH_T8CODE
   Assert(false,
          ExcMessage(
            "You are attempting to use a functionality that is only available "

@@ -52,10 +52,10 @@ find_package(T8CODE CONFIG)
   )
 
 add_definitions(-DT8_CMAKE_BUILD)
-#set(_targets T8CODE::T8)
+set(_targets T8CODE::T8)
 
 process_feature(T8CODE
-#  TARGETS REQUIRED _targets
+  TARGETS REQUIRED _targets
   LIBRARIES OPTIONAL LAPACK_LIBRARIES MPI_C_LIBRARIES
   INCLUDE_DIRS
     REQUIRED T8CODE_INCLUDE_DIR

@@ -1398,15 +1398,15 @@ namespace DoFRenumbering
           dynamic_cast<const parallel::distributed::Triangulation<dim, spacedim>
                          *>(&dof_handler.get_triangulation()))
       {
-#ifdef DEAL_II_WITH_P4EST
+#ifdef DEAL_II_WITH_T8CODE
         // this is a distributed Triangulation. we need to traverse the coarse
-        // cells in the order p4est does to match the z-order actually used
-        // by p4est. this requires using the renumbering of coarse cells
-        // we do before we hand things off to p4est
+        // cells in the order t8code does to match the z-order actually used
+        // by t8code. this requires using the renumbering of coarse cells
+        // we do before we hand things off to t8code
         for (unsigned int c = 0; c < tria->n_cells(0); ++c)
           {
             const unsigned int coarse_cell_index =
-              tria->get_p4est_tree_to_coarse_cell_permutation()[c];
+              tria->get_t8code_tree_to_coarse_cell_permutation()[c];
 
             const typename DoFHandler<dim, spacedim>::level_cell_iterator
               this_cell(tria, 0, coarse_cell_index, &dof_handler);

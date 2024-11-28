@@ -49,7 +49,8 @@ namespace ArborXWrappers
 #endif
 
 #include <deal.II/distributed/fully_distributed_tria.h>
-#include <deal.II/distributed/p4est_wrappers.h>
+#include <deal.II/distributed/t8code_wrappers.h>
+#include <deal.II/distributed/t8code_wrappers.h>
 #include <deal.II/distributed/shared_tria.h>
 #include <deal.II/distributed/tria.h>
 
@@ -2006,20 +2007,20 @@ namespace GridTools
       }
 
     // Duplicate the coarse cell reordoring
-    // as done in p4est
-    std::vector<types::global_dof_index> coarse_cell_to_p4est_tree_permutation;
-    std::vector<types::global_dof_index> p4est_tree_to_coarse_cell_permutation;
+    // as done in t8code
+    std::vector<types::global_dof_index> coarse_cell_to_t8code_tree_permutation;
+    std::vector<types::global_dof_index> t8code_tree_to_coarse_cell_permutation;
 
     DynamicSparsityPattern cell_connectivity;
     GridTools::get_vertex_connectivity_of_cells_on_level(triangulation,
                                                          0,
                                                          cell_connectivity);
-    coarse_cell_to_p4est_tree_permutation.resize(triangulation.n_cells(0));
+    coarse_cell_to_t8code_tree_permutation.resize(triangulation.n_cells(0));
     SparsityTools::reorder_hierarchical(cell_connectivity,
-                                        coarse_cell_to_p4est_tree_permutation);
+                                        coarse_cell_to_t8code_tree_permutation);
 
-    p4est_tree_to_coarse_cell_permutation =
-      Utilities::invert_permutation(coarse_cell_to_p4est_tree_permutation);
+    t8code_tree_to_coarse_cell_permutation =
+      Utilities::invert_permutation(coarse_cell_to_t8code_tree_permutation);
 
     unsigned int       current_proc_idx = 0;
     unsigned int       current_cell_idx = 0;
@@ -2030,7 +2031,7 @@ namespace GridTools
     for (unsigned int idx = 0; idx < triangulation.n_cells(0); ++idx)
       {
         const unsigned int coarse_cell_idx =
-          p4est_tree_to_coarse_cell_permutation[idx];
+          t8code_tree_to_coarse_cell_permutation[idx];
         typename Triangulation<dim, spacedim>::cell_iterator coarse_cell(
           &triangulation, 0, coarse_cell_idx);
 
@@ -2043,7 +2044,7 @@ namespace GridTools
 
     // if all children of a cell are active (e.g. we
     // have a cell that is refined once and no part
-    // is refined further), p4est places all of them
+    // is refined further), t8code places all of them
     // on the same processor. The new owner will be
     // the processor with the largest number of children
     // (ties are broken by picking the lower rank).
@@ -2114,7 +2115,7 @@ namespace GridTools
     namespace
     {
       // Split get_subdomain_association() for p::d::T since we want to compile
-      // it in 1d but none of the p4est stuff is available in 1d.
+      // it in 1d but none of the t8code stuff is available in 1d.
       template <int dim, int spacedim>
       void
       get_subdomain_association(
@@ -2130,38 +2131,38 @@ namespace GridTools
           false,
           ExcMessage(
             "You are attempting to use a functionality that is only available "
-            "if deal.II was configured to use p4est, but cmake did not find a "
-            "valid p4est library."));
+            "if deal.II was configured to use t8code, but cmake did not find a "
+            "valid t8code library."));
 #else
-        // for parallel distributed triangulations, we will ask the p4est oracle
+        // for parallel distributed triangulations, we will ask the t8code oracle
         // about the global partitioning of active cells since this information
         // is stored on every process
         for (const auto &cell_id : cell_ids)
           {
-            // find descendent from coarse quadrant
-            typename dealii::internal::p4est::types<dim>::quadrant p4est_cell,
-              p4est_children[GeometryInfo<dim>::max_children_per_cell];
+            // find descendent from coarse element
+            typename dealii::internal::t8code::types::element t8code_cell,
+              t8code_children[GeometryInfo<dim>::max_children_per_cell];
 
-            dealii::internal::p4est::init_coarse_quadrant<dim>(p4est_cell);
+            dealii::internal::t8code::init_coarse_element<dim>(t8code_cell);
             for (const auto &child_index : cell_id.get_child_indices())
               {
-                dealii::internal::p4est::init_quadrant_children<dim>(
-                  p4est_cell, p4est_children);
-                p4est_cell =
-                  p4est_children[static_cast<unsigned int>(child_index)];
+                dealii::internal::t8code::init_element_children<dim>(
+                  t8code_cell, t8code_children);
+                t8code_cell =
+                  t8code_children[static_cast<unsigned int>(child_index)];
               }
 
             // find owning process, i.e., the subdomain id
             const int owner =
-              dealii::internal::p4est::functions<dim>::comm_find_owner(
-                const_cast<typename dealii::internal::p4est::types<dim>::forest
-                             *>(triangulation.get_p4est()),
+              dealii::internal::t8code::functions<dim>::comm_find_owner(
+                const_cast<typename dealii::internal::t8code::types::forest
+                             *>(triangulation.get_t8code()),
                 cell_id.get_coarse_cell_id(),
-                &p4est_cell,
+                &t8code_cell,
                 Utilities::MPI::this_mpi_process(
                   triangulation.get_mpi_communicator()));
 
-            Assert(owner >= 0, ExcMessage("p4est should know the owner."));
+            Assert(owner >= 0, ExcMessage("t8code should know the owner."));
 
             subdomain_ids.push_back(owner);
           }

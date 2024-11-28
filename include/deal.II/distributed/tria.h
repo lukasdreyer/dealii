@@ -459,8 +459,7 @@ namespace parallel
        */
       void
       execute_transfer(
-        const typename dealii::internal::t8code::types::forest
-          *parallel_forest,
+        const typename dealii::internal::t8code::types::forest *parallel_forest,
         const typename dealii::internal::t8code::types::gloidx
           *previous_global_first_quadrant);
 
@@ -471,9 +470,10 @@ namespace parallel
        * parallel::distributed::Triangulation but only if the serial
        * Triangulation has never been refined.
        */
-//      virtual void
-//      copy_triangulation(
-//        const dealii::Triangulation<dim, spacedim> &other_tria) override;
+      //      virtual void
+      //      copy_triangulation(
+      //        const dealii::Triangulation<dim, spacedim> &other_tria)
+      //        override;
 
       /**
        * Create a triangulation as documented in the base class.
@@ -625,8 +625,8 @@ namespace parallel
       /**
        * Return the local memory consumption in bytes.
        */
-//      virtual std::size_t
-//      memory_consumption() const override;
+      //      virtual std::size_t
+      //      memory_consumption() const override;
 
 
       /**
@@ -661,8 +661,8 @@ namespace parallel
        * cell-based data can be saved using
        * DistributedTriangulationBase::DataTransfer::register_data_attach().
        */
-//      virtual void
-//      save(const std::string &file_basename) const override;
+      //      virtual void
+      //      save(const std::string &file_basename) const override;
 
       /**
        * Load the refinement information saved with save() back in. The mesh
@@ -683,16 +683,17 @@ namespace parallel
        * DistributedTriangulationBase::DataTransfer::notify_ready_to_unpack()
        * after calling load().
        */
-//      virtual void
-//      load(const std::string &file_basename) override;
+      //      virtual void
+      //      load(const std::string &file_basename) override;
 
       /**
        * Load the refinement information from a given parallel forest. This
        * forest might be obtained from the function call to
        * parallel::distributed::Triangulation::get_t8code().
        */
-//      void
-//      load(const typename dealii::internal::t8code::types::forest *forest);
+      //      void
+      //      load(const typename dealii::internal::t8code::types::forest
+      //      *forest);
 
       /**
        * Return a permutation vector for the order the coarse cells are handed
@@ -740,10 +741,11 @@ namespace parallel
        * once is possible, but not recommended: The function destroys and
        * rebuilds the t8code forest each time it is called.
        */
-//      virtual void
-//      add_periodicity(
-//        const std::vector<dealii::GridTools::PeriodicFacePair<cell_iterator>> &)
-//        override;
+      //      virtual void
+      //      add_periodicity(
+      //        const
+      //        std::vector<dealii::GridTools::PeriodicFacePair<cell_iterator>>
+      //        &) override;
 
 
     private:
@@ -766,7 +768,8 @@ namespace parallel
 
 
 
-      typename dealii::internal::t8code::types::scheme_collection *scheme_collection;
+      typename dealii::internal::t8code::types::scheme_collection
+        *scheme_collection;
 
 
 
@@ -792,10 +795,10 @@ namespace parallel
        * relation.
        *
        * The stored vector will be ordered by the occurrence of quadrants in
-       * the corresponding local sc_array of the parallel_forest. t8code requires
-       * this specific ordering for its transfer functions. Therefore, the size
-       * of this vector will be equal to the number of locally owned quadrants
-       * in the parallel_forest object.
+       * the corresponding local sc_array of the parallel_forest. t8code
+       * requires this specific ordering for its transfer functions. Therefore,
+       * the size of this vector will be equal to the number of locally owned
+       * quadrants in the parallel_forest object.
        *
        * These relations will be established for example in the mesh refinement
        * process: after adapting the parallel_forest, but before applying these
@@ -844,7 +847,8 @@ namespace parallel
        *
        * This function exists in 2d and 3d variants.
        */
-      void copy_new_triangulation_to_t8code();
+      void
+      copy_new_triangulation_to_t8code();
 
       /**
        * Copy the local part of the refined forest from t8code into the
@@ -881,13 +885,13 @@ namespace parallel
       std::vector<bool>
       mark_locally_active_vertices_on_level(const int level) const;
 
-//      virtual unsigned int
-//      coarse_cell_id_to_coarse_cell_index(
-//        const types::coarse_cell_id coarse_cell_id) const override;
-//
-//      virtual types::coarse_cell_id
-//      coarse_cell_index_to_coarse_cell_id(
-//        const unsigned int coarse_cell_index) const override;
+      //      virtual unsigned int
+      //      coarse_cell_id_to_coarse_cell_index(
+      //        const types::coarse_cell_id coarse_cell_id) const override;
+      //
+      //      virtual types::coarse_cell_id
+      //      coarse_cell_index_to_coarse_cell_id(
+      //        const unsigned int coarse_cell_index) const override;
 
       template <int, int, class>
       friend class dealii::FETools::internal::ExtrapolateImplementation;
@@ -935,7 +939,7 @@ namespace parallel
         mesh_reconstruction_after_repartitioning = 0x1,
         construct_multigrid_hierarchy            = 0x2,
         no_automatic_repartitioning              = 0x4,
-        communicate_vertices_to_t8code            = 0x8
+        communicate_vertices_to_t8code           = 0x8
       };
 
       /**

@@ -166,7 +166,7 @@ InitFinalize::InitFinalize([[maybe_unused]] int    &argc,
   if (static_cast<bool>(libraries & InitializeLibrary::T8CODE))
     {
       sc_init(MPI_COMM_WORLD, 0, 0, nullptr, SC_LP_SILENT);
-      t8_init( SC_LP_SILENT);
+      t8_init(SC_LP_SILENT);
     }
 #endif
 

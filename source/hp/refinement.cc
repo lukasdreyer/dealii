@@ -325,7 +325,7 @@ namespace hp
           dynamic_cast<const parallel::shared::Triangulation<dim, spacedim> *>(
             &dof_handler.get_triangulation()) == nullptr)
         {
-#ifndef DEAL_II_WITH_P4EST
+#ifndef DEAL_II_WITH_T8CODE
           DEAL_II_ASSERT_UNREACHABLE();
 #else
           //
