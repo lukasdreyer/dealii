@@ -66,6 +66,20 @@ namespace internal
       eclass_scheme->t8_element_destroy(1, pelement);
     }
 
+
+    void
+    element_child(const types::forest         forest,
+                     types::eclass         tree_class,
+                     const types::element *element,
+                     int childid,
+                     types::element      *child)
+    {
+      types::eclass_scheme *eclass_scheme =
+        t8_forest_get_eclass_scheme(forest, tree_class);
+      eclass_scheme->t8_element_child(element, childid, child);
+    }
+
+
     void
     element_children(const types::forest         forest,
                      types::eclass         tree_class,
@@ -88,7 +102,7 @@ namespace internal
       types::element *element_last_desc;
       bool            element_overlaps = true;
 
-      element_new(forest, T8_ECLASS_QUAD, &element_last_desc);
+      element_new(forest, T8_ECLASS_TRIANGLE, &element_last_desc);
       const unsigned int maxlevel = eclass_scheme->t8_element_maxlevel();
       eclass_scheme->t8_element_last_descendant(element,
                                                 element_last_desc,
@@ -97,7 +111,7 @@ namespace internal
                                             tree.first_desc) < 0)
         element_overlaps = false;
 
-      element_destroy(forest, T8_ECLASS_QUAD, &element_last_desc);
+      element_destroy(forest, T8_ECLASS_TRIANGLE, &element_last_desc);
 
       /* check if q is after the last tree quadrant */
       if (eclass_scheme->t8_element_compare(tree.last_desc, element) < 0)

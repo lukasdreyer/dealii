@@ -32,6 +32,7 @@
 #include <t8_data/t8_element_array_iterator.hxx>
 #include <t8_forest/t8_forest_ghost.h>
 #include <t8_schemes/t8_default/t8_default.hxx>
+#include <t8_schemes/t8_default/t8_default_tri/t8_dtri.h>
 
 #include <algorithm>
 #include <fstream>
@@ -49,6 +50,9 @@ namespace internal
   {
     namespace distributed
     {
+      const std::vector<std::vector<unsigned int> > deal_to_t8code_children = {{0,1,3,2}, {0,3,2,1}};
+      const std::vector<std::vector<unsigned int> > t8code_to_deal_children = {{0,1,3,2}, {0,3,2,1}};
+
       namespace TriangulationImplementation
       {
         /**
@@ -138,7 +142,7 @@ namespace parallel
         coarse_cell_to_t8code_tree_permutation[dealii_coarse_cell_index];
       typename dealii::internal::t8code::types::tree *tree =
         static_cast<typename dealii::internal::t8code::types::tree *>(
-          sc_array_index(parallel_forest->trees, tree_index));
+          sc_array_index(parallel_forest->trees, t8_forest_get_local_id(parallel_forest, tree_index)));
 
       return tree;
     }
@@ -165,12 +169,14 @@ namespace parallel
       const typename dealii::internal::t8code::types::forest      forest,
       const types::subdomain_id                                   my_subdomain)
     {
-      dealii::internal::t8code::types::eclass tree_class = T8_ECLASS_QUAD;
+      dealii::internal::t8code::types::eclass tree_class = T8_ECLASS_TRIANGLE;
       dealii::internal::t8code::types::eclass_scheme *eclass_scheme =
         t8_forest_get_eclass_scheme(forest, tree_class);
       auto compare_lambda = [eclass_scheme](auto x, auto y) {
         return eclass_scheme->t8_element_compare(x, y) < 0;
       };
+
+      int type = ((t8_dtri_t *)t8code_cell)->type;
 
       if (std::binary_search(t8_element_array_begin(&tree.elements),
                              t8_element_array_end(&tree.elements),
@@ -179,8 +185,11 @@ namespace parallel
         {
           // yes, cell found in local part of p4est
           delete_all_children<dim, spacedim>(dealii_cell);
-          if (dealii_cell->is_active())
+          std::cout<<"found local cell: "<<dealii_cell->id()<<std::endl;
+          if (dealii_cell->is_active()){
+            std::cout<<"found deal leaf: "<<dealii_cell->id()<<std::endl;
             dealii_cell->set_subdomain_id(my_subdomain);
+          }
         }
       else
         {
@@ -201,11 +210,11 @@ namespace parallel
                    c < GeometryInfo<dim>::max_children_per_cell;
                    ++c)
                 dealii::internal::t8code::element_new(forest,
-                                                      T8_ECLASS_QUAD,
+                                                      T8_ECLASS_TRIANGLE,
                                                       t8code_child + c);
 
               dealii::internal::t8code::element_children(forest,
-                                                         T8_ECLASS_QUAD,
+                                                         T8_ECLASS_TRIANGLE,
                                                          t8code_cell,
                                                          t8code_child);
 
@@ -213,7 +222,7 @@ namespace parallel
                    c < GeometryInfo<dim>::max_children_per_cell;
                    ++c)
                 if (dealii::internal::t8code::element_overlaps_tree(
-                      forest, tree, t8code_child[c]) == false)
+                      forest, tree, t8code_child[dealii::internal::parallel::distributed::deal_to_t8code_children[type][c]]) == false)
                   {
                     // no, this child is locally not available in the p4est.
                     // delete all its children but, because this may not be
@@ -229,7 +238,7 @@ namespace parallel
                     // locally available
                     match_tree_recursively<dim, spacedim>(tree,
                                                           dealii_cell->child(c),
-                                                          t8code_child[c],
+                                                          t8code_child[dealii::internal::parallel::distributed::deal_to_t8code_children[type][c]],
                                                           forest,
                                                           my_subdomain);
                   }
@@ -237,7 +246,7 @@ namespace parallel
                    c < GeometryInfo<dim>::max_children_per_cell;
                    ++c)
                 dealii::internal::t8code::element_destroy(forest,
-                                                          T8_ECLASS_QUAD,
+                                                          T8_ECLASS_TRIANGLE,
                                                           t8code_child + c);
             }
         }
@@ -253,8 +262,22 @@ namespace parallel
       types::subdomain_id                                      ghost_owner)
     {
       const int l = dealii::internal::t8code::element_level(forest,
-                                                            T8_ECLASS_QUAD,
+                                                            T8_ECLASS_TRIANGLE,
                                                             ghost_element);
+      
+      dealii::internal::t8code::types::element* t8code_cell;
+      
+      dealii::internal::t8code::element_new(forest,
+                                            T8_ECLASS_TRIANGLE,
+                                            &t8code_cell);
+
+      dealii::internal::t8code::types::eclass tree_class =
+        T8_ECLASS_TRIANGLE;
+
+      dealii::internal::t8code::init_root(forest,
+                                          tree_class,
+                                          t8code_cell);
+
 
       for (int i = 0; i < l; ++i)
         {
@@ -264,23 +287,36 @@ namespace parallel
             {
               cell->clear_coarsen_flag();
               cell->set_refine_flag();
+                    dealii::internal::t8code::element_destroy(forest,
+                                            T8_ECLASS_TRIANGLE,
+                                            &t8code_cell);
               return;
             }
 
           const int child_id = dealii::internal::t8code::element_ancestor_id(
-            forest, T8_ECLASS_QUAD, ghost_element, i + 1);
-          dealii_index = cell->child_index(child_id);
+            forest, T8_ECLASS_TRIANGLE, ghost_element, i + 1);
+
+          int type = ((t8_dtri_t *)t8code_cell)->type;
+          dealii::internal::t8code::element_child(forest, T8_ECLASS_TRIANGLE, t8code_cell, child_id, t8code_cell);
+          std::cout<<"child_id: "<<child_id<<", type: "<<type<<std::endl;
+          dealii_index = cell->child_index(dealii::internal::parallel::distributed::t8code_to_deal_children[type][child_id]);
         }
+
+      dealii::internal::t8code::element_destroy(forest,
+                                            T8_ECLASS_TRIANGLE,
+                                            &t8code_cell);
 
       typename Triangulation<dim, spacedim>::cell_iterator cell(tria,
                                                                 l,
                                                                 dealii_index);
+
+      std::cout<<"corresponding cell: " << cell->id() << std::endl;
       if (cell->has_children())
         delete_all_children<dim, spacedim>(cell);
       else
         {
           cell->clear_coarsen_flag();
-          std::cout<<"set subdomain id from cell"<<cell->id()<<"to "<<ghost_owner<<std::endl;
+          std::cout<<"set subdomain id from cell "<<cell->id()<<"to "<<ghost_owner<<std::endl;
           cell->set_subdomain_id(ghost_owner);
         }
     }
@@ -326,7 +362,7 @@ namespace parallel
     void Triangulation<dim, spacedim>::copy_new_triangulation_to_t8code()
     {
       cmesh =
-        t8_cmesh_new_hypercube(T8_ECLASS_QUAD, this->mpi_communicator, 0, 0, 0);
+        t8_cmesh_new_hypercube(T8_ECLASS_TRIANGLE, this->mpi_communicator, 0, 0, 0);
       scheme_collection = t8_scheme_new_default_cxx();
       parallel_forest   = t8_forest_new_uniform(
         cmesh, scheme_collection, 3, 1, this->mpi_communicator);
@@ -365,15 +401,15 @@ namespace parallel
           }
       };
 
-      new_forest =
-        t8_forest_new_adapt(parallel_forest, adapt_fn, 0, 1, nullptr);
-      parallel_forest = new_forest;
-
-      t8_forest_init (&partitioned_forest);
-      t8_forest_set_partition (partitioned_forest, parallel_forest, 0);
-      t8_forest_set_ghost (partitioned_forest, 1, T8_GHOST_FACES);
-      t8_forest_commit (partitioned_forest);
-      parallel_forest = partitioned_forest;
+//      new_forest =
+//        t8_forest_new_adapt(parallel_forest, adapt_fn, 0, 1, nullptr);
+//      parallel_forest = new_forest;
+//
+//      t8_forest_init (&partitioned_forest);
+//      t8_forest_set_partition (partitioned_forest, parallel_forest, 0);
+//      t8_forest_set_ghost (partitioned_forest, 1, T8_GHOST_FACES);
+//      t8_forest_commit (partitioned_forest);
+//      parallel_forest = partitioned_forest;
 
     }
 
@@ -481,11 +517,11 @@ namespace parallel
                     init_tree(cell->index());
 
                   dealii::internal::t8code::element_new(parallel_forest,
-                                                        T8_ECLASS_QUAD,
+                                                        T8_ECLASS_TRIANGLE,
                                                         &t8code_coarse_cell);
 
                   dealii::internal::t8code::types::eclass tree_class =
-                    T8_ECLASS_QUAD;
+                    T8_ECLASS_TRIANGLE;
                   // TODO: replace by cell accessor call
 
                   dealii::internal::t8code::init_root(parallel_forest,
@@ -498,7 +534,7 @@ namespace parallel
                                                         parallel_forest,
                                                         this->my_subdomain);
                   dealii::internal::t8code::element_destroy(
-                    parallel_forest, T8_ECLASS_QUAD, &t8code_coarse_cell);
+                    parallel_forest, T8_ECLASS_TRIANGLE, &t8code_coarse_cell);
                 }
             }
 
@@ -536,7 +572,7 @@ namespace parallel
                     t8_forest_element_find_owner(parallel_forest,
                                                  global_tree_idx,
                                                  local_ghost_element,
-                                                 T8_ECLASS_QUAD);
+                                                 T8_ECLASS_TRIANGLE);
                   unsigned int coarse_cell_index =
                     t8code_tree_to_coarse_cell_permutation[global_tree_idx];
 
@@ -625,14 +661,14 @@ namespace parallel
             }
 
             for (const auto &cell: this->active_cell_iterators()){
-              cell->set_material_id(42);//cell->subdomain_id());
+              cell->set_material_id(cell->subdomain_id());
             }
 
             std::ofstream out("grid-" + std::to_string(loop_iter) + "." + std::to_string(Utilities::MPI::this_mpi_process(this->get_communicator())) + ".vtk");
             GridOut       grid_out;
             grid_out.write_vtk(*this, out);
         }
-      while (mesh_changed && loop_iter < 5);
+      while (mesh_changed);
 
 #  ifdef DEBUG
       // check if correct number of ghosts is created

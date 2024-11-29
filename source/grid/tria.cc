@@ -16763,7 +16763,7 @@ namespace
       {
         // use first algorithm
         unsigned int refined_neighbors = 0, unrefined_neighbors = 0;
-        for (const unsigned int face : GeometryInfo<dim>::face_indices())
+        for (unsigned int face = 0; face < cell->n_children();  ++face)
           if (!cell->at_boundary(face))
             {
               if (face_will_be_refined_by_neighbor(cell, face))

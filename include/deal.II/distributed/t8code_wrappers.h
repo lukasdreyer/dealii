@@ -87,6 +87,14 @@ namespace internal
                      types::eclass         eclass,
                      const types::element *element,
                      types::element      **children);
+
+    void
+    element_child(const types::forest         forest,
+                     types::eclass         tree_class,
+                     const types::element *element,
+                     int childid,
+                     types::element      *child);
+
     bool
     element_overlaps_tree(const types::forest   forest,
                           const types::tree     tree,
