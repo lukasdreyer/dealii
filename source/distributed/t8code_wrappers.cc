@@ -102,7 +102,7 @@ namespace internal
       types::element *element_last_desc;
       bool            element_overlaps = true;
 
-      element_new(forest, T8_ECLASS_TRIANGLE, &element_last_desc);
+      element_new(forest, tree_class, &element_last_desc);
       const unsigned int maxlevel = eclass_scheme->t8_element_maxlevel();
       eclass_scheme->t8_element_last_descendant(element,
                                                 element_last_desc,
@@ -111,7 +111,7 @@ namespace internal
                                             tree.first_desc) < 0)
         element_overlaps = false;
 
-      element_destroy(forest, T8_ECLASS_TRIANGLE, &element_last_desc);
+      element_destroy(forest, tree_class, &element_last_desc);
 
       /* check if q is after the last tree quadrant */
       if (eclass_scheme->t8_element_compare(tree.last_desc, element) < 0)
