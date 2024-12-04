@@ -1219,8 +1219,8 @@ QProjector<2>::project_to_all_subfaces(const ReferenceCell &reference_cell,
               // face 1 is given by (1,0) (0,1) so scale the weights by the
               // length
               if (face == 1)
-                for (unsigned int i = 0; i < scaled_weights.size(); ++i)
-                  scaled_weights[i] *= std::sqrt(2);
+                for (auto &w : scaled_weights)
+                  w *= std::sqrt(2);
 
               if (orientation == 0)
                 std::reverse(scaled_weights.begin(), scaled_weights.end());
