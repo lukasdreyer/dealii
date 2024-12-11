@@ -3041,10 +3041,10 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
     {
       case 2:
         {
-          if (this->reference_cell() == ReferenceCells::Triangle)
+          const auto neighbor_cell = this->neighbor(face);
+          if (this->reference_cell() == ReferenceCells::Triangle || 
+              neighbor_cell->reference_cell() == ReferenceCells::Triangle)
             {
-              const auto neighbor_cell = this->neighbor(face);
-
               // only for isotropic refinement at the moment
               Assert(neighbor_cell->refinement_case() ==
                        RefinementCase<2>::isotropic_refinement,
