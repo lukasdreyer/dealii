@@ -1213,7 +1213,8 @@ KellyErrorEstimator<dim, spacedim>::estimate(
 
   // all the data needed in the error estimator by each of the threads is
   // gathered in the following structures
-  const hp::MappingCollection<dim, spacedim> mapping_collection(mapping);
+  (void)mapping;
+  const hp::MappingCollection<dim, spacedim> mapping_collection(dof_handler.get_fe_collection().get_reference_cell_default_linear_mapping());
   const internal::ParallelData<dim, spacedim, Number> parallel_data(
     dof_handler.get_fe_collection(),
     face_quadratures,

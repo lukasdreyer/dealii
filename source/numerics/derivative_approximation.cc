@@ -749,8 +749,7 @@ namespace DerivativeApproximation
       const typename DoFHandler<dim, spacedim>::active_cell_iterator &cell,
       typename DerivativeDescription::Derivative &derivative)
     {
-      const QMidpoint<dim> midpoint_rule;
-
+      (void) mapping;
       // create collection objects from
       // single quadratures, mappings,
       // and finite elements. if we have
@@ -758,10 +757,19 @@ namespace DerivativeApproximation
       // dof_handler.get_fe() returns a
       // collection of which we do a
       // shallow copy instead
-      const hp::QCollection<dim>   q_collection(midpoint_rule);
       const hp::FECollection<dim> &fe_collection =
         dof_handler.get_fe_collection();
-      const hp::MappingCollection<dim> mapping_collection(mapping);
+
+      hp::QCollection<dim> q_collection;
+      for (unsigned int i = 0; i < fe_collection.size(); ++i)
+      {
+        const ReferenceCell ref_cel = fe_collection[i].reference_cell();
+        const Quadrature<dim> quad = ref_cel.get_midpoint_quadrature<dim>();
+        q_collection.push_back(quad);
+      }
+        
+
+      const hp::MappingCollection<dim> mapping_collection(fe_collection.get_reference_cell_default_linear_mapping());
 
       hp::FEValues<dim> x_fe_midpoint_value(
         mapping_collection,
@@ -780,8 +788,12 @@ namespace DerivativeApproximation
       std::vector<typename DoFHandler<dim, spacedim>::active_cell_iterator>
         active_neighbors;
 
-      active_neighbors.reserve(GeometryInfo<dim>::faces_per_cell *
-                               GeometryInfo<dim>::max_children_per_face);
+
+      const auto cell_ref_cell = cell->reference_cell();
+      const auto face_ref_cell = cell_ref_cell.face_reference_cell(0);
+      const unsigned int n_children =  face_ref_cell.n_isotropic_children();
+      active_neighbors.reserve(cell->n_faces() *
+                               n_children);
 
       // vector
       // g=sum_i y_i (f(x+y_i)-f(x))/|y_i|
@@ -1031,8 +1043,8 @@ namespace DerivativeApproximation
                        Vector<float>                   &derivative_norm,
                        const unsigned int               component)
   {
-    Assert(!dof_handler.get_triangulation().is_mixed_mesh(),
-           ExcNotImplemented());
+    //Assert(!dof_handler.get_triangulation().is_mixed_mesh(),
+    //       ExcNotImplemented());
     const auto reference_cell =
       dof_handler.get_triangulation().get_reference_cells()[0];
     internal::approximate_derivative<internal::Gradient<dim>, dim>(
