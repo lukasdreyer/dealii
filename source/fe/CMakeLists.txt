@@ -31,6 +31,7 @@ set(_unity_include_src
   fe_hermite.cc
   fe_nedelec.cc
   fe_nedelec_sz.cc
+  fe_nedelec_simplex_linear.cc
   fe_nothing.cc
   fe_poly.cc
   fe_poly_tensor.cc
