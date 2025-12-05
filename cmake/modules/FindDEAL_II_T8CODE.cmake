@@ -38,8 +38,6 @@ find_package(T8CODE CONFIG)
   endif()
 
   
-  message("T8_CMAKE_BUILD")
-
   if(${T8_CMAKE_BUILD})
     message(STATUS "Found CMAKE BUILD")
   else()
