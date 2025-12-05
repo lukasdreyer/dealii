@@ -24,7 +24,7 @@
 
 #  ifdef DEAL_II_WITH_T8CODE
 #    include <t8.h>
-#    include <t8_cmesh.h>
+#    include <t8_cmesh/t8_cmesh.h>
 #    include <t8_element.h>
 #    include <t8_forest/t8_forest.h>
 #    include <t8_forest/t8_forest_general.h>

@@ -27,7 +27,7 @@
 #include <deal.II/grid/tria_iterator.h>
 #include <deal.II/grid/grid_out.h>
 
-#include <t8_cmesh.hxx>
+#include <t8_cmesh/t8_cmesh.hxx>
 #include <t8_cmesh/t8_cmesh_examples.h>
 #include <t8_cmesh/t8_cmesh_types.h>
 #include <t8_data/t8_element_array_iterator.hxx>
