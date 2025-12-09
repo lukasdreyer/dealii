@@ -249,8 +249,8 @@ namespace parallel
       };
 
 
-      if (std::binary_search(t8_element_array_begin(&tree.elements),
-                             t8_element_array_end(&tree.elements),
+      if (std::binary_search(t8_element_array_begin(&tree.leaf_elements),
+                             t8_element_array_end(&tree.leaf_elements),
                              t8code_cell,
                              compare_lambda))
         {
@@ -805,7 +805,7 @@ namespace parallel
                local_ghost_tree_idx++)
             {
               t8_element_array_t *element_array =
-                t8_forest_ghost_get_tree_elements(parallel_forest,
+                t8_forest_ghost_get_tree_leaf_elements(parallel_forest,
                                                   local_ghost_tree_idx);
               dealii::internal::t8code::types::eclass ghost_eclass =
                 t8_forest_ghost_get_tree_class(parallel_forest, local_ghost_tree_idx);
@@ -815,7 +815,7 @@ namespace parallel
                                                   local_ghost_tree_idx);
 
               num_ghosts_in_tree =
-                t8_forest_ghost_tree_num_elements(parallel_forest,
+                t8_forest_ghost_tree_num_leaf_elements(parallel_forest,
                                                   local_ghost_tree_idx);
               for (dealii::internal::t8code::types::locidx
                      local_ghost_element_idx = 0;
@@ -948,7 +948,7 @@ namespace parallel
       // original (at least if we are on only one processor); for parallel
       // computations, we want to check that we have at least as many as t8code
       // stores locally (in the future we should check that we have exactly as
-      // many non-artificial cells as parallel_forest->local_num_elements)
+      // many non-artificial cells as parallel_forest->local_num_leaf_elements)
       {
         const unsigned int total_local_cells = this->n_active_cells();
 
@@ -956,13 +956,13 @@ namespace parallel
         if (Utilities::MPI::n_mpi_processes(this->mpi_communicator) == 1)
           {
             Assert(static_cast<unsigned int>(
-                     parallel_forest->local_num_elements) == total_local_cells,
+                     parallel_forest->local_num_leaf_elements) == total_local_cells,
                    ExcInternalError());
           }
         else
           {
             Assert(static_cast<unsigned int>(
-                     parallel_forest->local_num_elements) <= total_local_cells,
+                     parallel_forest->local_num_leaf_elements) <= total_local_cells,
                    ExcInternalError());
           }
 
@@ -974,7 +974,7 @@ namespace parallel
               ++n_owned;
           }
 
-        Assert(static_cast<unsigned int>(parallel_forest->local_num_elements) ==
+        Assert(static_cast<unsigned int>(parallel_forest->local_num_leaf_elements) ==
                  n_owned,
                ExcInternalError());
       }
@@ -1126,7 +1126,7 @@ namespace parallel
     adapt_list.clear();
     adapt_list.resize(n_coarse_elements);
     for(t8_locidx_t itree=0; itree <n_coarse_elements; itree++){
-      t8_locidx_t n_fine_elements_in_coarse_element = t8_forest_get_tree_num_elements(forest, itree);
+      t8_locidx_t n_fine_elements_in_coarse_element = t8_forest_get_tree_num_leaf_elements(forest, itree);
       adapt_list[itree].clear();
       adapt_list[itree].reserve(n_fine_elements_in_coarse_element);
     }
@@ -1411,13 +1411,13 @@ namespace parallel
 
       // Resize memory according to the data that we will receive.
       this->data_serializer.dest_data_fixed.resize(
-        parallel_forest->local_num_elements *
+        parallel_forest->local_num_leaf_elements *
         this->data_serializer.sizes_fixed_cumulative.back());
 
 
       sc_array_t src_data_view, dest_data_view;
-      sc_array_init_data(&src_data_view, this->data_serializer.src_data_fixed.data(), this->data_serializer.sizes_fixed_cumulative.back(), old_forest->local_num_elements);
-      sc_array_init_data(&dest_data_view, this->data_serializer.dest_data_fixed.data(), this->data_serializer.sizes_fixed_cumulative.back(), parallel_forest->local_num_elements);
+      sc_array_init_data(&src_data_view, this->data_serializer.src_data_fixed.data(), this->data_serializer.sizes_fixed_cumulative.back(), old_forest->local_num_leaf_elements);
+      sc_array_init_data(&dest_data_view, this->data_serializer.dest_data_fixed.data(), this->data_serializer.sizes_fixed_cumulative.back(), parallel_forest->local_num_leaf_elements);
 
       t8_forest_partition_data(old_forest, parallel_forest, &src_data_view, &dest_data_view);
 
@@ -1428,10 +1428,10 @@ namespace parallel
         {
           // Resize memory according to the data that we will receive.
           this->data_serializer.dest_sizes_variable.resize(
-            parallel_forest->local_num_elements);
+            parallel_forest->local_num_leaf_elements);
       sc_array_t src_size_view, dest_size_view;
-      sc_array_init_data(&src_size_view, this->data_serializer.src_sizes_variable.data(), sizeof(int), old_forest->local_num_elements);
-      sc_array_init_data(&dest_size_view, this->data_serializer.dest_sizes_variable.data(), sizeof(int), parallel_forest->local_num_elements);
+      sc_array_init_data(&src_size_view, this->data_serializer.src_sizes_variable.data(), sizeof(int), old_forest->local_num_leaf_elements);
+      sc_array_init_data(&dest_size_view, this->data_serializer.dest_sizes_variable.data(), sizeof(int), parallel_forest->local_num_leaf_elements);
 
       t8_forest_partition_data(old_forest, parallel_forest, &src_size_view, &dest_size_view);
 
@@ -1449,8 +1449,8 @@ namespace parallel
       std::cout <<"Max data size: "<<max_data_size<<", loc: "<<max_data_size_loc<<std::endl;
 
       sc_array_t src_data_padded, dest_data_padded;
-      sc_array_init_count(&src_data_padded, max_data_size, old_forest->local_num_elements);
-      sc_array_init_count(&dest_data_padded, max_data_size, parallel_forest->local_num_elements);
+      sc_array_init_count(&src_data_padded, max_data_size, old_forest->local_num_leaf_elements);
+      sc_array_init_count(&dest_data_padded, max_data_size, parallel_forest->local_num_leaf_elements);
 
 
       std::cout<<"src representation:"<<std::endl;
@@ -1461,7 +1461,7 @@ namespace parallel
 
 //memcpy src_data_variable in padded
       size_t cumulative_index=0;
-      for(int idata = 0; idata< old_forest->local_num_elements; idata++){
+      for(int idata = 0; idata< old_forest->local_num_leaf_elements; idata++){
         std::cout<<"memcpy to, idata "<<idata<<", cumulative_index "<<cumulative_index<<std::endl;
         if(this->data_serializer.src_sizes_variable[idata]){
 
@@ -1475,7 +1475,7 @@ namespace parallel
 
 //memcpy dest_data_variable from padded
       cumulative_index = 0;
-      for(int idata = 0; idata< parallel_forest->local_num_elements; idata++){
+      for(int idata = 0; idata< parallel_forest->local_num_leaf_elements; idata++){
         std::cout<<"memcpy from, idata "<<idata<<", cumulative_index "<<cumulative_index<<std::endl;
         if(this->data_serializer.dest_sizes_variable[idata]){
 
@@ -1509,7 +1509,7 @@ namespace parallel
       // std::cout<<"enter ucr"<<std::endl;
 
       // reorganize memory for local_cell_relations
-      this->local_cell_relations.resize(parallel_forest->local_num_elements);
+      this->local_cell_relations.resize(parallel_forest->local_num_leaf_elements);
       this->local_cell_relations.shrink_to_fit();
 
       // recurse over p4est
