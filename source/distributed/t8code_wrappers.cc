@@ -47,7 +47,7 @@ namespace internal
     types::forest partition(types::forest forest, t8_ghost_type_t ghost_type){
   t8_forest_t new_forest;
   t8_forest_init (&new_forest);
-  t8_forest_set_partition (new_forest, forest, 0);
+  t8_forest_set_partition (new_forest, forest, 1);
   t8_forest_set_ghost (new_forest, 1, ghost_type);
   t8_forest_set_user_data(new_forest, t8_forest_get_user_data(forest));
   t8_forest_commit (new_forest);
