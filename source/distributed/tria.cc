@@ -610,15 +610,8 @@ namespace parallel
         std::vector<double> coords(3*cell->n_vertices());
         for(unsigned int ivertex=0; ivertex < cell->n_vertices();ivertex++){
           const auto &vertex = cell->vertex(ivertex);
-//          std::cout<<vertex<<std::endl;
-
-          //TODO: Loop ?
-          coords[3*ivertex+0]=vertex[0];
-          if constexpr (dim >=2) {
-            coords[3*ivertex+1]=vertex[1];
-          }
-          if constexpr (dim >=3) {
-            coords[3*ivertex+2]=0;
+          for(unsigned int idim=0;idim<dim;idim++){
+            coords[3*ivertex+idim]=vertex[idim];
           }
         }
         t8_cmesh_set_tree_vertices (cmesh, t8_index, coords.data(), cell->n_vertices());
@@ -657,10 +650,17 @@ namespace parallel
           std::cout << "local vertex "<<ivertex<<" connected to global vertex " << cell->vertex_index(ivertex);
         }
         t8_cmesh_set_global_vertices_of_tree(cmesh, t8_index, vertex_list.data(), cell->n_vertices());
+        std::vector<t8_gloidx_t> edge_list(cell->n_lines());
+        for(unsigned int iedge=0; iedge< cell->n_lines();iedge++){
+          edge_list[iedge] = cell->line_index(iedge);
+          // std::cout << "local edge "<<iedge<<" connected to global edge " << cell->line_index(iedge);
+        }
+        t8_cmesh_set_global_edges_of_tree(cmesh, t8_index, edge_list.data(), cell->n_lines());
       }
       t8_cmesh_commit(cmesh, this->mpi_communicator);
 
-      scheme_collection = t8_scheme_new_default();
+      scheme_collection = t8_scheme_new_standalone();
+//      scheme_collection = t8_scheme_new_default();
       parallel_forest   = t8_forest_new_uniform(
         cmesh, scheme_collection, 0, 1, this->mpi_communicator);
       t8_forest_set_user_data(parallel_forest, this);
