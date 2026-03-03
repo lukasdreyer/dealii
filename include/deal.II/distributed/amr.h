@@ -16,6 +16,10 @@
 #ifdef DEAL_II_WITH_P4EST
 #  include <deal.II/distributed/p4est_wrappers.h>
 #endif // DEAL_II_WITH_P4EST
+#ifdef DEAL_II_WITH_T8CODE
+#  include <deal.II/distributed/t8code_wrappers.h>
+#endif // DEAL_II_WITH_T8CODE
+
 
 namespace dealii
 {
@@ -23,7 +27,9 @@ namespace dealii
   {
     namespace amr
     {
-#if defined(DEAL_II_WITH_P4EST)
+#if defined(DEAL_II_WITH_T8CODE)
+      using namespace dealii::internal::t8code;
+#elif defined(DEAL_II_WITH_P4EST)
       using namespace dealii::internal::p4est;
 #endif
     } // namespace amr

@@ -93,8 +93,7 @@ namespace internal
 #endif
 
 
-
-#ifdef DEAL_II_WITH_P4EST
+#if defined(DEAL_II_WITH_P4EST) || defined(DEAL_II_WITH_T8CODE)
 
 namespace parallel
 {

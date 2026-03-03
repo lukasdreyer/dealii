@@ -33,7 +33,7 @@ set(_inst
   p4est_wrappers.inst.in
   )
 
-if(DEAL_II_WITH_P4EST)
+if(DEAL_II_WITH_P4EST OR DEAL_II_WITH_T8CODE)
   set(_unity_include_src
     ${_unity_include_src}
     grid_refinement.cc
