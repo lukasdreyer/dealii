@@ -86,9 +86,9 @@ namespace internal
     {
       using connectivity              = p4est_connectivity_t;
       using forest                    = p4est_t;
-      using tree                      = p4est_tree_t;
-      using quadrant                  = p4est_quadrant_t;
-      using quadrant_coord            = p4est_qcoord_t;
+      using tree                      = p4est_tree_t *;
+      using element                   = p4est_quadrant_t *;
+      using element_coord             = p4est_qcoord_t;
       using topidx                    = p4est_topidx_t;
       using locidx                    = p4est_locidx_t;
       using gloidx                    = p4est_gloidx_t;
@@ -96,6 +96,8 @@ namespace internal
       using ghost                     = p4est_ghost_t;
       using transfer_context          = p4est_transfer_context_t;
       using search_partition_callback = p4est_search_partition_t;
+      using weight                    = p4est_weight_t;
+      using eclass                    = std::uint8_t;
     };
 
     template <>
@@ -103,9 +105,9 @@ namespace internal
     {
       using connectivity              = p8est_connectivity_t;
       using forest                    = p8est_t;
-      using tree                      = p8est_tree_t;
-      using quadrant                  = p8est_quadrant_t;
-      using quadrant_coord            = p4est_qcoord_t;
+      using tree                      = p8est_tree_t *;
+      using element                   = p8est_quadrant_t *;
+      using element_coord             = p4est_qcoord_t;
       using topidx                    = p4est_topidx_t;
       using locidx                    = p4est_locidx_t;
       using gloidx                    = p4est_gloidx_t;
@@ -113,6 +115,8 @@ namespace internal
       using ghost                     = p8est_ghost_t;
       using transfer_context          = p8est_transfer_context_t;
       using search_partition_callback = p8est_search_partition_t;
+      using weight                    = p8est_weight_t;
+      using eclass                    = std::uint8_t;
     };
 
 
@@ -120,9 +124,9 @@ namespace internal
     /**
      * A structure whose explicit specializations represent the
      * relevant p4est_* and p8est_* functions. Using this structure, for
-     * example by saying functions<dim>::quadrant_compare(...), we can write
+     * example by saying functions<dim>::element_compare(...), we can write
      * code in a dimension independent way, either calling
-     * p4est_quadrant_compare or p8est_quadrant_compare, depending on template
+     * p4est_element_compare or p8est_element_compare, depending on template
      * argument.
      *
      * In most cases, the members of this class are simply pointers to
@@ -136,37 +140,67 @@ namespace internal
     template <>
     struct functions<2>
     {
-      static int (&quadrant_compare)(const void *v1, const void *v2);
+      static int (&element_compare)(const void *v1, const void *v2);
+      static void
+      element_children(const types<2>::forest *forest,
+                       types<2>::eclass        eclass,
+                       const types<2>::element element,
+                       types<2>::element      *children);
+      static int
+      element_level(const types<2>::forest *forest,
+                    types<2>::eclass        eclass,
+                    const types<2>::element element);
+      static bool
+      cell_exists_in_tree(const types<2>::tree    tree,
+                          const types<2>::element element);
+      static int
+      element_overlaps_tree(const types<2>::forest *forest,
+                            const types<2>::tree    tree,
+                            const types<2>::element q);
 
-      static void (&quadrant_childrenv)(const types<2>::quadrant *q,
-                                        types<2>::quadrant        c[]);
+      static void (&element_set_morton)(types<2>::element quadrant,
+                                        int               level,
+                                        std::uint64_t     id);
 
-      static int (&quadrant_overlaps_tree)(types<2>::tree           *tree,
-                                           const types<2>::quadrant *q);
-
-      static void (&quadrant_set_morton)(types<2>::quadrant *quadrant,
-                                         int                 level,
-                                         std::uint64_t       id);
+      static constexpr types<2>::eclass
+      get_eclass(const types<2>::forest *, types<2>::locidx)
+      {
+        return 0;
+      }
+      static constexpr types<2>::eclass
+      get_eclass_from_tree(const types<2>::tree)
+      {
+        return 0;
+      }
 
       static void
-      quadrant_init(types<2>::quadrant &q);
+      element_new(const types<2>::forest *forest,
+                  types<2>::eclass        eclass,
+                  //                types<2>::locidx       length,
+                  types<2>::element *element);
 
-      static int (&quadrant_is_equal)(const types<2>::quadrant *q1,
-                                      const types<2>::quadrant *q2);
+      static void
+      element_init(types<2>::element q);
 
-      static int (&quadrant_is_sibling)(const types<2>::quadrant *q1,
-                                        const types<2>::quadrant *q2);
+      static int (&element_is_equal)(const types<2>::element q1,
+                                     const types<2>::element q2);
 
-      static int (&quadrant_is_ancestor)(const types<2>::quadrant *q1,
-                                         const types<2>::quadrant *q2);
+      static int (&element_is_sibling)(const types<2>::element q1,
+                                       const types<2>::element q2);
 
-      static int (&quadrant_ancestor_id)(const types<2>::quadrant *q,
-                                         int                       level);
+      static int (&element_is_ancestor)(const types<2>::element q1,
+                                        const types<2>::element q2);
 
-      static int (&comm_find_owner)(types<2>::forest         *p4est,
-                                    const types<2>::locidx    which_tree,
-                                    const types<2>::quadrant *q,
-                                    const int                 guess);
+      static int
+      element_ancestor_id(const types<2>::forest *forest,
+                          types<2>::eclass        eclass,
+                          const types<2>::element q,
+                          int                     level);
+
+      static int (&comm_find_owner)(const types<2>::forest *p4est,
+                                    const types<2>::locidx  which_tree,
+                                    const types<2>::element q,
+                                    const int               guess);
 
       static types<2>::connectivity *(&connectivity_new)(
         types<2>::topidx num_vertices,
@@ -223,13 +257,17 @@ namespace internal
                              p4est_coarsen_t   coarsen_fn,
                              p4est_init_t      init_fn);
 
-      static void (&balance)(types<2>::forest      *p4est,
-                             types<2>::balance_type btype,
-                             p4est_init_t           init_fn);
+      static void
+      set_user_data(types<2>::forest *p4est, void *user_pointer);
+      static void *
+      get_user_data(types<2>::forest *p4est);
 
-      static types<2>::gloidx (&partition)(types<2>::forest *p4est,
-                                           int partition_for_coarsening,
-                                           p4est_weight_t weight_fn);
+
+      static void
+      balance_full(types<2>::forest *p4est);
+
+      static types<2>::forest *
+      partition(types<2>::forest *p4est, types<2>::weight weight_fn);
 
       static void (&save)(const char       *filename,
                           types<2>::forest *p4est,
@@ -255,11 +293,9 @@ namespace internal
       static unsigned int (&checksum)(types<2>::forest *p4est);
 
       static void (&vtk_write_file)(types<2>::forest *p4est,
-                                    p4est_geometry_t *,
-                                    const char *baseName);
+                                    const char       *baseName);
 
-      static types<2>::ghost *(&ghost_new)(types<2>::forest      *p4est,
-                                           types<2>::balance_type btype);
+      static types<2>::ghost *(&ghost_new)(types<2>::forest *p4est);
 
       static void (&ghost_destroy)(types<2>::ghost *ghost);
 
@@ -279,7 +315,11 @@ namespace internal
               dealii::internal::p4est::types<2>::ghost  *parallel_ghost,
               void                                      *user_data);
 
-      static constexpr unsigned int max_level = P4EST_MAXLEVEL;
+      static unsigned int
+      get_max_level([[maybe_unused]] types<2>::forest *parallel_forest)
+      {
+        return P4EST_MAXLEVEL;
+      };
 
       static void (&transfer_fixed)(const types<2>::gloidx *dest_gfq,
                                     const types<2>::gloidx *src_gfq,
@@ -324,52 +364,88 @@ namespace internal
       static void (&search_partition)(
         types<2>::forest                   *forest,
         int                                 call_post,
-        types<2>::search_partition_callback quadrant_fn,
+        types<2>::search_partition_callback element_fn,
         types<2>::search_partition_callback point_fn,
         sc_array_t                         *points);
 
-      static void (&quadrant_coord_to_vertex)(
-        types<2>::connectivity  *connectivity,
-        types<2>::topidx         treeid,
-        types<2>::quadrant_coord x,
-        types<2>::quadrant_coord y,
-        double                   vxyz[3]);
+      static void (&element_coord_to_vertex)(
+        types<2>::connectivity *connectivity,
+        types<2>::topidx        treeid,
+        types<2>::element_coord x,
+        types<2>::element_coord y,
+        double                  vxyz[3]);
     };
 
 
     template <>
     struct functions<3>
     {
-      static int (&quadrant_compare)(const void *v1, const void *v2);
-
-      static void (&quadrant_childrenv)(const types<3>::quadrant *q,
-                                        types<3>::quadrant        c[]);
-
-      static int (&quadrant_overlaps_tree)(types<3>::tree           *tree,
-                                           const types<3>::quadrant *q);
-
-      static void (&quadrant_set_morton)(types<3>::quadrant *quadrant,
-                                         int                 level,
-                                         std::uint64_t       id);
+      static int (&element_compare)(const void *v1, const void *v2);
 
       static void
-      quadrant_init(types<3>::quadrant &q);
+      element_children(const types<3>::forest *forest,
+                       types<3>::eclass        eclass,
+                       const types<3>::element element,
+                       types<3>::element      *children);
+      static int
+      element_level(const types<3>::forest *forest,
+                    types<3>::eclass        eclass,
+                    const types<3>::element element);
 
-      static int (&quadrant_is_equal)(const types<3>::quadrant *q1,
-                                      const types<3>::quadrant *q2);
+      static bool
+      cell_exists_in_tree(const types<3>::tree    tree,
+                          const types<3>::element element);
 
-      static int (&quadrant_is_sibling)(const types<3>::quadrant *q1,
-                                        const types<3>::quadrant *q2);
+      static int
+      element_overlaps_tree(const types<3>::forest *forest,
+                            const types<3>::tree    tree,
+                            const types<3>::element q);
 
-      static int (&quadrant_is_ancestor)(const types<3>::quadrant *q1,
-                                         const types<3>::quadrant *q2);
-      static int (&quadrant_ancestor_id)(const types<3>::quadrant *q,
-                                         int                       level);
+      static void (&element_set_morton)(types<3>::element element,
+                                        int               level,
+                                        std::uint64_t     id);
 
-      static int (&comm_find_owner)(types<3>::forest         *p4est,
-                                    const types<3>::locidx    which_tree,
-                                    const types<3>::quadrant *q,
-                                    const int                 guess);
+
+      static constexpr types<3>::eclass
+      get_eclass(const types<3>::forest *, types<3>::locidx)
+      {
+        return 0;
+      }
+      static constexpr types<3>::eclass
+      get_eclass_from_tree(const types<3>::tree)
+      {
+        return 0;
+      }
+
+
+      static void
+      element_new(const types<3>::forest *forest,
+                  types<3>::eclass        eclass,
+                  //                types<3>::locidx       length,
+                  types<3>::element *element);
+
+      static void
+      element_init(types<3>::element q);
+
+      static int (&element_is_equal)(const types<3>::element q1,
+                                     const types<3>::element q2);
+
+      static int (&element_is_sibling)(const types<3>::element q1,
+                                       const types<3>::element q2);
+
+      static int (&element_is_ancestor)(const types<3>::element q1,
+                                        const types<3>::element q2);
+      static int
+      element_ancestor_id(const types<3>::forest *forest,
+                          types<3>::eclass        eclass,
+                          const types<3>::element q,
+                          int                     level);
+
+
+      static int (&comm_find_owner)(const types<3>::forest *p4est,
+                                    const types<3>::locidx  which_tree,
+                                    const types<3>::element q,
+                                    const int               guess);
 
       static types<3>::connectivity *(&connectivity_new)(
         types<3>::topidx num_vertices,
@@ -430,14 +506,16 @@ namespace internal
                              int               coarsen_recursive,
                              p8est_coarsen_t   coarsen_fn,
                              p8est_init_t      init_fn);
+      static void
+      set_user_data(types<3>::forest *p4est, void *user_pointer);
+      static void *
+      get_user_data(types<3>::forest *p4est);
 
-      static void (&balance)(types<3>::forest      *p8est,
-                             types<3>::balance_type btype,
-                             p8est_init_t           init_fn);
+      static void
+      balance_full(types<3>::forest *p8est);
 
-      static types<3>::gloidx (&partition)(types<3>::forest *p8est,
-                                           int partition_for_coarsening,
-                                           p8est_weight_t weight_fn);
+      static types<3>::forest *
+      partition(types<3>::forest *p8est, types<3>::weight weight_fn);
 
       static void (&save)(const char       *filename,
                           types<3>::forest *p4est,
@@ -463,10 +541,8 @@ namespace internal
       static unsigned int (&checksum)(types<3>::forest *p8est);
 
       static void (&vtk_write_file)(types<3>::forest *p8est,
-                                    p8est_geometry_t *,
-                                    const char *baseName);
-      static types<3>::ghost *(&ghost_new)(types<3>::forest      *p4est,
-                                           types<3>::balance_type btype);
+                                    const char       *baseName);
+      static types<3>::ghost *(&ghost_new)(types<3>::forest *p4est);
 
       static void (&ghost_destroy)(types<3>::ghost *ghost);
 
@@ -480,7 +556,12 @@ namespace internal
       static std::size_t (&connectivity_memory_used)(
         types<3>::connectivity *p4est);
 
-      static constexpr unsigned int max_level = P8EST_MAXLEVEL;
+      static unsigned int
+      get_max_level([[maybe_unused]] types<3>::forest *parallel_forest)
+      {
+        return P8EST_MAXLEVEL;
+      };
+
 
       static void (&transfer_fixed)(const types<3>::gloidx *dest_gfq,
                                     const types<3>::gloidx *src_gfq,
@@ -525,17 +606,17 @@ namespace internal
       static void (&search_partition)(
         types<3>::forest                   *forest,
         int                                 call_post,
-        types<3>::search_partition_callback quadrant_fn,
+        types<3>::search_partition_callback element_fn,
         types<3>::search_partition_callback point_fn,
         sc_array_t                         *points);
 
-      static void (&quadrant_coord_to_vertex)(
-        types<3>::connectivity  *connectivity,
-        types<3>::topidx         treeid,
-        types<3>::quadrant_coord x,
-        types<3>::quadrant_coord y,
-        types<3>::quadrant_coord z,
-        double                   vxyz[3]);
+      static void (&element_coord_to_vertex)(
+        types<3>::connectivity *connectivity,
+        types<3>::topidx        treeid,
+        types<3>::element_coord x,
+        types<3>::element_coord y,
+        types<3>::element_coord z,
+        double                  vxyz[3]);
     };
 
 
@@ -574,6 +655,19 @@ namespace internal
       using face_iter   = p8est_iter_face_t;
     };
 
+    template <int dim>
+    types<dim>::element
+    get_ghost_elem_and_owner(
+      const typename types<dim>::forest *parallel_forest,
+      const typename types<dim>::topidx  global_tree_idx,
+      const typename types<dim>::locidx  ghost_in_tree_idx,
+      const typename types<dim>::eclass  ghost_eclass,
+      dealii::types::subdomain_id       &subdomain);
+
+    template <int dim>
+    types<dim>::eclass
+    get_ghost_eclass(const typename types<dim>::forest *parallel_forest,
+                     const typename types<dim>::locidx  local_ghost_tree_idx);
 
 
     /**
@@ -582,19 +676,21 @@ namespace internal
      */
     template <int dim>
     void
-    init_quadrant_children(
-      const typename types<dim>::quadrant &p4est_cell,
-      typename types<dim>::quadrant (
+    init_element_children(
+      const typename types<dim>::element &p4est_cell,
+      typename types<dim>::element (
         &p4est_children)[dealii::GeometryInfo<dim>::max_children_per_cell]);
 
 
 
     /**
-     * Initialize quadrant to represent a coarse cell.
+     * Initialize element to represent a coarse cell.
      */
     template <int dim>
     void
-    init_coarse_quadrant(typename types<dim>::quadrant &quad);
+    init_coarse_element(typename types<dim>::forest *forest,
+                        typename types<dim>::locidx  local_tree,
+                        typename types<dim>::element quad);
 
 
 
@@ -603,8 +699,8 @@ namespace internal
      */
     template <int dim>
     bool
-    quadrant_is_equal(const typename types<dim>::quadrant &q1,
-                      const typename types<dim>::quadrant &q2);
+    element_is_equal(const typename types<dim>::element q1,
+                     const typename types<dim>::element q2);
 
 
 
@@ -613,10 +709,13 @@ namespace internal
      */
     template <int dim>
     bool
-    quadrant_is_ancestor(const typename types<dim>::quadrant &q1,
-                         const typename types<dim>::quadrant &q2);
+    element_is_ancestor(const typename types<dim>::element q1,
+                        const typename types<dim>::element q2);
 
 
+    template <int dim>
+    types<dim>::gloidx
+    tree_get_offset(const typename types<dim>::tree tree);
 
     /**
      * Return whether the children of a coarse cell are stored locally
@@ -626,6 +725,34 @@ namespace internal
     tree_exists_locally(const typename types<dim>::forest *parallel_forest,
                         const typename types<dim>::topidx  coarse_grid_cell);
 
+    template <int dim>
+    typename types<dim>::locidx
+    leaf_index_in_tree(const typename types<dim>::forest *forest,
+                       const typename types<dim>::locidx  ltreeid,
+                       const typename types<dim>::element leaf);
+
+    template <int dim>
+    types<dim>::tree
+    forest_get_tree(const typename types<dim>::forest *forest,
+                    const typename types<dim>::locidx  ltreeid);
+
+    template <int dim>
+    typename types<dim>::locidx
+    get_num_leafs(const typename types<dim>::forest *forest);
+
+    template <int dim>
+    void
+    forest_set_user_pointer(const typename types<dim>::forest *forest,
+                            void                              *user_pointer);
+
+    template <int dim, int spacedim>
+    types<dim>::forest *
+    adapt(typename types<dim>::forest  *forest,
+          Triangulation<dim, spacedim> &triangulation);
+
+    template <int dim>
+    types<dim>::forest *
+    balance_full(typename types<dim>::forest *forest);
 
     /**
      * Deep copy a p4est connectivity object.

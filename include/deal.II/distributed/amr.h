@@ -13,6 +13,8 @@
 #ifndef dealii_distributed_amr_h
 #define dealii_distributed_amr_h
 
+#include <deal.II/base/config.h>
+
 #ifdef DEAL_II_WITH_P4EST
 #  include <deal.II/distributed/p4est_wrappers.h>
 #endif // DEAL_II_WITH_P4EST

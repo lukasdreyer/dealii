@@ -23,9 +23,7 @@
 #include <iostream>
 #include <vector>
 
-#ifdef DEAL_II_WITH_P4EST
-#  include <deal.II/distributed/p4est_wrappers.h>
-#endif
+// #include<deal.II/distributed/amr.h>
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -224,12 +222,13 @@ private:
    * creation of this object. If the given dimensions ever become a limitation
    * the array can be extended.
    */
-#ifdef DEAL_II_WITH_P4EST
-  std::array<std::uint8_t, internal::p4est::functions<2>::max_level>
-    child_indices;
-#else
+  // TODO: vector? get_max_level is not constexpr in t8code
+  // #ifdef DEAL_II_WITH_P4EST
+  //   std::array<std::uint8_t, internal::p4est::functions<2>::max_level>
+  //     child_indices;
+  // #else
   std::array<std::uint8_t, 30> child_indices;
-#endif
+  // #endif
 
   friend std::istream &
   operator>>(std::istream &is, CellId &cid);

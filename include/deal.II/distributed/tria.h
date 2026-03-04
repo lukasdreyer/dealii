@@ -830,7 +830,7 @@ namespace parallel
        * Return a pointer to the p4est tree that belongs to the given
        * dealii_coarse_cell_index()
        */
-      typename dealii::internal::amr::types<dim>::tree *
+      typename dealii::internal::amr::types<dim>::tree
       init_tree(const int dealii_coarse_cell_index) const;
 
       /**

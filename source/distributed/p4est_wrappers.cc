@@ -14,6 +14,8 @@
 #include <deal.II/distributed/p4est_wrappers.h>
 #include <deal.II/distributed/tria.h>
 
+#include <p4est_bits.h>
+
 #ifdef DEAL_II_WITH_P4EST
 #  include <p4est.h>
 #  include <p8est.h>
@@ -457,15 +459,18 @@ namespace internal
                                   p4est_coarsen_t   coarsen_fn,
                                   p4est_init_t      init_fn) = p4est_coarsen;
 
-    void (&functions<2>::balance)(types<2>::forest      *p4est,
-                                  types<2>::balance_type btype,
-                                  p4est_init_t init_fn) = p4est_balance;
+    void
+    functions<2>::balance_full(types<2>::forest *p4est)
+    {
+      p4est_balance(p4est, P4EST_CONNECT_FULL, nullptr);
+    }
 
-    types<2>::gloidx (&functions<2>::partition)(types<2>::forest *p4est,
-                                                int partition_for_coarsening,
-                                                p4est_weight_t weight_fn) =
-      p4est_partition_ext;
-
+    types<2>::forest *
+    functions<2>::partition(types<2>::forest *p4est, p4est_weight_t weight_fn)
+    {
+      p4est_partition_ext(p4est, 1, weight_fn);
+      return p4est;
+    }
     void (&functions<2>::save)(const char       *filename,
                                types<2>::forest *p4est,
                                int               save_data) = p4est_save;
@@ -494,22 +499,32 @@ namespace internal
     unsigned int (&functions<2>::checksum)(types<2>::forest *p4est) =
       p4est_checksum;
 
-    void (&functions<2>::vtk_write_file)(types<2>::forest *p4est,
-                                         p4est_geometry_t *,
-                                         const char *baseName) =
-      p4est_vtk_write_file;
+    void
+    functions<2>::vtk_write_file(types<2>::forest *p4est, const char *baseName)
+    {
+      p4est_vtk_write_file(p4est, nullptr, baseName);
+    }
 
-    types<2>::ghost *(&functions<2>::ghost_new)(types<2>::forest      *p4est,
-                                                types<2>::balance_type btype) =
-      p4est_ghost_new;
+    types<2>::ghost *
+    functions<2>::ghost_new(types<2>::forest *p4est)
+    {
+      return p4est_ghost_new(p4est, P4EST_CONNECT_CORNER);
+    }
 
     void (&functions<2>::ghost_destroy)(types<2>::ghost *ghost) =
       p4est_ghost_destroy;
 
-    void (&functions<2>::reset_data)(types<2>::forest *p4est,
-                                     std::size_t       data_size,
-                                     p4est_init_t      init_fn,
-                                     void *user_pointer) = p4est_reset_data;
+    void
+    functions<2>::forest_set_user_pointer(types<2>::forest *p4est,
+                                          void             *user_pointer)
+    {
+      p4est->user_pointer = user_pointer;
+    };
+    void *
+    functions<2>::forest_get_user_pointer(types<2>::forest *p4est)
+    {
+      return p4est->user_pointer;
+    };
 
     std::size_t (&functions<2>::forest_memory_used)(types<2>::forest *p4est) =
       p4est_memory_used;
@@ -683,14 +698,19 @@ namespace internal
                                   p8est_coarsen_t   coarsen_fn,
                                   p8est_init_t      init_fn) = p8est_coarsen;
 
-    void (&functions<3>::balance)(types<3>::forest      *p8est,
-                                  types<3>::balance_type btype,
-                                  p8est_init_t init_fn) = p8est_balance;
+    void
+    functions<3>::balance_full(types<3>::forest *p8est)
+    {
+      p8est_balance(p8est, P8EST_CONNECT_FULL, nullptr);
+    }
 
-    types<3>::gloidx (&functions<3>::partition)(types<3>::forest *p8est,
-                                                int partition_for_coarsening,
-                                                p8est_weight_t weight_fn) =
-      p8est_partition_ext;
+
+    types<3>::forest *
+    functions<3>::partition(types<3>::forest *p8est, types<3>::weight weight_fn)
+    {
+      p8est_partition_ext(p8est, 1, weight_fn);
+      return p8est;
+    }
 
     void (&functions<3>::save)(const char       *filename,
                                types<3>::forest *p4est,
@@ -720,22 +740,33 @@ namespace internal
     unsigned int (&functions<3>::checksum)(types<3>::forest *p8est) =
       p8est_checksum;
 
-    void (&functions<3>::vtk_write_file)(types<3>::forest *p8est,
-                                         p8est_geometry_t *,
-                                         const char *baseName) =
-      p8est_vtk_write_file;
+    void
+    functions<3>::vtk_write_file(types<3>::forest *p8est, const char *baseName)
+    {
+      p8est_vtk_write_file(p8est, nullptr, baseName);
+    }
 
-    types<3>::ghost *(&functions<3>::ghost_new)(types<3>::forest      *p4est,
-                                                types<3>::balance_type btype) =
-      p8est_ghost_new;
+    types<3>::ghost *
+    functions<3>::ghost_new(types<3>::forest *p8est)
+    {
+      return p8est_ghost_new(p8est, P8EST_CONNECT_CORNER);
+    }
+
 
     void (&functions<3>::ghost_destroy)(types<3>::ghost *ghost) =
       p8est_ghost_destroy;
 
-    void (&functions<3>::reset_data)(types<3>::forest *p4est,
-                                     std::size_t       data_size,
-                                     p8est_init_t      init_fn,
-                                     void *user_pointer) = p8est_reset_data;
+    void
+    functions<3>::forest_set_user_pointer(types<3>::forest *p4est,
+                                          void             *user_pointer)
+    {
+      p4est->user_pointer = user_pointer;
+    };
+    void *
+    functions<3>::forest_get_user_pointer(types<3>::forest *p8est)
+    {
+      return p8est->user_pointer;
+    };
 
     std::size_t (&functions<3>::forest_memory_used)(types<3>::forest *p4est) =
       p8est_memory_used;
@@ -821,12 +852,14 @@ namespace internal
 
     template <int dim>
     void
-    init_coarse_quadrant(typename types<dim>::quadrant &quad)
+    init_coarse_element(types<dim>::forest *,
+                        types<dim>::locidx,
+                        typename types<dim>::element &quad)
     {
-      functions<dim>::quadrant_init(quad);
-      functions<dim>::quadrant_set_morton(&quad,
-                                          /*level=*/0,
-                                          /*index=*/0);
+      functions<dim>::element_init(quad);
+      functions<dim>::element_set_morton(&quad,
+                                         /*level=*/0,
+                                         /*index=*/0);
     }
 
     template <int dim>
