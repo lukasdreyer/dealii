@@ -656,7 +656,7 @@ namespace internal
     };
 
     template <int dim>
-    types<dim>::element
+    typename types<dim>::element
     get_ghost_elem_and_owner(
       const typename types<dim>::forest *parallel_forest,
       const typename types<dim>::topidx  global_tree_idx,
@@ -665,7 +665,7 @@ namespace internal
       dealii::types::subdomain_id       &subdomain);
 
     template <int dim>
-    types<dim>::eclass
+    typename types<dim>::eclass
     get_ghost_eclass(const typename types<dim>::forest *parallel_forest,
                      const typename types<dim>::locidx  local_ghost_tree_idx);
 
@@ -714,7 +714,7 @@ namespace internal
 
 
     template <int dim>
-    types<dim>::gloidx
+    typename types<dim>::gloidx
     tree_get_offset(const typename types<dim>::tree tree);
 
     /**
@@ -732,7 +732,7 @@ namespace internal
                        const typename types<dim>::element leaf);
 
     template <int dim>
-    types<dim>::tree
+    typename types<dim>::tree
     forest_get_tree(const typename types<dim>::forest *forest,
                     const typename types<dim>::locidx  ltreeid);
 
@@ -746,12 +746,12 @@ namespace internal
                             void                              *user_pointer);
 
     template <int dim, int spacedim>
-    types<dim>::forest *
+    typename types<dim>::forest *
     adapt(typename types<dim>::forest  *forest,
           Triangulation<dim, spacedim> &triangulation);
 
     template <int dim>
-    types<dim>::forest *
+    typename types<dim>::forest *
     balance_full(typename types<dim>::forest *forest);
 
     /**
