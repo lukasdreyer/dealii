@@ -179,11 +179,21 @@ namespace internal
                   //                types<2>::locidx       length,
                   types<2>::element *element);
 
+                                  static void
+      element_destroy(const types<2>::forest *forest,
+                  types<2>::eclass        eclass,
+                  //                types<3>::locidx       length,
+                  types<2>::element *element);
+
       static void
       element_init(types<2>::element q);
 
-      static int (&element_is_equal)(const types<2>::element q1,
-                                     const types<2>::element q2);
+    static bool
+    element_is_equal(const typename types<2>::forest *forest,
+                     typename types<2>::eclass        eclass,
+                     typename types<2>::element       element_1,
+                     typename types<2>::element       element_2);
+
 
       static int (&element_is_sibling)(const types<2>::element q1,
                                        const types<2>::element q2);
@@ -424,11 +434,22 @@ namespace internal
                   //                types<3>::locidx       length,
                   types<3>::element *element);
 
+
+                   static void
+      element_destroy(const types<3>::forest *forest,
+                  types<3>::eclass        eclass,
+                  //                types<3>::locidx       length,
+                  types<3>::element *element);
+
       static void
       element_init(types<3>::element q);
 
-      static int (&element_is_equal)(const types<3>::element q1,
-                                     const types<3>::element q2);
+
+    static bool
+    element_is_equal(const typename types<3>::forest *forest,
+                     typename types<3>::eclass        eclass,
+                     typename types<3>::element       element_1,
+                     typename types<3>::element       element_2);
 
       static int (&element_is_sibling)(const types<3>::element q1,
                                        const types<3>::element q2);
@@ -688,21 +709,9 @@ namespace internal
      */
     template <int dim>
     void
-    init_coarse_element(typename types<dim>::forest *forest,
+    init_coarse_element(const typename types<dim>::forest *forest,
                         typename types<dim>::locidx  local_tree,
                         typename types<dim>::element quad);
-
-
-
-    /**
-     * Return whether q1 and q2 are equal
-     */
-    template <int dim>
-    bool
-    element_is_equal(const typename types<dim>::element q1,
-                     const typename types<dim>::element q2);
-
-
 
     /**
      * Return whether q1 is an ancestor of q2

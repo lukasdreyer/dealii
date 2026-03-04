@@ -57,7 +57,7 @@ namespace internal
         const dealii::parallel::distributed::Triangulation<dim, spacedim>
           *triangulation,
         const typename dealii::internal::p4est::types<dim>::topidx    treeidx,
-        const typename dealii::internal::p4est::types<dim>::quadrant &quad)
+        const typename dealii::internal::p4est::types<dim>::element quad)
       {
         int                             i, l = quad.level;
         dealii::types::global_dof_index dealii_index =
@@ -363,44 +363,31 @@ namespace internal
     int (&functions<2>::quadrant_compare)(const void *v1, const void *v2) =
       p4est_quadrant_compare;
 
-    void (&functions<2>::quadrant_childrenv)(const types<2>::quadrant *q,
-                                             types<2>::quadrant        c[]) =
-      p4est_quadrant_childrenv;
-
-    int (&functions<2>::quadrant_overlaps_tree)(types<2>::tree           *tree,
-                                                const types<2>::quadrant *q) =
-      p4est_quadrant_overlaps_tree;
-
-    void (&functions<2>::quadrant_set_morton)(types<2>::quadrant *quadrant,
-                                              int                 level,
-                                              std::uint64_t       id) =
-      p4est_quadrant_set_morton;
-
     void
-    functions<2>::quadrant_init(types<2>::quadrant &q)
+    functions<2>::quadrant_init(types<2>::element q)
     {
       P4EST_QUADRANT_INIT(&q);
     }
 
-    int (&functions<2>::quadrant_is_equal)(const types<2>::quadrant *q1,
-                                           const types<2>::quadrant *q2) =
+    int (&functions<2>::quadrant_is_equal)(const types<2>::element  q1,
+                                           const types<2>::element  q2) =
       p4est_quadrant_is_equal;
 
-    int (&functions<2>::quadrant_is_sibling)(const types<2>::quadrant *q1,
-                                             const types<2>::quadrant *q2) =
+    int (&functions<2>::quadrant_is_sibling)(const types<2>::element  q1,
+                                             const types<2>::element  q2) =
       p4est_quadrant_is_sibling;
 
-    int (&functions<2>::quadrant_is_ancestor)(const types<2>::quadrant *q1,
-                                              const types<2>::quadrant *q2) =
+    int (&functions<2>::quadrant_is_ancestor)(const types<2>::element  q1,
+                                              const types<2>::element  q2) =
       p4est_quadrant_is_ancestor;
 
-    int (&functions<2>::quadrant_ancestor_id)(const types<2>::quadrant *q,
+    int (&functions<2>::quadrant_ancestor_id)(const types<2>::element  q,
                                               int                       level) =
       p4est_quadrant_ancestor_id;
 
     int (&functions<2>::comm_find_owner)(types<2>::forest         *p4est,
                                          const types<2>::locidx    which_tree,
-                                         const types<2>::quadrant *q,
+                                         const types<2>::element  q,
                                          const int                 guess) =
       p4est_comm_find_owner;
 
@@ -595,44 +582,31 @@ namespace internal
     int (&functions<3>::quadrant_compare)(const void *v1, const void *v2) =
       p8est_quadrant_compare;
 
-    void (&functions<3>::quadrant_childrenv)(const types<3>::quadrant *q,
-                                             types<3>::quadrant        c[]) =
-      p8est_quadrant_childrenv;
-
-    int (&functions<3>::quadrant_overlaps_tree)(types<3>::tree           *tree,
-                                                const types<3>::quadrant *q) =
-      p8est_quadrant_overlaps_tree;
-
-    void (&functions<3>::quadrant_set_morton)(types<3>::quadrant *quadrant,
-                                              int                 level,
-                                              std::uint64_t       id) =
-      p8est_quadrant_set_morton;
-
     void
-    functions<3>::quadrant_init(types<3>::quadrant &q)
+    functions<3>::quadrant_init(types<3>::element q)
     {
       P8EST_QUADRANT_INIT(&q);
     }
 
-    int (&functions<3>::quadrant_is_equal)(const types<3>::quadrant *q1,
-                                           const types<3>::quadrant *q2) =
+    int (&functions<3>::quadrant_is_equal)(const types<3>::element  q1,
+                                           const types<3>::element  q2) =
       p8est_quadrant_is_equal;
 
-    int (&functions<3>::quadrant_is_sibling)(const types<3>::quadrant *q1,
-                                             const types<3>::quadrant *q2) =
+    int (&functions<3>::quadrant_is_sibling)(const types<3>::element  q1,
+                                             const types<3>::element  q2) =
       p8est_quadrant_is_sibling;
 
-    int (&functions<3>::quadrant_is_ancestor)(const types<3>::quadrant *q1,
-                                              const types<3>::quadrant *q2) =
+    int (&functions<3>::quadrant_is_ancestor)(const types<3>::element  q1,
+                                              const types<3>::element  q2) =
       p8est_quadrant_is_ancestor;
 
-    int (&functions<3>::quadrant_ancestor_id)(const types<3>::quadrant *q,
+    int (&functions<3>::quadrant_ancestor_id)(const types<3>::element  q,
                                               int                       level) =
       p8est_quadrant_ancestor_id;
 
     int (&functions<3>::comm_find_owner)(types<3>::forest         *p4est,
                                          const types<3>::locidx    which_tree,
-                                         const types<3>::quadrant *q,
+                                         const types<3>::element  q,
                                          const int                 guess) =
       p8est_comm_find_owner;
 
@@ -835,20 +809,6 @@ namespace internal
       types<3>::quadrant_coord z,
       double                   vxyz[3]) = p8est_qcoord_to_vertex;
 
-    template <int dim>
-    void
-    init_quadrant_children(
-      const typename types<dim>::quadrant &p4est_cell,
-      typename types<dim>::quadrant (
-        &p4est_children)[dealii::GeometryInfo<dim>::max_children_per_cell])
-    {
-      for (unsigned int c = 0;
-           c < dealii::GeometryInfo<dim>::max_children_per_cell;
-           ++c)
-        functions<dim>::quadrant_init(p4est_children[c]);
-
-      functions<dim>::quadrant_childrenv(&p4est_cell, p4est_children);
-    }
 
     template <int dim>
     void
@@ -864,8 +824,8 @@ namespace internal
 
     template <int dim>
     bool
-    quadrant_is_equal(const typename types<dim>::quadrant &q1,
-                      const typename types<dim>::quadrant &q2)
+    quadrant_is_equal(const typename types<dim>::element q1,
+                      const typename types<dim>::element q2)
     {
       return functions<dim>::quadrant_is_equal(&q1, &q2);
     }
@@ -874,8 +834,8 @@ namespace internal
 
     template <int dim>
     bool
-    quadrant_is_ancestor(const typename types<dim>::quadrant &q1,
-                         const typename types<dim>::quadrant &q2)
+    quadrant_is_ancestor(const typename types<dim>::element q1,
+                         const typename types<dim>::element q2)
     {
       return functions<dim>::quadrant_is_ancestor(&q1, &q2);
     }
@@ -940,8 +900,8 @@ namespace internal
 
     template <>
     bool
-    quadrant_is_equal<1>(const typename types<1>::quadrant &q1,
-                         const typename types<1>::quadrant &q2)
+    quadrant_is_equal<1>(const typename types<1>::element q1,
+                         const typename types<1>::element q2)
     {
       return q1 == q2;
     }
@@ -950,8 +910,8 @@ namespace internal
 
     template <>
     bool
-    quadrant_is_ancestor<1>(const types<1>::quadrant &q1,
-                            const types<1>::quadrant &q2)
+    quadrant_is_ancestor<1>(const types<1>::element q1,
+                            const types<1>::element q2)
     {
       // determine level of quadrants
       const int level_1 = (q1 << types<1>::max_n_child_indices_bits) >>
@@ -974,32 +934,9 @@ namespace internal
     }
 
 
-
     template <>
     void
-    init_quadrant_children<1>(
-      const typename types<1>::quadrant &q,
-      typename types<1>::quadrant (
-        &p4est_children)[dealii::GeometryInfo<1>::max_children_per_cell])
-    {
-      // determine the current level of quadrant
-      const int level_parent = (q << types<1>::max_n_child_indices_bits) >>
-                               types<1>::max_n_child_indices_bits;
-      const int level_child = level_parent + 1;
-
-      // left child: only n_child_indices has to be incremented
-      p4est_children[0] = (q + 1);
-
-      // right child: increment and set a bit to 1 indicating that it is a right
-      // child
-      p4est_children[1] = (q + 1) | (1 << (types<1>::n_bits - 1 - level_child));
-    }
-
-
-
-    template <>
-    void
-    init_coarse_quadrant<1>(typename types<1>::quadrant &quad)
+    init_coarse_quadrant<1>(typename types<1>::element quad)
     {
       quad = 0;
     }
