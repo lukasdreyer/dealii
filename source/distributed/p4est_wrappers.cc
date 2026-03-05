@@ -59,7 +59,7 @@ namespace internal
         const typename dealii::internal::p4est::types<dim>::topidx    treeidx,
         const typename dealii::internal::p4est::types<dim>::element quad)
       {
-        int                             i, l = quad.level;
+        int                             i, l = quad->level;
         dealii::types::global_dof_index dealii_index =
           triangulation->get_p4est_tree_to_coarse_cell_permutation()[treeidx];
 
@@ -68,8 +68,8 @@ namespace internal
             typename dealii::Triangulation<dim, spacedim>::cell_iterator cell(
               triangulation, i, dealii_index);
             const int child_id =
-              dealii::internal::p4est::functions<dim>::quadrant_ancestor_id(
-                &quad, i + 1);
+              dealii::internal::p4est::functions<dim>::element_ancestor_id(
+                quad, i + 1);
             Assert(cell->has_children(),
                    ExcMessage("p4est quadrant does not correspond to a cell!"));
             dealii_index = cell->child_index(child_id);
@@ -360,36 +360,51 @@ namespace internal
     } // namespace
 
 
-    int (&functions<2>::quadrant_compare)(const void *v1, const void *v2) =
+    int (&functions<2>::element_compare)(const void *v1, const void *v2) =
       p4est_quadrant_compare;
 
     void
-    functions<2>::quadrant_init(types<2>::element q)
+    functions<2>::element_init(types<2>::element q)
     {
-      P4EST_QUADRANT_INIT(&q);
+      P4EST_QUADRANT_INIT(q);
     }
 
-    int (&functions<2>::quadrant_is_equal)(const types<2>::element  q1,
-                                           const types<2>::element  q2) =
-      p4est_quadrant_is_equal;
+    bool functions<2>::element_is_equal(const typename types<2>::forest *,
+                     typename types<2>::eclass      ,
+                     typename types<2>::element       element_1,
+                     typename types<2>::element       element_2){
+        return static_cast<bool>(p4est_quadrant_is_equal(element_1, element_2));
+                     }
 
-    int (&functions<2>::quadrant_is_sibling)(const types<2>::element  q1,
-                                             const types<2>::element  q2) =
-      p4est_quadrant_is_sibling;
+bool functions<2>::element_is_sibling(const typename types<2>::forest *,
+                     typename types<2>::eclass      ,
+                     typename types<2>::element       element_1,
+                     typename types<2>::element       element_2){
+        return static_cast<bool>(p4est_quadrant_is_sibling(element_1, element_2));
+                     }
+    
+bool functions<2>::element_is_ancestor(const typename types<2>::forest *,
+                     typename types<2>::eclass      ,
+                     typename types<2>::element       element_1,
+                     typename types<2>::element       element_2){
+        return static_cast<bool>(p4est_quadrant_is_ancestor(element_1, element_2));
+                     }
 
-    int (&functions<2>::quadrant_is_ancestor)(const types<2>::element  q1,
-                                              const types<2>::element  q2) =
-      p4est_quadrant_is_ancestor;
+                 int
+      functions<2>::element_ancestor_id(const types<2>::forest *,
+                          types<2>::eclass        ,
+                          const types<2>::element q,
+                          int                     level)
+                          {
+                            return p4est_quadrant_ancestor_id(q, level);
+                          }
 
-    int (&functions<2>::quadrant_ancestor_id)(const types<2>::element  q,
-                                              int                       level) =
-      p4est_quadrant_ancestor_id;
-
-    int (&functions<2>::comm_find_owner)(types<2>::forest         *p4est,
+       int functions<2>::comm_find_owner(const types<2>::forest         *p4est,
                                          const types<2>::locidx    which_tree,
                                          const types<2>::element  q,
-                                         const int                 guess) =
-      p4est_comm_find_owner;
+                                         const int                 guess){
+                                          return p4est_comm_find_owner(const_cast<types<2>::forest *>(p4est), which_tree, q, guess); 
+                                         }
 
     types<2>::connectivity *(&functions<2>::connectivity_new)(
       types<2>::topidx num_vertices,
@@ -519,7 +534,6 @@ namespace internal
     std::size_t (&functions<2>::connectivity_memory_used)(
       types<2>::connectivity *p4est) = p4est_connectivity_memory_used;
 
-    constexpr unsigned int functions<2>::max_level;
 
     void (&functions<2>::transfer_fixed)(const types<2>::gloidx *dest_gfq,
                                          const types<2>::gloidx *src_gfq,
@@ -572,43 +586,59 @@ namespace internal
       types<2>::search_partition_callback point_fn,
       sc_array_t                         *points) = p4est_search_partition;
 
-    void (&functions<2>::quadrant_coord_to_vertex)(
+    void (&functions<2>::element_coord_to_vertex)(
       types<2>::connectivity  *connectivity,
       types<2>::topidx         treeid,
-      types<2>::quadrant_coord x,
-      types<2>::quadrant_coord y,
+      types<2>::element_coord x,
+      types<2>::element_coord y,
       double                   vxyz[3]) = p4est_qcoord_to_vertex;
 
-    int (&functions<3>::quadrant_compare)(const void *v1, const void *v2) =
+    int (&functions<3>::element_compare)(const void *v1, const void *v2) =
       p8est_quadrant_compare;
 
     void
-    functions<3>::quadrant_init(types<3>::element q)
+    functions<3>::element_init(types<3>::element q)
     {
-      P8EST_QUADRANT_INIT(&q);
+      P8EST_QUADRANT_INIT(q);
     }
 
-    int (&functions<3>::quadrant_is_equal)(const types<3>::element  q1,
-                                           const types<3>::element  q2) =
-      p8est_quadrant_is_equal;
+      bool functions<3>::element_is_equal(const typename types<3>::forest *,
+                     typename types<3>::eclass        ,
+                     typename types<3>::element       element_1,
+                     typename types<3>::element       element_2){
+        return static_cast<bool>(p8est_quadrant_is_equal(element_1, element_2));
+                     }
 
-    int (&functions<3>::quadrant_is_sibling)(const types<3>::element  q1,
-                                             const types<3>::element  q2) =
-      p8est_quadrant_is_sibling;
+   bool functions<3>::element_is_sibling(const typename types<3>::forest *,
+                     typename types<3>::eclass      ,
+                     typename types<3>::element       element_1,
+                     typename types<3>::element       element_2){
+        return static_cast<bool>(p8est_quadrant_is_sibling(element_1, element_2));
+                     }
+    
+bool functions<3>::element_is_ancestor(const typename types<3>::forest *,
+                     typename types<3>::eclass      ,
+                     typename types<3>::element       element_1,
+                     typename types<3>::element       element_2){
+        return static_cast<bool>(p8est_quadrant_is_ancestor(element_1, element_2));
+                     }
 
-    int (&functions<3>::quadrant_is_ancestor)(const types<3>::element  q1,
-                                              const types<3>::element  q2) =
-      p8est_quadrant_is_ancestor;
+                     int
+      functions<3>::element_ancestor_id(const types<3>::forest *,
+                          types<3>::eclass        ,
+                          const types<3>::element q,
+                          int                     level)
+                          {
+                            return p8est_quadrant_ancestor_id(q, level);
+                          }
+    
 
-    int (&functions<3>::quadrant_ancestor_id)(const types<3>::element  q,
-                                              int                       level) =
-      p8est_quadrant_ancestor_id;
-
-    int (&functions<3>::comm_find_owner)(types<3>::forest         *p4est,
+    int functions<3>::comm_find_owner(const types<3>::forest         *p4est,
                                          const types<3>::locidx    which_tree,
                                          const types<3>::element  q,
-                                         const int                 guess) =
-      p8est_comm_find_owner;
+                                         const int                 guess){
+                                          return p8est_comm_find_owner(const_cast<types<3>::forest *>(p4est), which_tree, q, guess); 
+                                         }
 
     types<3>::connectivity *(&functions<3>::connectivity_new)(
       types<3>::topidx num_vertices,
@@ -748,7 +778,7 @@ namespace internal
     std::size_t (&functions<3>::connectivity_memory_used)(
       types<3>::connectivity *p4est) = p8est_connectivity_memory_used;
 
-    constexpr unsigned int functions<3>::max_level;
+   
 
     void (&functions<3>::transfer_fixed)(const types<3>::gloidx *dest_gfq,
                                          const types<3>::gloidx *src_gfq,
@@ -801,44 +831,80 @@ namespace internal
       types<3>::search_partition_callback point_fn,
       sc_array_t                         *points) = p8est_search_partition;
 
-    void (&functions<3>::quadrant_coord_to_vertex)(
+    void (&functions<3>::element_coord_to_vertex)(
       types<3>::connectivity  *connectivity,
       types<3>::topidx         treeid,
-      types<3>::quadrant_coord x,
-      types<3>::quadrant_coord y,
-      types<3>::quadrant_coord z,
+      types<3>::element_coord x,
+      types<3>::element_coord y,
+      types<3>::element_coord z,
       double                   vxyz[3]) = p8est_qcoord_to_vertex;
+
+    template <int dim>
+    typename types<dim>::element
+    get_ghost_elem_and_owner(
+      const typename types<dim>::forest *parallel_forest,
+      const typename types<dim>::topidx  global_tree_idx,
+      const typename types<dim>::locidx  ghost_in_tree_idx,
+      const typename types<dim>::eclass  ghost_eclass,
+      dealii::types::subdomain_id       &subdomain)
+      {
+        types<dim>::gloidx g_idx = 0;//TODO
+                  typename types<dim>::element elem = static_cast<
+                typename dealii::internal::amr::types<dim>::element>(
+                sc_array_index(&parallel_forest->ghost->ghosts, g_idx));
+
+        subdomain = 0; //TODO
+        return elem;
+      }
+
+    template <int dim>
+    typename types<dim>::eclass
+    get_ghost_eclass(const typename types<dim>::forest *parallel_forest,
+                     const typename types<dim>::locidx  local_ghost_tree_idx)
+                     {
+                      return 0;
+                     }
+
 
 
     template <int dim>
     void
-    init_coarse_element(types<dim>::forest *,
-                        types<dim>::locidx,
-                        typename types<dim>::element &quad)
+    init_coarse_element(const typename types<dim>::forest *,
+                        typename types<dim>::locidx,
+                        typename types<dim>::element quad)
     {
       functions<dim>::element_init(quad);
-      functions<dim>::element_set_morton(&quad,
+      if constexpr(dim == 2)
+     p4est_quadrant_set_morton(quad,
+                                         /*level=*/0,
+                                         /*index=*/0);
+      if constexpr(dim == 3)
+        p8est_quadrant_set_morton(quad,
                                          /*level=*/0,
                                          /*index=*/0);
     }
 
     template <int dim>
     bool
-    quadrant_is_equal(const typename types<dim>::element q1,
-                      const typename types<dim>::element q2)
+    element_is_equal(const typename types<dim>::forest * forest,
+                     typename types<dim>::eclass        eclass,
+                     typename types<dim>::element       element_1,
+                     typename types<dim>::element       element_2)
     {
-      return functions<dim>::quadrant_is_equal(&q1, &q2);
+      return functions<dim>::element_is_equal(forest, eclass, element_1, element_2);
     }
-
 
 
     template <int dim>
-    bool
-    quadrant_is_ancestor(const typename types<dim>::element q1,
-                         const typename types<dim>::element q2)
+     bool
+    element_is_ancestor(const typename types<dim>::forest *forest,
+                     typename types<dim>::eclass        eclass,
+                     typename types<dim>::element       element_1,
+                     typename types<dim>::element       element_2)
     {
-      return functions<dim>::quadrant_is_ancestor(&q1, &q2);
+      return functions<dim>::element_is_ancestor(forest, eclass, element_1, element_2);
     }
+
 
     template <int dim>
     bool
@@ -897,48 +963,48 @@ namespace internal
     }
 
 
-
-    template <>
+ template <>
     bool
-    quadrant_is_equal<1>(const typename types<1>::element q1,
-                         const typename types<1>::element q2)
+    element_is_equal<1>(const  types<1>::forest *,
+                      types<1>::eclass        ,
+                      types<1>::element       element_1,
+                      types<1>::element       element_2)
     {
-      return q1 == q2;
+     return element_1 == element_2;
     }
 
-
-
     template <>
-    bool
-    quadrant_is_ancestor<1>(const types<1>::element q1,
-                            const types<1>::element q2)
-    {
+       bool
+    element_is_ancestor<1>(const  types<1>::forest *,
+                      types<1>::eclass        ,
+                      types<1>::element      element_1 ,
+                      types<1>::element       element_2){
       // determine level of quadrants
-      const int level_1 = (q1 << types<1>::max_n_child_indices_bits) >>
+      const int level_1 = (element_1<< types<1>::max_n_child_indices_bits) >>
                           types<1>::max_n_child_indices_bits;
-      const int level_2 = (q2 << types<1>::max_n_child_indices_bits) >>
+      const int level_2 = (element_2 << types<1>::max_n_child_indices_bits) >>
                           types<1>::max_n_child_indices_bits;
 
-      // q1 can be an ancestor of q2 if q1's level is smaller
+      // q1 can be an ancestor of element_2 if element_1's level is smaller
       if (level_1 >= level_2)
         return false;
 
       // extract path of quadrants up to level of possible ancestor q1
-      const int truncated_id_1 = (q1 >> (types<1>::n_bits - 1 - level_1))
+      const int truncated_id_1 = (element_1 >> (types<1>::n_bits - 1 - level_1))
                                  << (types<1>::n_bits - 1 - level_1);
-      const int truncated_id_2 = (q2 >> (types<1>::n_bits - 1 - level_1))
+      const int truncated_id_2 = (element_2 >> (types<1>::n_bits - 1 - level_1))
                                  << (types<1>::n_bits - 1 - level_1);
 
       // compare paths
       return truncated_id_1 == truncated_id_2;
     }
 
-
     template <>
     void
-    init_coarse_quadrant<1>(typename types<1>::element quad)
+    init_coarse_element<1>(const typename types<1>::forest *,
+                        typename types<1>::locidx,
+                        typename types<1>::element)
     {
-      quad = 0;
     }
 
   } // namespace p4est

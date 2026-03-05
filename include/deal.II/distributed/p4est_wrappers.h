@@ -72,13 +72,16 @@ namespace internal
     struct types<1>
     {
       // id of a quadrant is an integeger
-      using quadrant = int;
+      using forest = int;
+      using element = int;
+      using eclass = int;
+      using locidx = int;
 
       // maximum number of children
       static const int max_n_child_indices_bits = 27;
 
       // number of bits the data type of id has
-      static const int n_bits = std::numeric_limits<quadrant>::digits;
+      static const int n_bits = std::numeric_limits<element>::digits;
     };
 
     template <>
@@ -194,12 +197,17 @@ namespace internal
                      typename types<2>::element       element_1,
                      typename types<2>::element       element_2);
 
+                      static bool
+    element_is_sibling(const typename types<2>::forest *forest,
+                     typename types<2>::eclass        eclass,
+                     typename types<2>::element       element_1,
+                     typename types<2>::element       element_2);
 
-      static int (&element_is_sibling)(const types<2>::element q1,
-                                       const types<2>::element q2);
-
-      static int (&element_is_ancestor)(const types<2>::element q1,
-                                        const types<2>::element q2);
+                      static bool
+    element_is_ancestor(const typename types<2>::forest *forest,
+                     typename types<2>::eclass        eclass,
+                     typename types<2>::element       element_1,
+                     typename types<2>::element       element_2);
 
       static int
       element_ancestor_id(const types<2>::forest *forest,
@@ -207,7 +215,7 @@ namespace internal
                           const types<2>::element q,
                           int                     level);
 
-      static int (&comm_find_owner)(const types<2>::forest *p4est,
+      static int comm_find_owner(const types<2>::forest *p4est,
                                     const types<2>::locidx  which_tree,
                                     const types<2>::element q,
                                     const int               guess);
@@ -268,9 +276,9 @@ namespace internal
                              p4est_init_t      init_fn);
 
       static void
-      set_user_data(types<2>::forest *p4est, void *user_pointer);
+      forest_set_user_pointer(types<2>::forest *p4est, void *user_pointer);
       static void *
-      get_user_data(types<2>::forest *p4est);
+      forest_get_user_pointer(types<2>::forest *p4est);
 
 
       static void
@@ -302,17 +310,17 @@ namespace internal
 
       static unsigned int (&checksum)(types<2>::forest *p4est);
 
-      static void (&vtk_write_file)(types<2>::forest *p4est,
+      static void vtk_write_file(types<2>::forest *p4est,
                                     const char       *baseName);
 
-      static types<2>::ghost *(&ghost_new)(types<2>::forest *p4est);
+      static types<2>::ghost *ghost_new(types<2>::forest *p4est);
 
       static void (&ghost_destroy)(types<2>::ghost *ghost);
 
       static void (&reset_data)(types<2>::forest *p4est,
                                 std::size_t       data_size,
                                 p4est_init_t      init_fn,
-                                void             *user_pointer);
+                                void             *user_pointer); //TODO
 
       static std::size_t (&forest_memory_used)(types<2>::forest *p4est);
 
@@ -451,11 +459,20 @@ namespace internal
                      typename types<3>::element       element_1,
                      typename types<3>::element       element_2);
 
-      static int (&element_is_sibling)(const types<3>::element q1,
-                                       const types<3>::element q2);
+                     
+    static bool
+    element_is_sibling(const typename types<3>::forest *forest,
+                     typename types<3>::eclass        eclass,
+                     typename types<3>::element       element_1,
+                     typename types<3>::element       element_2);
 
-      static int (&element_is_ancestor)(const types<3>::element q1,
-                                        const types<3>::element q2);
+                     
+    static bool
+    element_is_ancestor(const typename types<3>::forest *forest,
+                     typename types<3>::eclass        eclass,
+                     typename types<3>::element       element_1,
+                     typename types<3>::element       element_2);
+
       static int
       element_ancestor_id(const types<3>::forest *forest,
                           types<3>::eclass        eclass,
@@ -463,7 +480,7 @@ namespace internal
                           int                     level);
 
 
-      static int (&comm_find_owner)(const types<3>::forest *p4est,
+      static int comm_find_owner(const types<3>::forest *p4est,
                                     const types<3>::locidx  which_tree,
                                     const types<3>::element q,
                                     const int               guess);
@@ -528,9 +545,9 @@ namespace internal
                              p8est_coarsen_t   coarsen_fn,
                              p8est_init_t      init_fn);
       static void
-      set_user_data(types<3>::forest *p4est, void *user_pointer);
+      forest_set_user_pointer(types<3>::forest *p4est, void *user_pointer);
       static void *
-      get_user_data(types<3>::forest *p4est);
+      forest_get_user_pointer(types<3>::forest *p4est);
 
       static void
       balance_full(types<3>::forest *p8est);
@@ -561,9 +578,9 @@ namespace internal
 
       static unsigned int (&checksum)(types<3>::forest *p8est);
 
-      static void (&vtk_write_file)(types<3>::forest *p8est,
+      static void vtk_write_file(types<3>::forest *p8est,
                                     const char       *baseName);
-      static types<3>::ghost *(&ghost_new)(types<3>::forest *p4est);
+      static types<3>::ghost *ghost_new(types<3>::forest *p4est);
 
       static void (&ghost_destroy)(types<3>::ghost *ghost);
 
@@ -690,20 +707,6 @@ namespace internal
     get_ghost_eclass(const typename types<dim>::forest *parallel_forest,
                      const typename types<dim>::locidx  local_ghost_tree_idx);
 
-
-    /**
-     * Initialize the GeometryInfo<dim>::max_children_per_cell children of the
-     * cell p4est_cell.
-     */
-    template <int dim>
-    void
-    init_element_children(
-      const typename types<dim>::element &p4est_cell,
-      typename types<dim>::element (
-        &p4est_children)[dealii::GeometryInfo<dim>::max_children_per_cell]);
-
-
-
     /**
      * Initialize element to represent a coarse cell.
      */
@@ -717,9 +720,11 @@ namespace internal
      * Return whether q1 is an ancestor of q2
      */
     template <int dim>
-    bool
-    element_is_ancestor(const typename types<dim>::element q1,
-                        const typename types<dim>::element q2);
+   bool
+    element_is_ancestor(const typename types<dim>::forest *forest,
+                     typename types<dim>::eclass        eclass,
+                     typename types<dim>::element       element_1,
+                     typename types<dim>::element       element_2);
 
 
     template <int dim>
@@ -762,6 +767,14 @@ namespace internal
     template <int dim>
     typename types<dim>::forest *
     balance_full(typename types<dim>::forest *forest);
+
+    template <int dim>
+    bool
+    element_is_equal(const typename types<dim>::forest *forest,
+                     typename types<dim>::eclass        eclass,
+                     typename types<dim>::element       element_1,
+                     typename types<dim>::element       element_2);
+
 
     /**
      * Deep copy a p4est connectivity object.

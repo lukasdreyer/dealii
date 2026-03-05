@@ -50,6 +50,7 @@ namespace FETools
 {
   namespace internal
   {
+    //TODO: deal_with_amr or deal_with_t8code
 #ifndef DEAL_II_WITH_P4EST
     // Dummy implementation in case p4est is not available.
     template <int dim, int spacedim, class OutVector>

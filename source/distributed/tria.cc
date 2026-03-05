@@ -490,11 +490,6 @@ namespace
       dealii::internal::amr::functions<dim>::get_eclass_from_tree(tree);
     if (dealii::internal::amr::functions<dim>::cell_exists_in_tree(tree,
                                                                    amr_cell))
-      // // check if this cell exists in the local p4est cell
-      // if (sc_array_bsearch(
-      //       const_cast<sc_array_t *>(tree.elements),
-      //       &amr_cell,
-      //       dealii::internal::amr::functions<dim>::element_compare) != -1)
       {
         // yes, cell found in local part of p4est
         delete_all_children<dim, spacedim>(dealii_cell);
@@ -1611,9 +1606,6 @@ namespace
     // find index of amr_cell in the elements array of the corresponding tree
     const int idx =
       dealii::internal::amr::leaf_index_in_tree<dim>(forest, ltreeid, amr_cell);
-    // sc_array_bsearch(const_cast<sc_array_t *>(&tree.elements),
-    //                  &amr_cell,
-    //                  dealii::internal::amr::functions<dim>::element_compare);
     const typename dealii::internal::amr::types<dim>::tree tree =
       dealii::internal::amr::forest_get_tree<dim>(forest, ltreeid);
     if (idx == -1 &&
