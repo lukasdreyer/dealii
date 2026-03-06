@@ -72,10 +72,10 @@ namespace internal
     struct types<1>
     {
       // id of a quadrant is an integeger
-      using forest = int;
+      using forest  = int;
       using element = int;
-      using eclass = int;
-      using locidx = int;
+      using eclass  = int;
+      using locidx  = int;
 
       // maximum number of children
       static const int max_n_child_indices_bits = 27;
@@ -144,81 +144,10 @@ namespace internal
     struct functions<2>
     {
       static int (&element_compare)(const void *v1, const void *v2);
-      static void
-      element_children(const types<2>::forest *forest,
-                       types<2>::eclass        eclass,
-                       const types<2>::element element,
-                       types<2>::element      *children);
-      static int
-      element_level(const types<2>::forest *forest,
-                    types<2>::eclass        eclass,
-                    const types<2>::element element);
-      static bool
-      cell_exists_in_tree(const types<2>::tree    tree,
-                          const types<2>::element element);
-      static int
-      element_overlaps_tree(const types<2>::forest *forest,
-                            const types<2>::tree    tree,
-                            const types<2>::element q);
 
       static void (&element_set_morton)(types<2>::element quadrant,
                                         int               level,
                                         std::uint64_t     id);
-
-      static constexpr types<2>::eclass
-      get_eclass(const types<2>::forest *, types<2>::locidx)
-      {
-        return 0;
-      }
-      static constexpr types<2>::eclass
-      get_eclass_from_tree(const types<2>::tree)
-      {
-        return 0;
-      }
-
-      static void
-      element_new(const types<2>::forest *forest,
-                  types<2>::eclass        eclass,
-                  //                types<2>::locidx       length,
-                  types<2>::element *element);
-
-                                  static void
-      element_destroy(const types<2>::forest *forest,
-                  types<2>::eclass        eclass,
-                  //                types<3>::locidx       length,
-                  types<2>::element *element);
-
-      static void
-      element_init(types<2>::element q);
-
-    static bool
-    element_is_equal(const typename types<2>::forest *forest,
-                     typename types<2>::eclass        eclass,
-                     typename types<2>::element       element_1,
-                     typename types<2>::element       element_2);
-
-                      static bool
-    element_is_sibling(const typename types<2>::forest *forest,
-                     typename types<2>::eclass        eclass,
-                     typename types<2>::element       element_1,
-                     typename types<2>::element       element_2);
-
-                      static bool
-    element_is_ancestor(const typename types<2>::forest *forest,
-                     typename types<2>::eclass        eclass,
-                     typename types<2>::element       element_1,
-                     typename types<2>::element       element_2);
-
-      static int
-      element_ancestor_id(const types<2>::forest *forest,
-                          types<2>::eclass        eclass,
-                          const types<2>::element q,
-                          int                     level);
-
-      static int comm_find_owner(const types<2>::forest *p4est,
-                                    const types<2>::locidx  which_tree,
-                                    const types<2>::element q,
-                                    const int               guess);
 
       static types<2>::connectivity *(&connectivity_new)(
         types<2>::topidx num_vertices,
@@ -263,7 +192,7 @@ namespace internal
       static types<2>::forest *(&copy_forest)(types<2>::forest *input,
                                               int               copy_data);
 
-      static void (&destroy)(types<2>::forest *p4est);
+
 
       static void (&refine)(types<2>::forest *p4est,
                             int               refine_recursive,
@@ -274,18 +203,6 @@ namespace internal
                              int               coarsen_recursive,
                              p4est_coarsen_t   coarsen_fn,
                              p4est_init_t      init_fn);
-
-      static void
-      forest_set_user_pointer(types<2>::forest *p4est, void *user_pointer);
-      static void *
-      forest_get_user_pointer(types<2>::forest *p4est);
-
-
-      static void
-      balance_full(types<2>::forest *p4est);
-
-      static types<2>::forest *
-      partition(types<2>::forest *p4est, types<2>::weight weight_fn);
 
       static void (&save)(const char       *filename,
                           types<2>::forest *p4est,
@@ -310,28 +227,18 @@ namespace internal
 
       static unsigned int (&checksum)(types<2>::forest *p4est);
 
-      static void vtk_write_file(types<2>::forest *p4est,
-                                    const char       *baseName);
 
-      static types<2>::ghost *ghost_new(types<2>::forest *p4est);
-
-      static void (&ghost_destroy)(types<2>::ghost *ghost);
 
       static void (&reset_data)(types<2>::forest *p4est,
                                 std::size_t       data_size,
                                 p4est_init_t      init_fn,
-                                void             *user_pointer); //TODO
+                                void             *user_pointer); // TODO
 
       static std::size_t (&forest_memory_used)(types<2>::forest *p4est);
 
       static std::size_t (&connectivity_memory_used)(
         types<2>::connectivity *p4est);
 
-      template <int spacedim>
-      static void
-      iterate(dealii::internal::p4est::types<2>::forest *parallel_forest,
-              dealii::internal::p4est::types<2>::ghost  *parallel_ghost,
-              void                                      *user_data);
 
       static unsigned int
       get_max_level([[maybe_unused]] types<2>::forest *parallel_forest)
@@ -400,90 +307,10 @@ namespace internal
     {
       static int (&element_compare)(const void *v1, const void *v2);
 
-      static void
-      element_children(const types<3>::forest *forest,
-                       types<3>::eclass        eclass,
-                       const types<3>::element element,
-                       types<3>::element      *children);
-      static int
-      element_level(const types<3>::forest *forest,
-                    types<3>::eclass        eclass,
-                    const types<3>::element element);
-
-      static bool
-      cell_exists_in_tree(const types<3>::tree    tree,
-                          const types<3>::element element);
-
-      static int
-      element_overlaps_tree(const types<3>::forest *forest,
-                            const types<3>::tree    tree,
-                            const types<3>::element q);
-
       static void (&element_set_morton)(types<3>::element element,
                                         int               level,
                                         std::uint64_t     id);
 
-
-      static constexpr types<3>::eclass
-      get_eclass(const types<3>::forest *, types<3>::locidx)
-      {
-        return 0;
-      }
-      static constexpr types<3>::eclass
-      get_eclass_from_tree(const types<3>::tree)
-      {
-        return 0;
-      }
-
-
-      static void
-      element_new(const types<3>::forest *forest,
-                  types<3>::eclass        eclass,
-                  //                types<3>::locidx       length,
-                  types<3>::element *element);
-
-
-                   static void
-      element_destroy(const types<3>::forest *forest,
-                  types<3>::eclass        eclass,
-                  //                types<3>::locidx       length,
-                  types<3>::element *element);
-
-      static void
-      element_init(types<3>::element q);
-
-
-    static bool
-    element_is_equal(const typename types<3>::forest *forest,
-                     typename types<3>::eclass        eclass,
-                     typename types<3>::element       element_1,
-                     typename types<3>::element       element_2);
-
-                     
-    static bool
-    element_is_sibling(const typename types<3>::forest *forest,
-                     typename types<3>::eclass        eclass,
-                     typename types<3>::element       element_1,
-                     typename types<3>::element       element_2);
-
-                     
-    static bool
-    element_is_ancestor(const typename types<3>::forest *forest,
-                     typename types<3>::eclass        eclass,
-                     typename types<3>::element       element_1,
-                     typename types<3>::element       element_2);
-
-      static int
-      element_ancestor_id(const types<3>::forest *forest,
-                          types<3>::eclass        eclass,
-                          const types<3>::element q,
-                          int                     level);
-
-
-      static int comm_find_owner(const types<3>::forest *p4est,
-                                    const types<3>::locidx  which_tree,
-                                    const types<3>::element q,
-                                    const int               guess);
 
       static types<3>::connectivity *(&connectivity_new)(
         types<3>::topidx num_vertices,
@@ -533,8 +360,6 @@ namespace internal
       static types<3>::forest *(&copy_forest)(types<3>::forest *input,
                                               int               copy_data);
 
-      static void (&destroy)(types<3>::forest *p8est);
-
       static void (&refine)(types<3>::forest *p8est,
                             int               refine_recursive,
                             p8est_refine_t    refine_fn,
@@ -544,16 +369,6 @@ namespace internal
                              int               coarsen_recursive,
                              p8est_coarsen_t   coarsen_fn,
                              p8est_init_t      init_fn);
-      static void
-      forest_set_user_pointer(types<3>::forest *p4est, void *user_pointer);
-      static void *
-      forest_get_user_pointer(types<3>::forest *p4est);
-
-      static void
-      balance_full(types<3>::forest *p8est);
-
-      static types<3>::forest *
-      partition(types<3>::forest *p8est, types<3>::weight weight_fn);
 
       static void (&save)(const char       *filename,
                           types<3>::forest *p4est,
@@ -577,12 +392,6 @@ namespace internal
                                                           std::size_t *length);
 
       static unsigned int (&checksum)(types<3>::forest *p8est);
-
-      static void vtk_write_file(types<3>::forest *p8est,
-                                    const char       *baseName);
-      static types<3>::ghost *ghost_new(types<3>::forest *p4est);
-
-      static void (&ghost_destroy)(types<3>::ghost *ghost);
 
       static void (&reset_data)(types<3>::forest *p4est,
                                 std::size_t       data_size,
@@ -657,8 +466,6 @@ namespace internal
         double                  vxyz[3]);
     };
 
-
-
     /**
      * This struct templatizes the p4est iterate structs and function
      * prototypes, which are used to execute callback functions for faces,
@@ -713,18 +520,8 @@ namespace internal
     template <int dim>
     void
     init_coarse_element(const typename types<dim>::forest *forest,
-                        typename types<dim>::locidx  local_tree,
-                        typename types<dim>::element quad);
-
-    /**
-     * Return whether q1 is an ancestor of q2
-     */
-    template <int dim>
-   bool
-    element_is_ancestor(const typename types<dim>::forest *forest,
-                     typename types<dim>::eclass        eclass,
-                     typename types<dim>::element       element_1,
-                     typename types<dim>::element       element_2);
+                        typename types<dim>::eclass        eclass,
+                        typename types<dim>::element       element);
 
 
     template <int dim>
@@ -755,14 +552,38 @@ namespace internal
     get_num_leafs(const typename types<dim>::forest *forest);
 
     template <int dim>
+    typename types<dim>::eclass
+    get_eclass(const typename types<dim>::forest *forest,
+               typename types<dim>::locidx        idx);
+
+    template <int dim>
+    typename types<dim>::eclass
+    get_eclass_from_tree(const typename types<dim>::tree tree);
+
+
+    template <int dim>
     void
-    forest_set_user_pointer(const typename types<dim>::forest *forest,
-                            void                              *user_pointer);
+    element_new(const typename types<dim>::forest *forest,
+                typename types<dim>::eclass        eclass,
+                typename types<dim>::element      *elements,
+                typename types<dim>::locidx        length);
+
+
+
+    template <int dim>
+    void
+    forest_set_user_pointer(typename types<dim>::forest *forest,
+                            void                        *user_pointer);
+
+
+    template <int dim>
+    void *
+    forest_get_user_pointer(const typename types<dim>::forest *forest);
 
     template <int dim, int spacedim>
     typename types<dim>::forest *
     adapt(typename types<dim>::forest  *forest,
-          Triangulation<dim, spacedim> &triangulation);
+          Triangulation<dim, spacedim> *triangulation);
 
     template <int dim>
     typename types<dim>::forest *
@@ -775,6 +596,83 @@ namespace internal
                      typename types<dim>::element       element_1,
                      typename types<dim>::element       element_2);
 
+    template <int dim>
+    void
+    element_children(const typename types<dim>::forest *forest,
+                     typename types<dim>::eclass        eclass,
+                     const typename types<dim>::element element,
+                     typename types<dim>::element      *children);
+
+
+    template <int dim>
+    int
+    element_level(const typename types<dim>::forest *forest,
+                  typename types<dim>::eclass        eclass,
+                  const typename types<dim>::element element);
+
+
+    template <int dim>
+    bool
+    cell_exists_in_tree(const typename types<dim>::tree    tree,
+                        const typename types<dim>::element element);
+
+
+    template <int dim>
+    bool
+    element_overlaps_tree(const typename types<dim>::forest *forest,
+                          const typename types<dim>::tree    tree,
+                          const typename types<dim>::element element);
+
+    template <int dim>
+    void
+    element_destroy(const typename types<dim>::forest *forest,
+                    typename types<dim>::eclass        eclass,
+                    typename types<dim>::element      *element,
+                    const unsigned int                 length);
+
+    template <int dim>
+    typename types<dim>::ghost *
+    ghost_new(typename types<dim>::forest *forest);
+
+    template <int dim>
+    void
+    ghost_destroy(typename types<dim>::ghost **ghost);
+
+
+    template <int dim>
+    int
+    element_ancestor_id(const typename types<dim>::forest *forest,
+                        typename types<dim>::eclass        eclass,
+                        const typename types<dim>::element element,
+                        int                                level);
+
+    template <int dim>
+    int
+    comm_find_owner(const typename types<dim>::forest *forest,
+                    const typename types<dim>::locidx  which_tree,
+                    const typename types<dim>::element q,
+                    const int                          guess);
+
+
+    template <int dim>
+    void
+    forest_destroy(typename types<dim>::forest **forest);
+
+    template <int dim>
+    typename types<dim>::forest *
+    balance_full(typename types<dim>::forest *forest);
+
+
+
+    template <int dim>
+    typename types<dim>::forest *
+    partition(typename types<dim>::forest *forest,
+              typename types<dim>::weight  weight_fn);
+
+
+    template <int dim>
+    void
+    vtk_write_file(typename types<dim>::forest *forest, const char *baseName);
 
     /**
      * Deep copy a p4est connectivity object.

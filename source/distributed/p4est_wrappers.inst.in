@@ -24,72 +24,157 @@ for (deal_II_dimension : DIMENSIONS)
         template bool
         element_is_equal<deal_II_dimension>(
           const types<deal_II_dimension>::forest *forest,
-          const types<deal_II_dimension>::eclass ecalss,
+          const types<deal_II_dimension>::eclass  ecalss,
           const types<deal_II_dimension>::element element_1,
           const types<deal_II_dimension>::element element_2);
 
 
-           template 
-     types<deal_II_dimension>::element
-    get_ghost_elem_and_owner<deal_II_dimension>(
-      const  types<deal_II_dimension>::forest *parallel_forest,
-      const  types<deal_II_dimension>::topidx  global_tree_idx,
-      const  types<deal_II_dimension>::locidx  ghost_in_tree_idx,
-      const  types<deal_II_dimension>::eclass  ghost_eclass,
-      dealii::types::subdomain_id       &subdomain);
+        template types<deal_II_dimension>::element
+        get_ghost_elem_and_owner<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *parallel_forest,
+          const types<deal_II_dimension>::topidx  global_tree_idx,
+          const types<deal_II_dimension>::locidx  ghost_in_tree_idx,
+          const types<deal_II_dimension>::eclass  ghost_eclass,
+          dealii::types::subdomain_id            &subdomain);
 
-    template 
-     types<deal_II_dimension>::eclass
-    get_ghost_eclass<deal_II_dimension>(const  types<deal_II_dimension>::forest *parallel_forest,
-                     const  types<deal_II_dimension>::locidx  local_ghost_tree_idx);
+        template types<deal_II_dimension>::eclass
+        get_ghost_eclass<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *parallel_forest,
+          const types<deal_II_dimension>::locidx  local_ghost_tree_idx);
 
-    template 
-    void
-    init_coarse_element<deal_II_dimension>(const  types<deal_II_dimension>::forest *forest,
-                         types<deal_II_dimension>::locidx  local_tree,
-                         types<deal_II_dimension>::element quad);
+        template void
+        init_coarse_element<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          types<deal_II_dimension>::locidx        local_tree,
+          types<deal_II_dimension>::element       quad);
 
-    template 
-   bool
-    element_is_ancestor<deal_II_dimension>(const  types<deal_II_dimension>::forest *forest,
-                      types<deal_II_dimension>::eclass        eclass,
-                      types<deal_II_dimension>::element       element_1,
-                      types<deal_II_dimension>::element       element_2);
+        template types<deal_II_dimension>::gloidx
+        tree_get_offset<deal_II_dimension>(
+          const types<deal_II_dimension>::tree tree);
 
 
-    template 
-     types<deal_II_dimension>::gloidx
-    tree_get_offset<deal_II_dimension>(const  types<deal_II_dimension>::tree tree);
+        template bool
+        tree_exists_locally<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *parallel_forest,
+          const types<deal_II_dimension>::topidx  coarse_grid_cell);
+
+        template types<deal_II_dimension>::locidx
+        leaf_index_in_tree<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          const types<deal_II_dimension>::locidx  ltreeid,
+          const types<deal_II_dimension>::element leaf);
+
+        template types<deal_II_dimension>::tree
+        forest_get_tree<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          const types<deal_II_dimension>::locidx  ltreeid);
+
+        template types<deal_II_dimension>::locidx
+        get_num_leafs<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest);
+
+        template void
+        forest_set_user_pointer<deal_II_dimension>(
+          types<deal_II_dimension>::forest *forest,
+          void                             *user_pointer);
+
+        template types<deal_II_dimension>::eclass
+        get_eclass<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          types<deal_II_dimension>::locidx        idx);
+
+        template types<deal_II_dimension>::eclass
+        get_eclass_from_tree<deal_II_dimension>(
+          const types<deal_II_dimension>::tree tree);
 
 
-    template 
-    bool
-    tree_exists_locally<deal_II_dimension>(const  types<deal_II_dimension>::forest *parallel_forest,
-                        const  types<deal_II_dimension>::topidx  coarse_grid_cell);
+        template void
+        element_children<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          types<deal_II_dimension>::eclass        eclass,
+          const types<deal_II_dimension>::element element,
+          types<deal_II_dimension>::element      *children);
 
-    template 
-     types<deal_II_dimension>::locidx
-    leaf_index_in_tree<deal_II_dimension>(const  types<deal_II_dimension>::forest *forest,
-                       const  types<deal_II_dimension>::locidx  ltreeid,
-                       const  types<deal_II_dimension>::element leaf);
+        template void
+        element_new<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          types<deal_II_dimension>::eclass        eclass,
+          types<deal_II_dimension>::element      *elements,
+          const unsigned int                      length);
 
-    template 
-     types<deal_II_dimension>::tree
-    forest_get_tree<deal_II_dimension>(const  types<deal_II_dimension>::forest *forest,
-                    const  types<deal_II_dimension>::locidx  ltreeid);
+        template int
+        element_level<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          types<deal_II_dimension>::eclass        eclass,
+          const types<deal_II_dimension>::element element);
 
-    template 
-     types<deal_II_dimension>::locidx
-    get_num_leafs<deal_II_dimension>(const  types<deal_II_dimension>::forest *forest);
+        template bool
+        cell_exists_in_tree<deal_II_dimension>(
+          const types<deal_II_dimension>::tree    tree,
+          const types<deal_II_dimension>::element element);
 
-    template 
-    void
-    forest_set_user_pointer<deal_II_dimension>(const  types<deal_II_dimension>::forest *forest,
-                            void                              *user_pointer);
 
-    template 
-     types<deal_II_dimension>::forest *
-    balance_full<deal_II_dimension>( types<deal_II_dimension>::forest *forest);
+        template bool
+        element_overlaps_tree<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          const types<deal_II_dimension>::tree    tree,
+          const types<deal_II_dimension>::element element);
+
+        template void
+        element_destroy<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          types<deal_II_dimension>::eclass        eclass,
+          types<deal_II_dimension>::element      *element,
+          const unsigned int                      length);
+
+        template types<deal_II_dimension>::ghost *
+        ghost_new<deal_II_dimension>(types<deal_II_dimension>::forest *forest);
+
+
+        template void
+        ghost_destroy<deal_II_dimension>(
+          types<deal_II_dimension>::ghost **ghost);
+
+
+        template int
+        element_ancestor_id<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *,
+          types<deal_II_dimension>::eclass,
+          const types<deal_II_dimension>::element element,
+          int                                     level);
+
+
+        template int
+        comm_find_owner<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest,
+          const types<deal_II_dimension>::locidx  which_tree,
+          const types<deal_II_dimension>::element q,
+          const int                               guess);
+
+
+        template void *
+        forest_get_user_pointer<deal_II_dimension>(
+          types<deal_II_dimension>::forest *forest);
+
+
+        template void
+        forest_destroy<deal_II_dimension>(
+          types<deal_II_dimension>::forest **forest);
+
+        template types<deal_II_dimension>::forest *
+        balance_full<deal_II_dimension>(
+          types<deal_II_dimension>::forest *forest);
+
+        template types<deal_II_dimension>::forest *
+        partition<deal_II_dimension>(
+          types<deal_II_dimension>::forest *forest,
+          types<deal_II_dimension>::weight  weight_fn);
+
+
+        template void
+        vtk_write_file<deal_II_dimension>(
+          types<deal_II_dimension>::forest *forest,
+          const char                       *baseName);
 
 #  endif
       \}
@@ -98,23 +183,25 @@ for (deal_II_dimension : DIMENSIONS)
   }
 
 
-  for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
-  { 
-    #ifdef DEAL_II_WITH_P4EST
+for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
+  {
+#ifdef DEAL_II_WITH_P4EST
 
     namespace internal
     \{
       namespace p4est
       \{
 #  if deal_II_dimension > 1
-#if deal_II_dimension <= deal_II_space_dimension
-      template <>
-      types<deal_II_dimension>::forest *
-      adapt<deal_II_dimension,deal_II_space_dimension>( types<deal_II_dimension>::forest  *forest,
-            Triangulation<deal_II_dimension, deal_II_space_dimension> &triangulation);
-         
+#    if deal_II_dimension <= deal_II_space_dimension
+        template <>
+        types<deal_II_dimension>::forest *
+        adapt<deal_II_dimension, deal_II_space_dimension>(
+          types<deal_II_dimension>::forest *forest,
+          Triangulation<deal_II_dimension, deal_II_space_dimension>
+            *triangulation);
+
+#    endif
 #  endif
- #  endif
       \}
     \}
 #endif  // DEAL_II_WITH_P4EST

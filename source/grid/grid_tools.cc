@@ -2185,54 +2185,62 @@ namespace GridTools
           {
             // find descendent from coarse element
             typename dealii::internal::amr::types<dim>::element p4est_cell;
-             typename dealii::internal::amr::types<dim>::element 
+            typename dealii::internal::amr::types<dim>::element
               p4est_children[GeometryInfo<dim>::max_children_per_cell];
 
-              const auto eclass = dealii::internal::amr::functions<dim>::get_eclass(triangulation.get_p4est(), cell_id.get_coarse_cell_id());
+            const auto eclass = dealii::internal::amr::get_eclass<dim>(
+              triangulation.get_p4est(), cell_id.get_coarse_cell_id());
 
-              dealii::internal::amr::functions<dim>::element_new(triangulation.get_p4est(),
-                 eclass,
-                  &p4est_cell);
+            dealii::internal::amr::element_new<dim>(triangulation.get_p4est(),
+                                                    eclass,
+                                                    &p4est_cell,
+                                                    1);
 
-             for(unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell; ++c)
-             dealii::internal::amr::functions<dim>::element_new(triangulation.get_p4est(),
-                  eclass,
-                  p4est_children+c);
+            dealii::internal::amr::element_new<dim>(
+              triangulation.get_p4est(),
+              eclass,
+              p4est_children,
+              GeometryInfo<dim>::max_children_per_cell);
 
-          dealii::internal::amr::init_coarse_element<dim>(triangulation.get_p4est(), cell_id.	get_coarse_cell_id(), p4est_cell);
+            dealii::internal::amr::init_coarse_element<dim>(
+              triangulation.get_p4est(),
+              cell_id.get_coarse_cell_id(),
+              p4est_cell);
 
 
             for (const auto &child_index : cell_id.get_child_indices())
               {
-                //TODO: insert child relations for non hypercube elements 
-                dealii::internal::amr::functions<dim>::element_children(triangulation.get_p4est(), eclass,
-                  p4est_cell, p4est_children);
+                // TODO: insert child relations for non hypercube elements
+                dealii::internal::amr::element_children<dim>(
+                  triangulation.get_p4est(),
+                  eclass,
+                  p4est_cell,
+                  p4est_children);
                 p4est_cell =
                   p4est_children[static_cast<unsigned int>(child_index)];
               }
 
             // find owning process, i.e., the subdomain id
-            const int owner =
-              dealii::internal::amr::functions<dim>::comm_find_owner(
-                const_cast<typename dealii::internal::amr::types<dim>::forest
-                             *>(triangulation.get_p4est()),
-                cell_id.get_coarse_cell_id(),
-                p4est_cell,
-                Utilities::MPI::this_mpi_process(
-                  triangulation.get_mpi_communicator()));
+            const int owner = dealii::internal::amr::comm_find_owner<dim>(
+              const_cast<typename dealii::internal::amr::types<dim>::forest *>(
+                triangulation.get_p4est()),
+              cell_id.get_coarse_cell_id(),
+              p4est_cell,
+              Utilities::MPI::this_mpi_process(
+                triangulation.get_mpi_communicator()));
 
             Assert(owner >= 0, ExcMessage("p4est should know the owner."));
 
             subdomain_ids.push_back(owner);
 
-             dealii::internal::amr::functions<dim>::element_destroy(triangulation.get_p4est(),
-                 eclass,
-                  &p4est_cell);
+            dealii::internal::amr::element_destroy<dim>(
+              triangulation.get_p4est(), eclass, &p4est_cell, 1);
 
-             for(unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell; ++c)
-             dealii::internal::amr::functions<dim>::element_destroy(triangulation.get_p4est(),
-                  eclass,
-                  p4est_children+c);
+            dealii::internal::amr::element_destroy<dim>(
+              triangulation.get_p4est(),
+              eclass,
+              p4est_children,
+              GeometryInfo<dim>::max_children_per_cell);
           }
 #endif
       }

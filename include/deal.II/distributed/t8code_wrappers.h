@@ -153,12 +153,12 @@ namespace internal
                             const types<dim>::element element);
 
 
-        
-    static bool
-    element_is_equal(const typename types<dim>::forest *forest,
-                     typename types<dim>::eclass        eclass,
-                     typename types<dim>::element       element_1,
-                     typename types<dim>::element       element_2);
+
+      static bool
+      element_is_equal(const typename types<dim>::forest *forest,
+                       typename types<dim>::eclass        eclass,
+                       typename types<dim>::element       element_1,
+                       typename types<dim>::element       element_2);
       static bool
       cell_exists_in_tree(const types<dim>::tree    tree,
                           const types<dim>::element element);

@@ -50,7 +50,7 @@ namespace FETools
 {
   namespace internal
   {
-    //TODO: deal_with_amr or deal_with_t8code
+    // TODO: deal_with_amr or deal_with_t8code
 #ifndef DEAL_II_WITH_P4EST
     // Dummy implementation in case p4est is not available.
     template <int dim, int spacedim, class OutVector>
@@ -102,10 +102,10 @@ namespace FETools
        */
       struct WorkPackage
       {
-        const typename dealii::internal::amr::types<dim>::forest   *forest;
-        const typename dealii::internal::amr::types<dim>::tree     tree;
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index;
-        const typename DoFHandler<dim, spacedim>::cell_iterator    dealii_cell;
+        const typename dealii::internal::amr::types<dim>::forest *forest;
+        const typename dealii::internal::amr::types<dim>::tree    tree;
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index;
+        const typename DoFHandler<dim, spacedim>::cell_iterator   dealii_cell;
         const typename dealii::internal::amr::types<dim>::element p4est_cell;
       };
 
@@ -148,7 +148,7 @@ namespace FETools
          * The tree within the forest (i.e., the coarse cell) and which of its
          * descendents we are currently working on.
          */
-        unsigned int                                         tree_index;
+        unsigned int                                        tree_index;
         typename dealii::internal::amr::types<dim>::element element;
 
         types::subdomain_id receiver;
@@ -214,13 +214,13 @@ namespace FETools
       template <class InVector>
       void
       interpolate_recursively(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
-        const typename dealii::internal::amr::types<dim>::element  p4est_cell,
-        const InVector                                             &u1,
-        OutVector                                                  &u2);
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::element p4est_cell,
+        const InVector                                           &u1,
+        OutVector                                                &u2);
 
       // get dof values for this
       // cell by interpolation
@@ -230,12 +230,12 @@ namespace FETools
       template <class InVector>
       void
       get_interpolated_dof_values(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
         const typename dealii::internal::amr::types<dim>::element p4est_cell,
-        const InVector                                             &u,
+        const InVector                                           &u,
         Vector<value_type>    &interpolated_values,
         std::vector<CellData> &new_needs);
 
@@ -243,9 +243,9 @@ namespace FETools
       // cell by interpolation
       void
       set_dof_values_by_interpolation(
-         const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::locidx tree_index,        
-         const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
         const typename dealii::internal::amr::types<dim>::element p4est_cell,
         const Vector<value_type> &interpolated_values,
         OutVector                &u);
@@ -263,12 +263,12 @@ namespace FETools
       // process has to work on
       void
       traverse_tree_recursively(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
-        const typename dealii::internal::amr::types<dim>::element  p4est_cell,
-        std::vector<CellData>                                      &new_needs);
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::element p4est_cell,
+        std::vector<CellData>                                    &new_needs);
 
       // traverse recursively
       // over a patch and look
@@ -276,12 +276,12 @@ namespace FETools
       // other processes for interpolation
       void
       traverse_patch_recursively(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
-        const typename dealii::internal::amr::types<dim>::element  p4est_cell,
-        std::vector<CellData>                                      &new_needs);
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::element p4est_cell,
+        std::vector<CellData>                                    &new_needs);
 
       // compute dof values of all
       // cells collected in cells_to_compute
@@ -305,12 +305,12 @@ namespace FETools
       template <class InVector>
       void
       compute_cells_in_tree_recursively(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
-        const typename dealii::internal::amr::types<dim>::element  p4est_cell,
-        const InVector                                             &u,
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::element p4est_cell,
+        const InVector                                           &u,
         std::vector<CellData> &cells_to_compute,
         std::vector<CellData> &computed_cells,
         std::vector<CellData> &new_needs);
@@ -327,11 +327,11 @@ namespace FETools
       // uses cell_data_insert
       static void
       add_new_need(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
         const typename dealii::internal::amr::types<dim>::element p4est_cell,
-        std::vector<CellData>                                      &new_needs);
+        std::vector<CellData>                                    &new_needs);
 
       // binary search in cells_list
       // assume that cells_list
@@ -453,8 +453,9 @@ namespace FETools
     ExtrapolateImplementation<dim, spacedim, OutVector>::CellData::operator<(
       const CellData &rhs) const
     {
-      if (dealii::internal::amr::functions<dim>::element_compare(
-            element, rhs.element) < 0)
+      if (dealii::internal::amr::functions<dim>::element_compare(element,
+                                                                 rhs.element) <
+          0)
         return true;
 
       return false;
@@ -475,7 +476,7 @@ namespace FETools
       // Then also serialize the 'element' variable for which there
       // isn't an overload. Do so by simply copying the individual
       // bytes
-      //TODO: make work or exclude for t8code
+      // TODO: make work or exclude for t8code
       ar &boost::serialization::make_array(reinterpret_cast<char *>(element),
                                            sizeof(element));
     }
@@ -487,22 +488,22 @@ namespace FETools
     void
     ExtrapolateImplementation<dim, spacedim, OutVector>::
       interpolate_recursively(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
         const typename dealii::internal::amr::types<dim>::element p4est_cell,
-        const InVector                                             &u1,
-        OutVector                                                  &u2)
+        const InVector                                           &u1,
+        OutVector                                                &u2)
     {
       // check if this cell exists in the local p4est
-      const bool cell_exists =    dealii::internal::amr::functions<dim>::cell_exists_in_tree(tree,
-                          p4est_cell);
+      const bool cell_exists =
+        dealii::internal::amr::cell_exists_in_tree<dim>(tree, p4est_cell);
 
       // if neither this cell nor one of it's children belongs to us, don't do
       // anything
-      if (!cell_exists &&
-          (dealii::internal::amr::functions<dim>::element_overlaps_tree(forest, tree, p4est_cell) == false))
+      if (!cell_exists && (dealii::internal::amr::element_overlaps_tree<dim>(
+                             forest, tree, p4est_cell) == false))
         return;
 
       bool p4est_has_children = (!cell_exists);
@@ -547,11 +548,10 @@ namespace FETools
           // needs should come up
           Assert(new_needs.empty(), ExcInternalError());
 
-          set_dof_values_by_interpolation(
-            forest,
-             tree_index,
-             dealii_cell,
-                                          p4est_cell,                 
+          set_dof_values_by_interpolation(forest,
+                                          tree_index,
+                                          dealii_cell,
+                                          p4est_cell,
                                           interpolated_values,
                                           u2);
         }
@@ -564,12 +564,12 @@ namespace FETools
     void
     ExtrapolateImplementation<dim, spacedim, OutVector>::
       get_interpolated_dof_values(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
         const typename dealii::internal::amr::types<dim>::element p4est_cell,
-        const InVector                                             &u,
+        const InVector                                           &u,
         Vector<value_type>    &interpolated_values,
         std::vector<CellData> &new_needs)
     {
@@ -611,19 +611,25 @@ namespace FETools
           typename dealii::internal::amr::types<dim>::element
             p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-             for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_new(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
 
-              dealii::internal::amr::functions<dim>::element_children(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index), p4est_cell, p4est_child);
+          dealii::internal::amr::element_new<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
+
+          dealii::internal::amr::element_children<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_cell,
+            p4est_child);
+
           bool found_child = true;
           for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
                ++c)
             {
-              if (dealii::internal::amr::functions<dim>::element_overlaps_tree(forest, tree, p4est_child[c]) == false)
+              if (dealii::internal::amr::element_overlaps_tree<dim>(
+                    forest, tree, p4est_child[c]) == false)
                 {
                   // this is a cell this process needs
                   // data from another process
@@ -692,11 +698,11 @@ namespace FETools
                 }
             }
 
-            for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_destroy(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
+          dealii::internal::amr::element_destroy<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
 
           if (found_child == false)
             interpolated_values = 0;
@@ -720,11 +726,11 @@ namespace FETools
     ExtrapolateImplementation<dim, spacedim, OutVector>::
       set_dof_values_by_interpolation(
         const typename dealii::internal::amr::types<dim>::forest *forest,
-        const typename dealii::internal::amr::types<dim>::locidx tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
         const typename dealii::internal::amr::types<dim>::element p4est_cell,
-        const Vector<value_type> &local_values,
-        OutVector                &u)
+        const Vector<value_type>                                 &local_values,
+        OutVector                                                &u)
     {
       const FiniteElement<dim, spacedim> &fe =
         dealii_cell->get_dof_handler().get_fe();
@@ -769,14 +775,18 @@ namespace FETools
           typename dealii::internal::amr::types<dim>::element
             p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-             for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_new(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
 
-              dealii::internal::amr::functions<dim>::element_children(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index), p4est_cell, p4est_child);
+          dealii::internal::amr::element_new<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
+
+          dealii::internal::amr::element_children<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_cell,
+            p4est_child);
           for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
                ++c)
             {
@@ -784,17 +794,20 @@ namespace FETools
                 fe.get_prolongation_matrix(c, dealii_cell->refinement_case())
                   .vmult(tmp, local_values);
 
-              set_dof_values_by_interpolation(forest, tree_index, dealii_cell->child(c),
+              set_dof_values_by_interpolation(forest,
+                                              tree_index,
+                                              dealii_cell->child(c),
                                               p4est_child[c],
                                               tmp,
                                               u);
             }
 
-             for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_destroy(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
+
+          dealii::internal::amr::element_destroy<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
         }
     }
 
@@ -820,19 +833,25 @@ namespace FETools
               false)
             continue;
 
-          typename dealii::internal::amr::types<dim>::element
-                             p4est_coarse_cell;
-         
+          typename dealii::internal::amr::types<dim>::element p4est_coarse_cell;
+
           const unsigned int tree_index =
             tr->coarse_cell_to_p4est_tree_permutation[cell->index()];
+
           typename dealii::internal::amr::types<dim>::tree tree =
-            tr->init_tree(cell->index());
+            dealii::internal::amr::forest_get_tree<dim>(tr->parallel_forest,
+                                                        tree_index);
 
-             dealii::internal::amr::functions<dim>::element_new(tr->parallel_forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(tr->parallel_forest, tree_index),
-                  &p4est_coarse_cell);
+          dealii::internal::amr::element_new<dim>(
+            tr->parallel_forest,
+            dealii::internal::amr::get_eclass<dim>(tr->parallel_forest,
+                                                   tree_index),
+            &p4est_coarse_cell,
+            1);
 
-          dealii::internal::amr::init_coarse_element<dim>(tr->parallel_forest, tree_index, p4est_coarse_cell);
+          dealii::internal::amr::init_coarse_element<dim>(tr->parallel_forest,
+                                                          tree_index,
+                                                          p4est_coarse_cell);
 
           // make sure that each cell on the
           // coarsest level is at least once
@@ -840,8 +859,9 @@ namespace FETools
           // can't be treated and would
           // generate a bogus result
           {
-            AssertThrow(!dealii::internal::amr::functions<dim>::cell_exists_in_tree(tree,
-                          p4est_coarse_cell), ExcGridNotRefinedAtLeastOnce());
+            AssertThrow(!dealii::internal::amr::cell_exists_in_tree<dim>(
+                          tree, p4est_coarse_cell),
+                        ExcGridNotRefinedAtLeastOnce());
           }
 
           traverse_tree_recursively(tr->parallel_forest,
@@ -850,6 +870,14 @@ namespace FETools
                                     cell,
                                     p4est_coarse_cell,
                                     new_needs);
+
+
+          dealii::internal::amr::element_destroy<dim>(
+            tr->parallel_forest,
+            dealii::internal::amr::get_eclass<dim>(tr->parallel_forest,
+                                                   tree_index),
+            &p4est_coarse_cell,
+            1);
         }
     }
 
@@ -859,23 +887,21 @@ namespace FETools
     void
     ExtrapolateImplementation<dim, spacedim, OutVector>::
       traverse_tree_recursively(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
-        const typename dealii::internal::amr::types<dim>::element  p4est_cell,
-        std::vector<CellData>                                      &new_needs)
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::element p4est_cell,
+        std::vector<CellData>                                    &new_needs)
     {
       // check if this cell exists in the local p4est
-      const bool cell_exists = dealii::internal::amr::functions<dim>::cell_exists_in_tree(tree,
-                          p4est_cell);
+      const bool cell_exists =
+        dealii::internal::amr::cell_exists_in_tree<dim>(tree, p4est_cell);
 
       // if neither this cell nor one of it's children belongs to us, don't do
       // anything
-      if (!cell_exists &&
-          (dealii::internal::amr::functions<dim>::element_overlaps_tree(forest,
-             tree,
-             p4est_cell) == false))
+      if (!cell_exists && (dealii::internal::amr::element_overlaps_tree<dim>(
+                             forest, tree, p4est_cell) == false))
         return;
 
       bool p4est_has_children = (!cell_exists);
@@ -914,14 +940,18 @@ namespace FETools
           typename dealii::internal::amr::types<dim>::element
             p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-         for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_new(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
 
-              dealii::internal::amr::functions<dim>::element_children(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index), p4est_cell, p4est_child);
+          dealii::internal::amr::element_new<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
+
+          dealii::internal::amr::element_children<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_cell,
+            p4est_child);
           for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
                ++c)
             {
@@ -933,11 +963,11 @@ namespace FETools
                                         new_needs);
             }
 
-             for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_destroy(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
+          dealii::internal::amr::element_destroy<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
         }
     }
 
@@ -947,12 +977,12 @@ namespace FETools
     void
     ExtrapolateImplementation<dim, spacedim, OutVector>::
       traverse_patch_recursively(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
         const typename dealii::internal::amr::types<dim>::element p4est_cell,
-        std::vector<CellData>                                      &new_needs)
+        std::vector<CellData>                                    &new_needs)
     {
       if (dealii_cell->has_children())
         {
@@ -961,21 +991,26 @@ namespace FETools
           typename dealii::internal::amr::types<dim>::element
             p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-          for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_new(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
 
-              dealii::internal::amr::functions<dim>::element_children(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),  p4est_cell, p4est_child);
+          dealii::internal::amr::element_new<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
+
+          dealii::internal::amr::element_children<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_cell,
+            p4est_child);
           for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
                ++c)
             {
               // check if this child
               // is locally available
               // in the p4est
-              if (dealii::internal::amr::functions<dim>::element_overlaps_tree(forest, tree,p4est_child[c]) == false)
+              if (dealii::internal::amr::element_overlaps_tree<dim>(
+                    forest, tree, p4est_child[c]) == false)
                 {
                   // this is a cell for which this process
                   // needs data from another process
@@ -999,6 +1034,13 @@ namespace FETools
                                              new_needs);
                 }
             }
+
+
+          dealii::internal::amr::element_destroy<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
         }
     }
 
@@ -1038,16 +1080,22 @@ namespace FETools
                  tr->parallel_forest, tree_index) == false))
             continue;
 
-          typename dealii::internal::amr::types<dim>::element
-                                                            p4est_coarse_cell;
+          typename dealii::internal::amr::types<dim>::element p4est_coarse_cell;
+
           typename dealii::internal::amr::types<dim>::tree tree =
-            tr->init_tree(cell->index());
+            dealii::internal::amr::forest_get_tree<dim>(tr->parallel_forest,
+                                                        tree_index);
 
-            dealii::internal::amr::functions<dim>::element_new(tr->parallel_forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(tr->parallel_forest, tree_index),
-                  &p4est_coarse_cell);
+          dealii::internal::amr::element_new<dim>(
+            tr->parallel_forest,
+            dealii::internal::amr::get_eclass<dim>(tr->parallel_forest,
+                                                   tree_index),
+            &p4est_coarse_cell,
+            1);
 
-            dealii::internal::amr::init_coarse_element<dim>(tr->parallel_forest, tree_index, p4est_coarse_cell);
+          dealii::internal::amr::init_coarse_element<dim>(tr->parallel_forest,
+                                                          tree_index,
+                                                          p4est_coarse_cell);
 
           compute_cells_in_tree_recursively(tr->parallel_forest,
                                             tree,
@@ -1059,9 +1107,12 @@ namespace FETools
                                             computed_cells,
                                             new_needs);
 
-                                             dealii::internal::amr::functions<dim>::element_destroy(tr->parallel_forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(tr->parallel_forest, tree_index),
-                  &p4est_coarse_cell);
+          dealii::internal::amr::element_destroy<dim>(
+            tr->parallel_forest,
+            dealii::internal::amr::get_eclass<dim>(tr->parallel_forest,
+                                                   tree_index),
+            &p4est_coarse_cell,
+            1);
         }
     }
 
@@ -1072,12 +1123,12 @@ namespace FETools
     void
     ExtrapolateImplementation<dim, spacedim, OutVector>::
       compute_cells_in_tree_recursively(
-        const typename dealii::internal::amr::types<dim>::forest   *forest,
-        const typename dealii::internal::amr::types<dim>::tree     tree,
-        const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-        const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+        const typename dealii::internal::amr::types<dim>::forest *forest,
+        const typename dealii::internal::amr::types<dim>::tree    tree,
+        const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+        const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
         const typename dealii::internal::amr::types<dim>::element p4est_cell,
-        const InVector                                             &u,
+        const InVector                                           &u,
         std::vector<CellData> &cells_to_compute,
         std::vector<CellData> &computed_cells,
         std::vector<CellData> &new_needs)
@@ -1086,12 +1137,12 @@ namespace FETools
         return;
 
       // check if this cell exists in the local p4est
-      const bool cell_exists =  dealii::internal::amr::functions<dim>::cell_exists_in_tree(tree,
-                          p4est_cell);
+      const bool cell_exists =
+        dealii::internal::amr::cell_exists_in_tree<dim>(tree, p4est_cell);
       // if neither this cell nor one of it's children belongs to us, don't do
       // anything
-      if (!cell_exists &&
-          (dealii::internal::amr::functions<dim>::element_overlaps_tree(forest, tree, p4est_cell) == false))
+      if (!cell_exists && (dealii::internal::amr::element_overlaps_tree<dim>(
+                             forest, tree, p4est_cell) == false))
         return;
 
       bool p4est_has_children = (!cell_exists);
@@ -1099,7 +1150,7 @@ namespace FETools
       // check if this element is in the list
       CellData cell_data;
       cell_data.element = p4est_cell;
-      int pos            = cell_data_search(cell_data, cells_to_compute);
+      int pos           = cell_data_search(cell_data, cells_to_compute);
       if (pos != -1)
         {
           std::vector<CellData> tmp;
@@ -1135,14 +1186,17 @@ namespace FETools
           typename dealii::internal::amr::types<dim>::element
             p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-         for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_new(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
+          dealii::internal::amr::element_new<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
 
-              dealii::internal::amr::functions<dim>::element_children(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index), p4est_cell, p4est_child);
+          dealii::internal::amr::element_children<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_cell,
+            p4est_child);
           for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
                ++c)
             {
@@ -1157,11 +1211,12 @@ namespace FETools
                                                 new_needs);
             }
 
-             for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-               ++c)
-              dealii::internal::amr::functions<dim>::element_destroy(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
+
+          dealii::internal::amr::element_destroy<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            p4est_child,
+            GeometryInfo<dim>::max_children_per_cell);
         }
     }
 
@@ -1225,26 +1280,25 @@ namespace FETools
     template <int dim, int spacedim, class OutVector>
     void
     ExtrapolateImplementation<dim, spacedim, OutVector>::add_new_need(
-      const typename dealii::internal::amr::types<dim>::forest   *forest,
-      const typename dealii::internal::amr::types<dim>::locidx   tree_index,
-      const typename DoFHandler<dim, spacedim>::cell_iterator    &dealii_cell,
+      const typename dealii::internal::amr::types<dim>::forest *forest,
+      const typename dealii::internal::amr::types<dim>::locidx  tree_index,
+      const typename DoFHandler<dim, spacedim>::cell_iterator  &dealii_cell,
       const typename dealii::internal::amr::types<dim>::element p4est_cell,
-      std::vector<CellData>                                      &new_needs)
+      std::vector<CellData>                                    &new_needs)
     {
       const FiniteElement<dim, spacedim> &fe =
         dealii_cell->get_dof_handler().get_fe();
       const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
 
       CellData cell_data(dofs_per_cell);
-      cell_data.element   = p4est_cell;
+      cell_data.element    = p4est_cell;
       cell_data.tree_index = tree_index;
-      cell_data.receiver =
-        dealii::internal::amr::functions<dim>::comm_find_owner(
-          const_cast<typename dealii::internal::amr::types<dim>::forest *>(
-            forest),
-          tree_index,
-          p4est_cell,
-          dealii_cell->level_subdomain_id());
+      cell_data.receiver   = dealii::internal::amr::comm_find_owner<dim>(
+        const_cast<typename dealii::internal::amr::types<dim>::forest *>(
+          forest),
+        tree_index,
+        p4est_cell,
+        dealii_cell->level_subdomain_id());
 
       cell_data_insert(cell_data, new_needs);
     }
@@ -1321,9 +1375,11 @@ namespace FETools
         (dynamic_cast<const parallel::distributed::Triangulation<dim, spacedim>
                         *>(&dof2.get_triangulation()));
 
-      Assert(tr != nullptr, ExcMessage("Need parallel::distributed::triangulation for this to work"));
-      const auto forest = tr->parallel_forest;
-      unsigned int ready = 0;
+      Assert(tr != nullptr,
+             ExcMessage(
+               "Need parallel::distributed::triangulation for this to work"));
+      const auto   forest = tr->parallel_forest;
+      unsigned int ready  = 0;
       do
         {
           for (const auto &need : received_needs)
@@ -1347,8 +1403,12 @@ namespace FETools
                 received_needs.begin();
               while (recv != received_needs.end())
                 {
-                  if (dealii::internal::amr::functions<dim>::element_is_equal(forest,  dealii::internal::amr::functions<dim>::get_eclass(forest, comp.tree_index),
-                        recv->element, comp.element))
+                  if (dealii::internal::amr::element_is_equal<dim>(
+                        forest,
+                        dealii::internal::amr::get_eclass<dim>(forest,
+                                                               comp.tree_index),
+                        recv->element,
+                        comp.element))
                     {
                       recv->dof_values = comp.dof_values;
                       cells_to_send.push_back(*recv);
@@ -1489,20 +1549,24 @@ namespace FETools
             const typename dealii::internal::amr::types<dim>::locidx
               tree_index =
                 tr->coarse_cell_to_p4est_tree_permutation[cell->index()];
+
             typename dealii::internal::amr::types<dim>::tree tree =
-              tr->init_tree(cell->index());
+              dealii::internal::amr::forest_get_tree<dim>(tr->parallel_forest,
+                                                          tree_index);
 
-                dealii::internal::amr::functions<dim>::element_new(tr->parallel_forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(tr->parallel_forest, tree_index),
-                  &p4est_coarse_cell);
+            dealii::internal::amr::element_new<dim>(
+              tr->parallel_forest,
+              dealii::internal::amr::get_eclass<dim>(tr->parallel_forest,
+                                                     tree_index),
+              &p4est_coarse_cell,
+              1);
 
-            dealii::internal::amr::init_coarse_element<dim>(tr->parallel_forest, tree_index, p4est_coarse_cell);
+            dealii::internal::amr::init_coarse_element<dim>(tr->parallel_forest,
+                                                            tree_index,
+                                                            p4est_coarse_cell);
 
-            queue.push({tr->parallel_forest,
-                        tree,
-                        tree_index,
-                        cell,
-                        p4est_coarse_cell});
+            queue.push(
+              {tr->parallel_forest, tree, tree_index, cell, p4est_coarse_cell});
           }
       }
 
@@ -1518,8 +1582,8 @@ namespace FETools
             data.tree_index;
           const typename DoFHandler<dim, spacedim>::cell_iterator &dealii_cell =
             data.dealii_cell;
-          typename dealii::internal::amr::types<dim>::element
-            p4est_cell = data.p4est_cell;
+          typename dealii::internal::amr::types<dim>::element p4est_cell =
+            data.p4est_cell;
 
           interpolate_recursively(
             forest, tree, tree_index, dealii_cell, p4est_cell, u2_relevant, u2);
@@ -1531,15 +1595,18 @@ namespace FETools
               typename dealii::internal::amr::types<dim>::element
                 p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-                for (unsigned int c = 0;
-                   c < GeometryInfo<dim>::max_children_per_cell;
-                   ++c)
-               dealii::internal::amr::functions<dim>::element_new(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  p4est_child + c);
 
-              dealii::internal::amr::functions<dim>::element_children(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index), p4est_cell, p4est_child);
+              dealii::internal::amr::element_new<dim>(
+                forest,
+                dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+                p4est_child,
+                GeometryInfo<dim>::max_children_per_cell);
+
+              dealii::internal::amr::element_children<dim>(
+                forest,
+                dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+                p4est_cell,
+                p4est_child);
               for (unsigned int c = 0;
                    c < GeometryInfo<dim>::max_children_per_cell;
                    ++c)
@@ -1550,9 +1617,11 @@ namespace FETools
                             p4est_child[c]});
             }
 
-            dealii::internal::amr::functions<dim>::element_destroy(forest,
-                  dealii::internal::amr::functions<dim>::get_eclass(forest, tree_index),
-                  &p4est_cell);
+          dealii::internal::amr::element_destroy<dim>(
+            forest,
+            dealii::internal::amr::get_eclass<dim>(forest, tree_index),
+            &p4est_cell,
+            1);
           queue.pop();
         }
 

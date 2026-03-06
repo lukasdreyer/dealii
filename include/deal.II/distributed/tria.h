@@ -827,13 +827,6 @@ namespace parallel
         p4est_tree_to_coarse_cell_permutation;
 
       /**
-       * Return a pointer to the p4est tree that belongs to the given
-       * dealii_coarse_cell_index()
-       */
-      typename dealii::internal::amr::types<dim>::tree
-      init_tree(const int dealii_coarse_cell_index) const;
-
-      /**
        * The function that computes the permutation between the two data
        * storage schemes.
        */
