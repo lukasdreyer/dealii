@@ -16,6 +16,8 @@
 
 #include <p4est_bits.h>
 
+#include <type_traits>
+
 #ifdef DEAL_II_WITH_P4EST
 #  include <p4est.h>
 #  include <p8est.h>
@@ -58,11 +60,11 @@ namespace
   {
   public:
     RefineAndCoarsenList(
-      const Triangulation<dim, spacedim> &triangulation,
-      const std::vector<types::global_dof_index>
-        &p4est_tree_to_coarse_cell_permutation,
+      const Triangulation<dim, spacedim>                       *triangulation,
       const typename dealii::internal::amr::types<dim>::forest *forest,
-      const types::subdomain_id                                 my_subdomain);
+      const std::vector<dealii::types::global_dof_index>
+                                       &p4est_tree_to_coarse_cell_permutation,
+      const dealii::types::subdomain_id my_subdomain);
 
     /**
      * A callback function that we pass to the p4est data structures when a
@@ -125,15 +127,15 @@ namespace
 
   template <int dim, int spacedim>
   RefineAndCoarsenList<dim, spacedim>::RefineAndCoarsenList(
-    const Triangulation<dim, spacedim> &triangulation,
-    const std::vector<types::global_dof_index>
-      &p4est_tree_to_coarse_cell_permutation,
+    const Triangulation<dim, spacedim>                       *triangulation,
     const typename dealii::internal::amr::types<dim>::forest *forest,
-    const types::subdomain_id                                 my_subdomain)
+    const std::vector<dealii::types::global_dof_index>
+                                     &p4est_tree_to_coarse_cell_permutation,
+    const dealii::types::subdomain_id my_subdomain)
   {
     // count how many flags are set and allocate that much memory
     unsigned int n_refine_flags = 0, n_coarsen_flags = 0;
-    for (const auto &cell : triangulation.active_cell_iterators())
+    for (const auto &cell : triangulation->active_cell_iterators())
       {
         // skip cells that are not local
         if (cell->subdomain_id() != my_subdomain)
@@ -156,25 +158,28 @@ namespace
     // coarse_cell_to_p4est_tree_permutation permutation. in order to make
     // sure that the output array is already in the correct order, traverse
     // our coarse cells in the same order in which p4est will:
-    for (unsigned int c = 0; c < triangulation.n_cells(0); ++c)
+    for (unsigned int c = 0; c < triangulation->n_cells(0); ++c)
       {
         unsigned int coarse_cell_index =
           p4est_tree_to_coarse_cell_permutation[c];
 
         const typename Triangulation<dim, spacedim>::cell_iterator cell(
-          &triangulation, 0, coarse_cell_index);
+          triangulation, 0, coarse_cell_index);
 
         typename dealii::internal::amr::types<dim>::element amr_cell;
         typename dealii::internal::amr::types<dim>::eclass  eclass =
-          dealii::internal::amr::get_eclass(forest, c);
+          dealii::internal::amr::get_eclass<dim>(forest, c);
 
         dealii::internal::amr::element_new<dim>(forest, eclass, &amr_cell, 1);
-        dealii::internal::amr::functions<dim>::init_coarse_element(forest,
-                                                                   eclass,
-                                                                   amr_cell);
+        dealii::internal::amr::init_coarse_element<dim>(forest,
+                                                        eclass,
+                                                        amr_cell);
         amr_cell->p.which_tree = c;
         build_lists(forest, eclass, cell, amr_cell, my_subdomain);
-        dealii::internal::amr::element_destroy<dim>(forest, eclass, &amr_cell);
+        dealii::internal::amr::element_destroy<dim>(forest,
+                                                    eclass,
+                                                    &amr_cell,
+                                                    1);
       }
 
 
@@ -183,10 +188,10 @@ namespace
 
     // make sure that our ordering in fact worked
     for (unsigned int i = 1; i < refine_list.size(); ++i)
-      Assert(refine_list[i].p.which_tree >= refine_list[i - 1].p.which_tree,
+      Assert(refine_list[i]->p.which_tree >= refine_list[i - 1]->p.which_tree,
              ExcInternalError());
     for (unsigned int i = 1; i < coarsen_list.size(); ++i)
-      Assert(coarsen_list[i].p.which_tree >= coarsen_list[i - 1].p.which_tree,
+      Assert(coarsen_list[i]->p.which_tree >= coarsen_list[i - 1]->p.which_tree,
              ExcInternalError());
 
     current_refine_pointer  = refine_list.begin();
@@ -231,7 +236,7 @@ namespace
         for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
              ++c)
           {
-            p4est_child[c].p.which_tree = amr_cell.p.which_tree;
+            p4est_child[c]->p.which_tree = amr_cell->p.which_tree;
             build_lists(
               forest, eclass, cell->child(c), p4est_child[c], my_subdomain);
           }
@@ -256,28 +261,32 @@ namespace
       return 0;
 
     Assert(coarse_cell_index <=
-             this_object->current_refine_pointer->p.which_tree,
+             (*(this_object->current_refine_pointer))->p.which_tree,
            ExcInternalError());
 
     // if p4est hasn't yet reached the tree of the next flagged cell the
     // current cell can't be flagged for refinement
-    if (coarse_cell_index < this_object->current_refine_pointer->p.which_tree)
+    if (coarse_cell_index <
+        (*(this_object->current_refine_pointer))->p.which_tree)
       return 0;
 
     // now we're in the right tree in the forest
     Assert(coarse_cell_index <=
-             this_object->current_refine_pointer->p.which_tree,
+             (*(this_object->current_refine_pointer))->p.which_tree,
            ExcInternalError());
 
     // make sure that the p4est loop over cells hasn't gotten ahead of our own
     // pointer
     Assert(dealii::internal::amr::functions<dim>::element_compare(
-             element, &*this_object->current_refine_pointer) <= 0,
+             element, *this_object->current_refine_pointer) <= 0,
            ExcInternalError());
 
     // now, if the p4est cell is one in the list, it is supposed to be refined
     if (dealii::internal::amr::element_is_equal<dim>(
-          element, &*this_object->current_refine_pointer))
+          forest,
+          0,
+          element,
+          *this_object->current_refine_pointer)) // TODO get eclass
       {
         ++this_object->current_refine_pointer;
         return 1;
@@ -306,29 +315,33 @@ namespace
       return 0;
 
     Assert(coarse_cell_index <=
-             this_object->current_coarsen_pointer->p.which_tree,
+             (*(this_object->current_coarsen_pointer))->p.which_tree,
            ExcInternalError());
 
     // if p4est hasn't yet reached the tree of the next flagged cell the
     // current cell can't be flagged for coarsening
-    if (coarse_cell_index < this_object->current_coarsen_pointer->p.which_tree)
+    if (coarse_cell_index <
+        (*(this_object->current_coarsen_pointer))->p.which_tree)
       return 0;
 
     // now we're in the right tree in the forest
     Assert(coarse_cell_index <=
-             this_object->current_coarsen_pointer->p.which_tree,
+             (*(this_object->current_coarsen_pointer))->p.which_tree,
            ExcInternalError());
 
     // make sure that the p4est loop over cells hasn't gotten ahead of our own
     // pointer
     Assert(dealii::internal::amr::functions<dim>::element_compare(
-             children[0], &*this_object->current_coarsen_pointer) <= 0,
+             &children[0], &*this_object->current_coarsen_pointer) <= 0,
            ExcInternalError());
 
     // now, if the p4est cell is one in the list, it is supposed to be
     // coarsened
     if (dealii::internal::amr::element_is_equal<dim>(
-          children[0], &*this_object->current_coarsen_pointer))
+          forest,
+          0,
+          children[0],
+          *this_object->current_coarsen_pointer)) // TODO eclass
       {
         // move current pointer one up
         ++this_object->current_coarsen_pointer;
@@ -339,7 +352,10 @@ namespace
              ++c)
           {
             Assert(dealii::internal::amr::element_is_equal<dim>(
-                     children[c], &*this_object->current_coarsen_pointer),
+                     forest,
+                     0,
+                     children[c],
+                     *this_object->current_coarsen_pointer), // TODO: eclass
                    ExcInternalError());
             ++this_object->current_coarsen_pointer;
           }
@@ -1001,25 +1017,23 @@ namespace internal
       return 0;
     }
 
-
-
     template <int dim>
     void
     init_coarse_element(const typename types<dim>::forest *,
-                        typename types<dim>::locidx,
-                        typename types<dim>::element quad)
+                        typename types<dim>::eclass,
+                        typename types<dim>::element element)
     {
       if constexpr (dim == 2)
         {
-          P4EST_QUADRANT_INIT(quad);
-          p4est_quadrant_set_morton(quad,
+          P4EST_QUADRANT_INIT(element);
+          p4est_quadrant_set_morton(element,
                                     /*level=*/0,
                                     /*index=*/0);
         }
       if constexpr (dim == 3)
         {
-          P8EST_QUADRANT_INIT(quad);
-          p8est_quadrant_set_morton(quad,
+          P8EST_QUADRANT_INIT(element);
+          p8est_quadrant_set_morton(element,
                                     /*level=*/0,
                                     /*index=*/0);
         }
@@ -1086,14 +1100,18 @@ namespace internal
     template <int dim, int spacedim>
     typename types<dim>::forest *
     adapt(typename types<dim>::forest  *parallel_forest,
-          Triangulation<dim, spacedim> *triangulation)
+          Triangulation<dim, spacedim> *triangulation,
+          const std::vector<dealii::types::global_dof_index>
+            &p4est_tree_to_coarse_cell_permutation,
+          const dealii::types::subdomain_id subdomain_id)
     {
       // count how many cells will be refined and coarsened, and allocate that
       // much memory
       RefineAndCoarsenList<dim, spacedim> refine_and_coarsen_list(
         triangulation,
-        triangulation->get_p4est_tree_to_coarse_cell_permutation(),
-        triangulation->locally_owned_subdomain());
+        parallel_forest,
+        p4est_tree_to_coarse_cell_permutation,
+        subdomain_id);
 
       // copy refine and coarsen flags into p4est and execute the refinement
       // and coarsening. this uses the refine_and_coarsen_list just built,
@@ -1118,6 +1136,8 @@ namespace internal
 
       // reset the pointer
       forest_set_user_pointer<dim>(parallel_forest, triangulation);
+
+      return parallel_forest;
     }
 
 
@@ -1300,7 +1320,7 @@ namespace internal
 
     template <int dim>
     void *
-    forest_get_user_pointer(typename types<dim>::forest *forest)
+    forest_get_user_pointer(const typename types<dim>::forest *forest)
     {
       return forest->user_pointer;
     };

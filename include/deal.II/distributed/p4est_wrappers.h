@@ -17,6 +17,9 @@
 
 #include <deal.II/base/geometry_info.h>
 
+#include <type_traits>
+#include <vector>
+
 #ifdef DEAL_II_WITH_P4EST
 
 #  include <deal.II/base/mpi_stub.h>
@@ -566,7 +569,7 @@ namespace internal
     element_new(const typename types<dim>::forest *forest,
                 typename types<dim>::eclass        eclass,
                 typename types<dim>::element      *elements,
-                typename types<dim>::locidx        length);
+                const unsigned int                 length);
 
 
 
@@ -582,8 +585,11 @@ namespace internal
 
     template <int dim, int spacedim>
     typename types<dim>::forest *
-    adapt(typename types<dim>::forest  *forest,
-          Triangulation<dim, spacedim> *triangulation);
+    adapt(typename types<dim>::forest  *parallel_forest,
+          Triangulation<dim, spacedim> *triangulation,
+          const std::vector<dealii::types::global_dof_index>
+            &p4est_tree_to_coarse_cell_permutation,
+          const dealii::types::subdomain_id subdomain_id);
 
     template <int dim>
     typename types<dim>::forest *

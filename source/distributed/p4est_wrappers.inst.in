@@ -45,8 +45,8 @@ for (deal_II_dimension : DIMENSIONS)
         template void
         init_coarse_element<deal_II_dimension>(
           const types<deal_II_dimension>::forest *forest,
-          types<deal_II_dimension>::locidx        local_tree,
-          types<deal_II_dimension>::element       quad);
+          types<deal_II_dimension>::eclass        eclass,
+          types<deal_II_dimension>::element       element);
 
         template types<deal_II_dimension>::gloidx
         tree_get_offset<deal_II_dimension>(
@@ -154,7 +154,7 @@ for (deal_II_dimension : DIMENSIONS)
 
         template void *
         forest_get_user_pointer<deal_II_dimension>(
-          types<deal_II_dimension>::forest *forest);
+          const types<deal_II_dimension>::forest *forest);
 
 
         template void
@@ -193,12 +193,14 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
       \{
 #  if deal_II_dimension > 1
 #    if deal_II_dimension <= deal_II_space_dimension
-        template <>
-        types<deal_II_dimension>::forest *
+        template types<deal_II_dimension>::forest *
         adapt<deal_II_dimension, deal_II_space_dimension>(
-          types<deal_II_dimension>::forest *forest,
+          types<deal_II_dimension>::forest *parallel_forest,
           Triangulation<deal_II_dimension, deal_II_space_dimension>
-            *triangulation);
+            *triangulation,
+          const std::vector<dealii::types::global_dof_index>
+            &p4est_tree_to_coarse_cell_permutation,
+          const dealii::types::subdomain_id subdomain_id);
 
 #    endif
 #  endif

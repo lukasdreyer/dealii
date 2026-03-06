@@ -607,7 +607,8 @@ namespace
       }
   }
 
-#  if 0
+#  ifdef DEAL_II_WITH_P4EST
+  // TODO
   template <int dim>
   class PartitionSearch
   {
@@ -634,12 +635,12 @@ namespace
      */
     static int
     local_element_fn(
-      typename dealii::internal::amr::types<dim>::forest   *forest,
-      typename dealii::internal::amr::types<dim>::topidx    which_tree,
+      typename dealii::internal::amr::types<dim>::forest *forest,
+      typename dealii::internal::amr::types<dim>::topidx  which_tree,
       typename dealii::internal::amr::types<dim>::element element,
-      int                                                   rank_begin,
-      int                                                   rank_end,
-      void                                                 *point);
+      int                                                 rank_begin,
+      int                                                 rank_end,
+      void                                               *point);
 
     /**
      * Callback for point function. Check whether a point is in a (physical)
@@ -655,12 +656,12 @@ namespace
      */
     static int
     local_point_fn(
-      typename dealii::internal::amr::types<dim>::forest   *forest,
-      typename dealii::internal::amr::types<dim>::topidx    which_tree,
+      typename dealii::internal::amr::types<dim>::forest *forest,
+      typename dealii::internal::amr::types<dim>::topidx  which_tree,
       typename dealii::internal::amr::types<dim>::element element,
-      int                                                   rank_begin,
-      int                                                   rank_end,
-      void                                                 *point);
+      int                                                 rank_begin,
+      int                                                 rank_end,
+      void                                               *point);
 
   private:
     /**
@@ -674,8 +675,8 @@ namespace
 
       void
       set_cell_vertices(
-        typename dealii::internal::amr::types<dim>::forest   *forest,
-        typename dealii::internal::amr::types<dim>::topidx    which_tree,
+        typename dealii::internal::amr::types<dim>::forest *forest,
+        typename dealii::internal::amr::types<dim>::topidx  which_tree,
         typename dealii::internal::amr::types<dim>::element element,
         const typename dealii::internal::amr::types<dim>::element_coord
           quad_length_on_level);
@@ -714,8 +715,8 @@ namespace
   template <int dim>
   int
   PartitionSearch<dim>::local_element_fn(
-    typename dealii::internal::amr::types<dim>::forest   *forest,
-    typename dealii::internal::amr::types<dim>::topidx    which_tree,
+    typename dealii::internal::amr::types<dim>::forest *forest,
+    typename dealii::internal::amr::types<dim>::topidx  which_tree,
     typename dealii::internal::amr::types<dim>::element element,
     int /* rank_begin */,
     int /* rank_end */,
@@ -740,9 +741,9 @@ namespace
                 element->level));
 
     this_object->element_data.set_cell_vertices(forest,
-                                                 which_tree,
-                                                 element,
-                                                 quad_length_on_level);
+                                                which_tree,
+                                                element,
+                                                quad_length_on_level);
 
     // from cell vertices we can initialize the mapping
     this_object->element_data.initialize_mapping();
@@ -758,7 +759,7 @@ namespace
   PartitionSearch<dim>::local_point_fn(
     typename dealii::internal::amr::types<dim>::forest *forest,
     typename dealii::internal::amr::types<dim>::topidx /* which_tree */,
-    typename dealii::internal::amr::types<dim>::element  /* element */,
+    typename dealii::internal::amr::types<dim>::element /* element */,
     int   rank_begin,
     int   rank_end,
     void *point)
@@ -880,7 +881,7 @@ namespace
   PartitionSearch<dim>::elementData::elementData()
     : cell_vertices(GeometryInfo<dim>::vertices_per_cell)
     , element_mapping_matrix(GeometryInfo<dim>::vertices_per_cell,
-                              GeometryInfo<dim>::vertices_per_cell)
+                             GeometryInfo<dim>::vertices_per_cell)
     , are_vertices_initialized(false)
     , is_reference_mapping_initialized(false)
   {}
@@ -956,8 +957,8 @@ namespace
   template <>
   void
   PartitionSearch<2>::elementData::set_cell_vertices(
-    typename dealii::internal::amr::types<2>::forest   *forest,
-    typename dealii::internal::amr::types<2>::topidx    which_tree,
+    typename dealii::internal::amr::types<2>::forest *forest,
+    typename dealii::internal::amr::types<2>::topidx  which_tree,
     typename dealii::internal::amr::types<2>::element element,
     const typename dealii::internal::amr::types<2>::element_coord
       quad_length_on_level)
@@ -1040,8 +1041,8 @@ namespace
   template <>
   void
   PartitionSearch<3>::elementData::set_cell_vertices(
-    typename dealii::internal::amr::types<3>::forest   *forest,
-    typename dealii::internal::amr::types<3>::topidx    which_tree,
+    typename dealii::internal::amr::types<3>::forest *forest,
+    typename dealii::internal::amr::types<3>::topidx  which_tree,
     typename dealii::internal::amr::types<3>::element element,
     const typename dealii::internal::amr::types<3>::element_coord
       quad_length_on_level)
@@ -1189,7 +1190,8 @@ namespace
 
 #  endif
 
-#  if 0
+#  ifdef DEAL_II_WITH_P4EST
+  // TODO
   /**
    * A data structure that we use to store the weights of all cells to
    * be used upon partitioning. The class stores them in the order in
@@ -1216,8 +1218,8 @@ namespace
      */
     static int
     cell_weight(
-      typename dealii::internal::amr::types<dim>::forest   *forest,
-      typename dealii::internal::amr::types<dim>::topidx    coarse_cell_index,
+      typename dealii::internal::amr::types<dim>::forest *forest,
+      typename dealii::internal::amr::types<dim>::topidx  coarse_cell_index,
       typename dealii::internal::amr::types<dim>::element element);
 
   private:
@@ -1242,7 +1244,7 @@ namespace
   PartitionWeights<dim, spacedim>::cell_weight(
     typename dealii::internal::amr::types<dim>::forest *forest,
     typename dealii::internal::amr::types<dim>::topidx,
-    typename dealii::internal::amr::types<dim>::element )
+    typename dealii::internal::amr::types<dim>::element)
   {
     // the function gets two additional arguments, but we don't need them
     // since we know in which order p4est will walk through the cells
@@ -1619,7 +1621,8 @@ namespace parallel
 
 
 
-#  if 0
+#  ifdef DEAL_II_WITH_P4EST
+    // TODO
     template <int dim, int spacedim>
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::execute_transfer(
@@ -1638,7 +1641,7 @@ namespace parallel
       // Execute non-blocking fixed size transfer.
       typename dealii::internal::amr::types<dim>::transfer_context *tf_context;
       tf_context = dealii::internal::amr::functions<dim>::transfer_fixed_begin(
-        parallel_forest->global_first_element,
+        parallel_forest->global_first_quadrant,
         previous_global_first_element,
         parallel_forest->mpicomm,
         0,
@@ -1655,7 +1658,7 @@ namespace parallel
           // Execute fixed size transfer of data sizes for variable size
           // transfer.
           dealii::internal::amr::functions<dim>::transfer_fixed(
-            parallel_forest->global_first_element,
+            parallel_forest->global_first_quadrant,
             previous_global_first_element,
             parallel_forest->mpicomm,
             1,
@@ -1680,7 +1683,7 @@ namespace parallel
 
           // Execute variable size transfer.
           dealii::internal::amr::functions<dim>::transfer_custom(
-            parallel_forest->global_first_element,
+            parallel_forest->global_first_quadrant,
             previous_global_first_element,
             parallel_forest->mpicomm,
             1,
@@ -1695,7 +1698,7 @@ namespace parallel
           this->data_serializer.src_data_variable.clear();
           this->data_serializer.src_data_variable.shrink_to_fit();
         }
-      }
+    }
 #  endif
 
 
@@ -1737,7 +1740,8 @@ namespace parallel
 
 
 
-#  if 0 // TODO
+#  ifdef DEAL_II_WITH_P4EST
+    // TODO
     template <int dim, int spacedim>
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::save(
@@ -1778,8 +1782,8 @@ namespace parallel
         }
 
       // Save cell attached data.
-      this->save_attached_data(parallel_forest->global_first_element[myrank],
-                               parallel_forest->global_num_elements,
+      this->save_attached_data(parallel_forest->global_first_quadrant[myrank],
+                               parallel_forest->global_num_quadrants,
                                file_basename);
 
       dealii::internal::amr::functions<dim>::save(file_basename.c_str(),
@@ -1792,7 +1796,8 @@ namespace parallel
 #  endif
 
 
-#  if 0 // TODO
+#  ifdef DEAL_II_WITH_P4EST
+    // TODO
     template <int dim, int spacedim>
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::load(const std::string &file_basename)
@@ -1858,9 +1863,9 @@ namespace parallel
       // We partition the p4est mesh that it conforms to the requirements of the
       // deal.II mesh, i.e., partition for coarsening.
       // This function call is optional.
-      parallel_forest = dealii::internal::amr::partition<dim>(
-        parallel_forest,
-        /* weight_callback */ nullptr);
+      parallel_forest =
+        dealii::internal::amr::partition<dim>(parallel_forest,
+                                              /* weight_callback */ nullptr);
 
       try
         {
@@ -1874,9 +1879,10 @@ namespace parallel
         }
 
       // Load attached cell data, if any was stored.
-      this->load_attached_data(parallel_forest->global_first_element[myrank],
-                               parallel_forest->global_num_elements,
-                               dealii::internal::amr::get_num_leafs<dim>(parallel_forest),
+      this->load_attached_data(parallel_forest->global_first_quadrant[myrank],
+                               parallel_forest->global_num_quadrants,
+                               dealii::internal::amr::get_num_leafs<dim>(
+                                 parallel_forest),
                                file_basename,
                                attached_count_fixed,
                                attached_count_variable);
@@ -2943,7 +2949,8 @@ namespace parallel
 
 
 
-#  if 0
+#  ifdef DEAL_II_WITH_P4EST
+    // TODO
     template <int dim, int spacedim>
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     types::subdomain_id
@@ -3112,7 +3119,10 @@ namespace parallel
         }
 
       parallel_forest =
-        dealii::internal::amr::adapt<dim>(parallel_forest, this);
+        dealii::internal::amr::adapt<dim>(parallel_forest,
+                                          this,
+                                          p4est_tree_to_coarse_cell_permutation,
+                                          this->locally_owned_subdomain());
 
 
       // enforce 2:1 hanging node condition
@@ -3154,7 +3164,7 @@ namespace parallel
               /* weight_callback */ nullptr);
           else
             {
-#  if 0
+#  ifdef DEAL_II_WITH_P4EST
               // get cell weights for a weighted repartitioning.
               const std::vector<unsigned int> cell_weights = get_cell_weights();
 
@@ -3171,18 +3181,21 @@ namespace parallel
 
               // attach (temporarily) a pointer to the cell weights through
               // p4est's user_pointer object
-              Assert(dealii::internal::amr::forest_get_user_pointer<dim>(parallel_forest) == this, ExcInternalError());
-      dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest, &partition_weights);
+              Assert(dealii::internal::amr::forest_get_user_pointer<dim>(
+                       parallel_forest) == this,
+                     ExcInternalError());
+              dealii::internal::amr::forest_set_user_pointer<dim>(
+                parallel_forest, &partition_weights);
 
-             parallel_forest = dealii::internal::amr::partition<dim>(
+              parallel_forest = dealii::internal::amr::partition<dim>(
                 parallel_forest,
                 /* weight_callback */
                 &PartitionWeights<dim, spacedim>::cell_weight);
 
               // release data
-              //TODO: reset element data?
-              dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest,
-                                                                nullptr);
+              // TODO: reset element data?
+              dealii::internal::amr::forest_set_user_pointer<dim>(
+                parallel_forest, nullptr);
 #  endif
             }
         }
@@ -3316,12 +3329,13 @@ namespace parallel
       std::vector<typename dealii::internal::amr::types<dim>::gloidx>
         previous_global_first_element;
 
-#  if 0
+#  ifdef DEAL_II_WITH_P4EST
+      // TODO
       if (this->cell_attached_data.n_attached_data_sets > 0)
         {
           previous_global_first_element.resize(parallel_forest->mpisize + 1);
           std::memcpy(previous_global_first_element.data(),
-                      parallel_forest->global_first_element,
+                      parallel_forest->global_first_quadrant,
                       sizeof(
                         typename dealii::internal::amr::types<dim>::gloidx) *
                         (parallel_forest->mpisize + 1));
@@ -3338,8 +3352,9 @@ namespace parallel
         }
       else
         {
-#  if 0
-          // get cell weights for a weighted repartitioning.
+#  ifdef DEAL_II_WITH_P4EST
+          // TODO
+          //  get cell weights for a weighted repartitioning.
           const std::vector<unsigned int> cell_weights = get_cell_weights();
 
           // verify that the global sum of weights is larger than 0
@@ -3355,16 +3370,20 @@ namespace parallel
 
           // attach (temporarily) a pointer to the cell weights through
           // p4est's user_pointer object
-          Assert(dealii::internal::amr::forest_get_user_pointer<dim>(parallel_forest) == this, ExcInternalError());
-      dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest, &partition_weights);
+          Assert(dealii::internal::amr::forest_get_user_pointer<dim>(
+                   parallel_forest) == this,
+                 ExcInternalError());
+          dealii::internal::amr::forest_set_user_pointer<dim>(
+            parallel_forest, &partition_weights);
 
-         parallel_forest= dealii::internal::amr::partition<dim>(
+          parallel_forest = dealii::internal::amr::partition<dim>(
             parallel_forest,
             /* weight_callback */
             &PartitionWeights<dim, spacedim>::cell_weight);
 
           // reset the user pointer to its previous state
-        dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest, this);
+          dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest,
+                                                              this);
 #  endif
         }
 
@@ -3517,7 +3536,8 @@ namespace parallel
     }
 
 
-#  if 0
+#  ifdef DEAL_II_WITH_P4EST
+    // TODO
     template <int dim, int spacedim>
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::add_periodicity(
@@ -3773,7 +3793,8 @@ namespace parallel
           parallel_forest =
             dealii::internal::amr::functions<dim>::copy_forest(temp_forest,
                                                                false);
-#  if 0 // TODO
+#  ifdef DEAL_II_WITH_P4EST
+          // TODO
           parallel_forest->connectivity = connectivity;
 #  endif
           dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest,
