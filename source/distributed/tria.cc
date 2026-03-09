@@ -371,7 +371,7 @@ namespace
     const typename dealii::internal::amr::types<dim>::tree      tree,
     const typename dealii::internal::amr::types<dim>::locidx   &tree_index,
     const typename Triangulation<dim, spacedim>::cell_iterator &dealii_cell,
-    const typename dealii::internal::amr::types<dim>::element   amr_cell,
+    const typename dealii::internal::amr::types<dim>::element  &amr_cell,
     const typename dealii::internal::amr::types<dim>::forest   *forest,
     const types::subdomain_id                                   my_subdomain,
     const std::vector<std::vector<bool>>                       &marked_vertices)
@@ -436,7 +436,7 @@ namespace
         if (used)
           {
             int owner = dealii::internal::amr::comm_find_owner<dim>(
-              forest, tree_index, amr_cell, my_subdomain);
+              forest, tree_index, &amr_cell, my_subdomain);
             Assert((owner != -2) && (owner != -1),
                    ExcMessage("p4est should know the owner."));
             dealii_cell->set_level_subdomain_id(owner);
@@ -450,16 +450,10 @@ namespace
         typename dealii::internal::amr::types<dim>::element
           p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-        dealii::internal::amr::element_new<dim>(
-          forest,
-          eclass,
-          p4est_child,
-          GeometryInfo<dim>::max_children_per_cell);
-
 
         dealii::internal::amr::element_children<dim>(forest,
                                                      eclass,
-                                                     amr_cell,
+                                                     &amr_cell,
                                                      p4est_child);
 
         for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
@@ -474,12 +468,6 @@ namespace
               my_subdomain,
               marked_vertices);
           }
-
-        dealii::internal::amr::element_destroy<dim>(
-          forest,
-          eclass,
-          p4est_child,
-          GeometryInfo<dim>::max_children_per_cell);
       }
   }
 
@@ -489,13 +477,13 @@ namespace
   match_tree_recursively(
     const typename dealii::internal::amr::types<dim>::tree      tree,
     const typename Triangulation<dim, spacedim>::cell_iterator &dealii_cell,
-    const typename dealii::internal::amr::types<dim>::element   amr_cell,
+    const typename dealii::internal::amr::types<dim>::element  &amr_cell,
     const typename dealii::internal::amr::types<dim>::forest   *forest,
     const types::subdomain_id                                   my_subdomain)
   {
     typename dealii::internal::amr::types<dim>::eclass eclass =
       dealii::internal::amr::get_eclass_from_tree<dim>(tree);
-    if (dealii::internal::amr::cell_exists_in_tree<dim>(tree, amr_cell))
+    if (dealii::internal::amr::cell_exists_in_tree<dim>(tree, &amr_cell))
       {
         // yes, cell found in local part of p4est
         delete_all_children<dim, spacedim>(dealii_cell);
@@ -516,23 +504,16 @@ namespace
             typename dealii::internal::amr::types<dim>::element
               p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-            dealii::internal::amr::element_new<dim>(
-              forest,
-              eclass,
-              p4est_child,
-              GeometryInfo<dim>::max_children_per_cell);
-
-
             dealii::internal::amr::element_children<dim>(forest,
                                                          eclass,
-                                                         amr_cell,
+                                                         &amr_cell,
                                                          p4est_child);
 
             for (unsigned int c = 0;
                  c < GeometryInfo<dim>::max_children_per_cell;
                  ++c)
               if (dealii::internal::amr::element_overlaps_tree<dim>(
-                    forest, tree, p4est_child[c]) == false)
+                    forest, tree, p4est_child + c) == false)
                 {
                   // no, this child is locally not available in the p4est.
                   // delete all its children but, because this may not be
@@ -552,12 +533,6 @@ namespace
                                                         forest,
                                                         my_subdomain);
                 }
-
-            dealii::internal::amr::element_destroy<dim>(
-              forest,
-              eclass,
-              p4est_child,
-              GeometryInfo<dim>::max_children_per_cell);
           }
       }
   }
@@ -566,17 +541,17 @@ namespace
   template <int dim, int spacedim>
   void
   match_element(
-    const dealii::Triangulation<dim, spacedim>               *tria,
-    unsigned int                                              dealii_index,
-    const typename dealii::internal::amr::types<dim>::forest *forest,
-    const typename dealii::internal::amr::types<dim>::element ghost_element,
-    const typename dealii::internal::amr::types<dim>::eclass  ghost_eclass,
-    types::subdomain_id                                       ghost_owner)
+    const dealii::Triangulation<dim, spacedim>                *tria,
+    unsigned int                                               dealii_index,
+    const typename dealii::internal::amr::types<dim>::forest  *forest,
+    const typename dealii::internal::amr::types<dim>::element &ghost_element,
+    const typename dealii::internal::amr::types<dim>::eclass   ghost_eclass,
+    types::subdomain_id                                        ghost_owner)
   {
     const unsigned int l =
       dealii::internal::amr::element_level<dim>(forest,
                                                 ghost_eclass,
-                                                ghost_element);
+                                                &ghost_element);
     // TODO: dealii type
     for (unsigned int i = 0; i < l; ++i)
       {
@@ -591,7 +566,7 @@ namespace
           }
 
         const int child_id = dealii::internal::amr::element_ancestor_id<dim>(
-          forest, ghost_eclass, ghost_element, i + 1);
+          forest, ghost_eclass, &ghost_element, i + 1);
         dealii_index = cell->child_index(child_id);
       }
 
@@ -635,12 +610,12 @@ namespace
      */
     static int
     local_element_fn(
-      typename dealii::internal::amr::types<dim>::forest *forest,
-      typename dealii::internal::amr::types<dim>::topidx  which_tree,
-      typename dealii::internal::amr::types<dim>::element element,
-      int                                                 rank_begin,
-      int                                                 rank_end,
-      void                                               *point);
+      typename dealii::internal::amr::types<dim>::forest  *forest,
+      typename dealii::internal::amr::types<dim>::topidx   which_tree,
+      typename dealii::internal::amr::types<dim>::element *element,
+      int                                                  rank_begin,
+      int                                                  rank_end,
+      void                                                *point);
 
     /**
      * Callback for point function. Check whether a point is in a (physical)
@@ -656,12 +631,12 @@ namespace
      */
     static int
     local_point_fn(
-      typename dealii::internal::amr::types<dim>::forest *forest,
-      typename dealii::internal::amr::types<dim>::topidx  which_tree,
-      typename dealii::internal::amr::types<dim>::element element,
-      int                                                 rank_begin,
-      int                                                 rank_end,
-      void                                               *point);
+      typename dealii::internal::amr::types<dim>::forest  *forest,
+      typename dealii::internal::amr::types<dim>::topidx   which_tree,
+      typename dealii::internal::amr::types<dim>::element *element,
+      int                                                  rank_begin,
+      int                                                  rank_end,
+      void                                                *point);
 
   private:
     /**
@@ -675,9 +650,9 @@ namespace
 
       void
       set_cell_vertices(
-        typename dealii::internal::amr::types<dim>::forest *forest,
-        typename dealii::internal::amr::types<dim>::topidx  which_tree,
-        typename dealii::internal::amr::types<dim>::element element,
+        typename dealii::internal::amr::types<dim>::forest  *forest,
+        typename dealii::internal::amr::types<dim>::topidx   which_tree,
+        typename dealii::internal::amr::types<dim>::element *element,
         const typename dealii::internal::amr::types<dim>::element_coord
           quad_length_on_level);
 
@@ -715,9 +690,9 @@ namespace
   template <int dim>
   int
   PartitionSearch<dim>::local_element_fn(
-    typename dealii::internal::amr::types<dim>::forest *forest,
-    typename dealii::internal::amr::types<dim>::topidx  which_tree,
-    typename dealii::internal::amr::types<dim>::element element,
+    typename dealii::internal::amr::types<dim>::forest  *forest,
+    typename dealii::internal::amr::types<dim>::topidx   which_tree,
+    typename dealii::internal::amr::types<dim>::element *element,
     int /* rank_begin */,
     int /* rank_end */,
     void * /* this is always nullptr */ point)
@@ -759,7 +734,7 @@ namespace
   PartitionSearch<dim>::local_point_fn(
     typename dealii::internal::amr::types<dim>::forest *forest,
     typename dealii::internal::amr::types<dim>::topidx /* which_tree */,
-    typename dealii::internal::amr::types<dim>::element /* element */,
+    typename dealii::internal::amr::types<dim>::element * /* element */,
     int   rank_begin,
     int   rank_end,
     void *point)
@@ -957,9 +932,9 @@ namespace
   template <>
   void
   PartitionSearch<2>::elementData::set_cell_vertices(
-    typename dealii::internal::amr::types<2>::forest *forest,
-    typename dealii::internal::amr::types<2>::topidx  which_tree,
-    typename dealii::internal::amr::types<2>::element element,
+    typename dealii::internal::amr::types<2>::forest  *forest,
+    typename dealii::internal::amr::types<2>::topidx   which_tree,
+    typename dealii::internal::amr::types<2>::element *element,
     const typename dealii::internal::amr::types<2>::element_coord
       quad_length_on_level)
   {
@@ -1041,9 +1016,9 @@ namespace
   template <>
   void
   PartitionSearch<3>::elementData::set_cell_vertices(
-    typename dealii::internal::amr::types<3>::forest *forest,
-    typename dealii::internal::amr::types<3>::topidx  which_tree,
-    typename dealii::internal::amr::types<3>::element element,
+    typename dealii::internal::amr::types<3>::forest  *forest,
+    typename dealii::internal::amr::types<3>::topidx   which_tree,
+    typename dealii::internal::amr::types<3>::element *element,
     const typename dealii::internal::amr::types<3>::element_coord
       quad_length_on_level)
   {
@@ -1218,9 +1193,9 @@ namespace
      */
     static int
     cell_weight(
-      typename dealii::internal::amr::types<dim>::forest *forest,
-      typename dealii::internal::amr::types<dim>::topidx  coarse_cell_index,
-      typename dealii::internal::amr::types<dim>::element element);
+      typename dealii::internal::amr::types<dim>::forest  *forest,
+      typename dealii::internal::amr::types<dim>::topidx   coarse_cell_index,
+      typename dealii::internal::amr::types<dim>::element *element);
 
   private:
     std::vector<unsigned int>                 cell_weights_list;
@@ -1244,7 +1219,7 @@ namespace
   PartitionWeights<dim, spacedim>::cell_weight(
     typename dealii::internal::amr::types<dim>::forest *forest,
     typename dealii::internal::amr::types<dim>::topidx,
-    typename dealii::internal::amr::types<dim>::element)
+    typename dealii::internal::amr::types<dim>::element *)
   {
     // the function gets two additional arguments, but we don't need them
     // since we know in which order p4est will walk through the cells
@@ -1297,7 +1272,7 @@ namespace
     const CellStatus                                            status)
   {
     const unsigned int local_element_index =
-      dealii::internal::amr::tree_get_offset<dim>(tree) + idx; // TODO: Wrapper
+      dealii::internal::amr::tree_get_offset<dim>(tree) + idx;
 
     // check if we will be writing into valid memory
     Assert(local_element_index < cell_rel.size(), ExcInternalError());
@@ -1324,17 +1299,18 @@ namespace
     std::vector<cell_relation_t<dim, spacedim>>                &cell_rel,
     const typename dealii::internal::amr::types<dim>::locidx    ltreeid,
     const typename Triangulation<dim, spacedim>::cell_iterator &dealii_cell,
-    const typename dealii::internal::amr::types<dim>::element   amr_cell)
+    const typename dealii::internal::amr::types<dim>::element  &amr_cell)
   {
     typename dealii::internal::amr::types<dim>::eclass eclass =
       dealii::internal::amr::get_eclass<dim>(forest, ltreeid);
     // find index of amr_cell in the elements array of the corresponding tree
-    const int idx =
-      dealii::internal::amr::leaf_index_in_tree<dim>(forest, ltreeid, amr_cell);
+    const int idx = dealii::internal::amr::leaf_index_in_tree<dim>(forest,
+                                                                   ltreeid,
+                                                                   &amr_cell);
     const typename dealii::internal::amr::types<dim>::tree tree =
       dealii::internal::amr::forest_get_tree<dim>(forest, ltreeid);
     if (idx == -1 && (dealii::internal::amr::element_overlaps_tree<dim>(
-                        forest, tree, amr_cell) == false))
+                        forest, tree, &amr_cell) == false))
       // this element and none of its children belong to us.
       return;
 
@@ -1346,15 +1322,9 @@ namespace
         typename dealii::internal::amr::types<dim>::element
           p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-        dealii::internal::amr::element_new<dim>(
-          forest,
-          eclass,
-          p4est_child,
-          GeometryInfo<dim>::max_children_per_cell);
-
         dealii::internal::amr::element_children<dim>(forest,
                                                      eclass,
-                                                     amr_cell,
+                                                     &amr_cell,
                                                      p4est_child);
 
         for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
@@ -1363,12 +1333,6 @@ namespace
             update_cell_relations_recursively<dim, spacedim>(
               forest, cell_rel, ltreeid, dealii_cell->child(c), p4est_child[c]);
           }
-
-        dealii::internal::amr::element_destroy<dim>(
-          forest,
-          eclass,
-          p4est_child,
-          GeometryInfo<dim>::max_children_per_cell);
       }
     else if (!p4est_has_children && !dealii_cell->has_children())
       {
@@ -1387,15 +1351,10 @@ namespace
         // generate its children, and store information in those
         typename dealii::internal::amr::types<dim>::element
           p4est_child[GeometryInfo<dim>::max_children_per_cell];
-        dealii::internal::amr::element_new<dim>(
-          forest,
-          eclass,
-          p4est_child,
-          GeometryInfo<dim>::max_children_per_cell);
 
         dealii::internal::amr::element_children<dim>(forest,
                                                      eclass,
-                                                     amr_cell,
+                                                     &amr_cell,
                                                      p4est_child);
 
         // mark first child with CellStatus::cell_will_be_refined and the
@@ -1409,7 +1368,7 @@ namespace
             const int idx_in_tree =
               dealii::internal::amr::leaf_index_in_tree<dim>(forest,
                                                              ltreeid,
-                                                             p4est_child[i]);
+                                                             p4est_child + i);
 
             // only put status on first child, partiiton for coarsening
             // gurantees that info can be distributed to other children
@@ -1419,13 +1378,6 @@ namespace
             add_single_cell_relation<dim, spacedim>(
               cell_rel, tree, idx_in_tree, dealii_cell, cell_status);
           }
-
-
-        dealii::internal::amr::element_destroy<dim>(
-          forest,
-          eclass,
-          p4est_child,
-          GeometryInfo<dim>::max_children_per_cell);
       }
     else // based on the conditions above, we know that amr_cell has no
          // children, and the dealii_cell does
@@ -2627,80 +2579,54 @@ namespace parallel
                     dealii::internal::amr::get_eclass<dim>(parallel_forest,
                                                            tree_index);
 
-                  dealii::internal::amr::element_new<dim>(parallel_forest,
-                                                          eclass,
-                                                          &p4est_coarse_cell,
-                                                          1);
 
                   dealii::internal::amr::init_coarse_element<dim>(
-                    parallel_forest, eclass, p4est_coarse_cell);
+                    parallel_forest, eclass, &p4est_coarse_cell);
 
                   match_tree_recursively<dim, spacedim>(tree,
                                                         cell,
                                                         p4est_coarse_cell,
                                                         parallel_forest,
                                                         this->my_subdomain);
-
-                  dealii::internal::amr::element_destroy<dim>(
-                    parallel_forest, eclass, &p4est_coarse_cell, 1);
                 }
             }
 
-          // check mesh for ghost cells, refine as necessary. iterate over
-          // every ghostelement, find corresponding deal coarsecell and
-          // recurse.
-          types::subdomain_id                                ghost_owner = 0;
-          typename dealii::internal::amr::types<dim>::locidx num_ghost_trees =
-            0; // TODO
-          typename dealii::internal::amr::types<dim>::locidx
-            num_ghosts_in_tree = 0;
+            // check mesh for ghost cells, refine as necessary. iterate over
+            // every ghostelement, find corresponding deal coarsecell and
+            // recurse.
+#  ifdef DEAL_II_WITH_P4EST
+          typename dealii::internal::amr::types<dim>::element
+                             *local_ghost_element;
+          types::subdomain_id ghost_owner                               = 0;
+          typename dealii::internal::amr::types<dim>::topidx ghost_tree = 0;
 
-
-          for (typename dealii::internal::amr::types<dim>::locidx
-                 local_ghost_tree_idx = 0;
-               local_ghost_tree_idx < num_ghost_trees;
-               local_ghost_tree_idx++)
+          for (unsigned int g_idx = 0;
+               g_idx < parallel_ghost->ghosts.elem_count;
+               ++g_idx)
             {
-              typename dealii::internal::amr::types<dim>::topidx
-                global_tree_idx = 0; // TODO;
+              while (g_idx >= static_cast<unsigned int>(
+                                parallel_ghost->proc_offsets[ghost_owner + 1]))
+                ++ghost_owner;
+              while (g_idx >= static_cast<unsigned int>(
+                                parallel_ghost->tree_offsets[ghost_tree + 1]))
+                ++ghost_tree;
+
+              local_ghost_element = static_cast<
+                typename dealii::internal::amr::types<dim>::element *>(
+                sc_array_index(&parallel_ghost->ghosts, g_idx));
+
+              unsigned int coarse_cell_index =
+                p4est_tree_to_coarse_cell_permutation[ghost_tree];
               typename dealii::internal::amr::types<dim>::eclass ghost_eclass =
-                dealii::internal::amr::get_ghost_eclass<dim>(
-                  parallel_forest, local_ghost_tree_idx);
+                0;
 
-              num_ghosts_in_tree = 0;
-              //                t8_forest_ghost_tree_num_leaf_elements(parallel_forest,
-              //                                                  local_ghost_tree_idx);
-              for (typename dealii::internal::amr::types<dim>::locidx
-                     local_ghost_element_idx = 0;
-                   local_ghost_element_idx < num_ghosts_in_tree;
-                   local_ghost_element_idx++)
-                {
-                  typename dealii::internal::amr::types<dim>::element
-                    local_ghost_element =
-                      dealii::internal::amr::get_ghost_elem_and_owner<dim>(
-                        parallel_forest,
-                        global_tree_idx,
-                        local_ghost_element_idx,
-                        ghost_eclass,
-                        ghost_owner);
-#  if 0 // TODO
-
-                  ghost_owner =
-                    t8_forest_element_find_owner(parallel_forest,
-                                                 global_tree_idx,
-                                                 local_ghost_element,
-                                                 ghost_eclass);
 #  endif
-                  unsigned int coarse_cell_index =
-                    p4est_tree_to_coarse_cell_permutation[global_tree_idx];
-
-                  match_element<dim, spacedim>(this,
-                                               coarse_cell_index,
-                                               parallel_forest,
-                                               local_ghost_element,
-                                               ghost_eclass,
-                                               ghost_owner);
-                }
+              match_element<dim, spacedim>(this,
+                                           coarse_cell_index,
+                                           parallel_forest,
+                                           *local_ghost_element,
+                                           ghost_eclass,
+                                           ghost_owner);
             }
 
 
@@ -2780,9 +2706,10 @@ namespace parallel
                   cell->subdomain_id() != numbers::artificial_subdomain_id)
                 ++num_ghosts;
             }
-
-          //          Assert(num_ghosts == parallel_ghost->ghosts.elem_count,
-          // TODO                 ExcInternalError());
+#  ifdef DEAL_II_WITH_P4EST
+          Assert(num_ghosts == parallel_ghost->ghosts.elem_count,
+                 ExcInternalError());
+#  endif
         }
 
 
@@ -2841,12 +2768,8 @@ namespace parallel
                 dealii::internal::amr::get_eclass<dim>(parallel_forest,
                                                        tree_index);
 
-              dealii::internal::amr::element_new<dim>(parallel_forest,
-                                                      eclass,
-                                                      &p4est_coarse_cell,
-                                                      1);
               dealii::internal::amr::init_coarse_element<dim>(
-                parallel_forest, eclass, p4est_coarse_cell);
+                parallel_forest, eclass, &p4est_coarse_cell);
 
 
               determine_level_subdomain_id_recursively<dim, spacedim>(
@@ -2857,12 +2780,6 @@ namespace parallel
                 parallel_forest,
                 this->my_subdomain,
                 marked_vertices);
-
-
-              dealii::internal::amr::element_destroy<dim>(parallel_forest,
-                                                          eclass,
-                                                          &p4est_coarse_cell,
-                                                          1);
             }
 
           // step 3: make sure we have the parent of our level cells
@@ -3849,14 +3766,9 @@ namespace parallel
           const auto eclass =
             dealii::internal::amr::get_eclass<dim>(parallel_forest, ltreeid);
 
-          dealii::internal::amr::element_new<dim>(parallel_forest,
-                                                  eclass,
-                                                  &p4est_coarse_cell,
-                                                  1);
-
           dealii::internal::amr::init_coarse_element<dim>(parallel_forest,
                                                           eclass,
-                                                          p4est_coarse_cell);
+                                                          &p4est_coarse_cell);
 
 
           update_cell_relations_recursively<dim, spacedim>(
@@ -3865,12 +3777,6 @@ namespace parallel
             ltreeid,
             cell,
             p4est_coarse_cell);
-
-
-          dealii::internal::amr::element_destroy<dim>(parallel_forest,
-                                                      eclass,
-                                                      &p4est_coarse_cell,
-                                                      1);
         }
     }
 

@@ -52,7 +52,7 @@ namespace
 {
   /**
    * A data structure that we use to store which cells (indicated by
-   * dealii::internal::amr::types<dim>::element objects) shall be refined and
+   * dealii::internal::amr::types<dim>::element *objects) shall be refined and
    * which shall be coarsened.
    */
   template <int dim, int spacedim>
@@ -76,9 +76,9 @@ namespace
      */
     static int
     refine_callback(
-      typename dealii::internal::amr::types<dim>::forest *forest,
-      typename dealii::internal::amr::types<dim>::topidx  coarse_cell_index,
-      typename dealii::internal::amr::types<dim>::element element);
+      typename dealii::internal::amr::types<dim>::forest  *forest,
+      typename dealii::internal::amr::types<dim>::topidx   coarse_cell_index,
+      typename dealii::internal::amr::types<dim>::element *element);
 
     /**
      * Same as the refine_callback function, but return whether all four of
@@ -86,9 +86,9 @@ namespace
      */
     static int
     coarsen_callback(
-      typename dealii::internal::amr::types<dim>::forest *forest,
-      typename dealii::internal::amr::types<dim>::topidx  coarse_cell_index,
-      typename dealii::internal::amr::types<dim>::element children[]);
+      typename dealii::internal::amr::types<dim>::forest  *forest,
+      typename dealii::internal::amr::types<dim>::topidx   coarse_cell_index,
+      typename dealii::internal::amr::types<dim>::element *children[]);
 
     bool
     pointers_are_at_end() const;
@@ -109,7 +109,7 @@ namespace
       const typename dealii::internal::amr::types<dim>::forest   *forest,
       const typename dealii::internal::amr::types<dim>::eclass    eclass,
       const typename Triangulation<dim, spacedim>::cell_iterator &cell,
-      const typename dealii::internal::amr::types<dim>::element   amr_cell,
+      const typename dealii::internal::amr::types<dim>::element  &amr_cell,
       const types::subdomain_id                                   myid);
   };
 
@@ -170,16 +170,11 @@ namespace
         typename dealii::internal::amr::types<dim>::eclass  eclass =
           dealii::internal::amr::get_eclass<dim>(forest, c);
 
-        dealii::internal::amr::element_new<dim>(forest, eclass, &amr_cell, 1);
         dealii::internal::amr::init_coarse_element<dim>(forest,
                                                         eclass,
-                                                        amr_cell);
-        amr_cell->p.which_tree = c;
+                                                        &amr_cell);
+        amr_cell.p.which_tree = c;
         build_lists(forest, eclass, cell, amr_cell, my_subdomain);
-        dealii::internal::amr::element_destroy<dim>(forest,
-                                                    eclass,
-                                                    &amr_cell,
-                                                    1);
       }
 
 
@@ -188,10 +183,10 @@ namespace
 
     // make sure that our ordering in fact worked
     for (unsigned int i = 1; i < refine_list.size(); ++i)
-      Assert(refine_list[i]->p.which_tree >= refine_list[i - 1]->p.which_tree,
+      Assert(refine_list[i].p.which_tree >= refine_list[i - 1].p.which_tree,
              ExcInternalError());
     for (unsigned int i = 1; i < coarsen_list.size(); ++i)
-      Assert(coarsen_list[i]->p.which_tree >= coarsen_list[i - 1]->p.which_tree,
+      Assert(coarsen_list[i].p.which_tree >= coarsen_list[i - 1].p.which_tree,
              ExcInternalError());
 
     current_refine_pointer  = refine_list.begin();
@@ -206,7 +201,7 @@ namespace
     const typename dealii::internal::amr::types<dim>::forest   *forest,
     const typename dealii::internal::amr::types<dim>::eclass    eclass,
     const typename Triangulation<dim, spacedim>::cell_iterator &cell,
-    const typename dealii::internal::amr::types<dim>::element   amr_cell,
+    const typename dealii::internal::amr::types<dim>::element  &amr_cell,
     const types::subdomain_id                                   my_subdomain)
   {
     if (cell->is_active())
@@ -214,7 +209,17 @@ namespace
         if (cell->subdomain_id() == my_subdomain)
           {
             if (cell->refine_flag_set())
-              refine_list.push_back(amr_cell);
+              {
+                std::cout << "set refine flag for cell " << cell->id()
+                          << std::endl;
+                if constexpr (dim == 2)
+                  {
+                    p4est_quadrant_print(SC_LP_DEBUG, &amr_cell);
+                  }
+                refine_list.push_back(amr_cell);
+                std::cout << "num elems to refine:" << refine_list.size()
+                          << std::endl;
+              }
             else if (cell->coarsen_flag_set())
               coarsen_list.push_back(amr_cell);
           }
@@ -224,19 +229,14 @@ namespace
         typename dealii::internal::amr::types<dim>::element
           p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
-        dealii::internal::amr::element_new<dim>(
-          forest,
-          eclass,
-          p4est_child,
-          GeometryInfo<dim>::max_children_per_cell);
         dealii::internal::amr::element_children<dim>(forest,
                                                      eclass,
-                                                     amr_cell,
+                                                     &amr_cell,
                                                      p4est_child);
         for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
              ++c)
           {
-            p4est_child[c]->p.which_tree = amr_cell->p.which_tree;
+            p4est_child[c].p.which_tree = amr_cell.p.which_tree;
             build_lists(
               forest, eclass, cell->child(c), p4est_child[c], my_subdomain);
           }
@@ -247,9 +247,9 @@ namespace
   template <int dim, int spacedim>
   int
   RefineAndCoarsenList<dim, spacedim>::refine_callback(
-    typename dealii::internal::amr::types<dim>::forest *forest,
-    typename dealii::internal::amr::types<dim>::topidx  coarse_cell_index,
-    typename dealii::internal::amr::types<dim>::element element)
+    typename dealii::internal::amr::types<dim>::forest  *forest,
+    typename dealii::internal::amr::types<dim>::topidx   coarse_cell_index,
+    typename dealii::internal::amr::types<dim>::element *element)
   {
     RefineAndCoarsenList<dim, spacedim> *this_object =
       reinterpret_cast<RefineAndCoarsenList<dim, spacedim> *>(
@@ -261,37 +261,50 @@ namespace
       return 0;
 
     Assert(coarse_cell_index <=
-             (*(this_object->current_refine_pointer))->p.which_tree,
+             (*(this_object->current_refine_pointer)).p.which_tree,
            ExcInternalError());
 
     // if p4est hasn't yet reached the tree of the next flagged cell the
     // current cell can't be flagged for refinement
     if (coarse_cell_index <
-        (*(this_object->current_refine_pointer))->p.which_tree)
-      return 0;
+        (*(this_object->current_refine_pointer)).p.which_tree)
+      {
+        std::cout << "!!!!!!!!!!!" << std::endl;
+        return 0;
+      }
 
     // now we're in the right tree in the forest
     Assert(coarse_cell_index <=
-             (*(this_object->current_refine_pointer))->p.which_tree,
+             (*(this_object->current_refine_pointer)).p.which_tree,
            ExcInternalError());
 
     // make sure that the p4est loop over cells hasn't gotten ahead of our own
     // pointer
     Assert(dealii::internal::amr::functions<dim>::element_compare(
-             element, *this_object->current_refine_pointer) <= 0,
+             element, &*this_object->current_refine_pointer) <= 0,
            ExcInternalError());
+#  if 0
+if constexpr (dim==2){
+  p4est_quadrant_print(SC_LP_INFO, element);
+  p4est_quadrant_print(SC_LP_INFO, &*this_object->current_refine_pointer);
+}
+#  endif
 
     // now, if the p4est cell is one in the list, it is supposed to be refined
     if (dealii::internal::amr::element_is_equal<dim>(
           forest,
           0,
           element,
-          *this_object->current_refine_pointer)) // TODO get eclass
+          &*this_object->current_refine_pointer)) // TODO get eclass
       {
+        std::cout << "decided to refine object with pointer"
+                  << std::addressof(*this_object->current_refine_pointer)
+                  << std::endl;
         ++this_object->current_refine_pointer;
         return 1;
       }
 
+    std::cout << "do not refine element" << std::endl;
     // p4est cell is not in list
     return 0;
   }
@@ -301,9 +314,9 @@ namespace
   template <int dim, int spacedim>
   int
   RefineAndCoarsenList<dim, spacedim>::coarsen_callback(
-    typename dealii::internal::amr::types<dim>::forest *forest,
-    typename dealii::internal::amr::types<dim>::topidx  coarse_cell_index,
-    typename dealii::internal::amr::types<dim>::element children[])
+    typename dealii::internal::amr::types<dim>::forest  *forest,
+    typename dealii::internal::amr::types<dim>::topidx   coarse_cell_index,
+    typename dealii::internal::amr::types<dim>::element *children[])
   {
     RefineAndCoarsenList<dim, spacedim> *this_object =
       reinterpret_cast<RefineAndCoarsenList<dim, spacedim> *>(
@@ -315,18 +328,18 @@ namespace
       return 0;
 
     Assert(coarse_cell_index <=
-             (*(this_object->current_coarsen_pointer))->p.which_tree,
+             (*(this_object->current_coarsen_pointer)).p.which_tree,
            ExcInternalError());
 
     // if p4est hasn't yet reached the tree of the next flagged cell the
     // current cell can't be flagged for coarsening
     if (coarse_cell_index <
-        (*(this_object->current_coarsen_pointer))->p.which_tree)
+        (*(this_object->current_coarsen_pointer)).p.which_tree)
       return 0;
 
     // now we're in the right tree in the forest
     Assert(coarse_cell_index <=
-             (*(this_object->current_coarsen_pointer))->p.which_tree,
+             (*(this_object->current_coarsen_pointer)).p.which_tree,
            ExcInternalError());
 
     // make sure that the p4est loop over cells hasn't gotten ahead of our own
@@ -341,7 +354,7 @@ namespace
           forest,
           0,
           children[0],
-          *this_object->current_coarsen_pointer)) // TODO eclass
+          &*this_object->current_coarsen_pointer)) // TODO eclass
       {
         // move current pointer one up
         ++this_object->current_coarsen_pointer;
@@ -355,7 +368,7 @@ namespace
                      forest,
                      0,
                      children[c],
-                     *this_object->current_coarsen_pointer), // TODO: eclass
+                     &*this_object->current_coarsen_pointer), // TODO: eclass
                    ExcInternalError());
             ++this_object->current_coarsen_pointer;
           }
@@ -380,8 +393,8 @@ namespace internal
       cell_from_quad(
         const dealii::parallel::distributed::Triangulation<dim, spacedim>
           *triangulation,
-        const typename dealii::internal::p4est::types<dim>::topidx  treeidx,
-        const typename dealii::internal::p4est::types<dim>::element quad)
+        const typename dealii::internal::p4est::types<dim>::topidx   treeidx,
+        const typename dealii::internal::p4est::types<dim>::element *quad)
       {
         int                             i, l = quad->level;
         dealii::types::global_dof_index dealii_index =
@@ -1021,7 +1034,7 @@ namespace internal
     void
     init_coarse_element(const typename types<dim>::forest *,
                         typename types<dim>::eclass,
-                        typename types<dim>::element element)
+                        typename types<dim>::element *element)
     {
       if constexpr (dim == 2)
         {
@@ -1043,8 +1056,8 @@ namespace internal
     bool
     element_is_equal(const typename types<dim>::forest *,
                      typename types<dim>::eclass,
-                     typename types<dim>::element element_1,
-                     typename types<dim>::element element_2)
+                     const typename types<dim>::element *element_1,
+                     const typename types<dim>::element *element_2)
     {
       if constexpr (dim == 2)
         return static_cast<bool>(p4est_quadrant_is_equal(element_1, element_2));
@@ -1069,9 +1082,9 @@ namespace internal
 
     template <int dim>
     typename types<dim>::locidx
-    leaf_index_in_tree(const typename types<dim>::forest *forest,
-                       const typename types<dim>::locidx  ltreeid,
-                       const typename types<dim>::element leaf)
+    leaf_index_in_tree(const typename types<dim>::forest  *forest,
+                       const typename types<dim>::locidx   ltreeid,
+                       const typename types<dim>::element *leaf)
     {
       const typename types<dim>::tree tree =
         forest_get_tree<dim>(forest, ltreeid);
@@ -1159,56 +1172,40 @@ namespace internal
     void
     element_children(const typename types<dim>::forest *,
                      typename types<dim>::eclass,
-                     const typename types<dim>::element element,
-                     typename types<dim>::element      *children)
+                     const typename types<dim>::element *element,
+                     typename types<dim>::element       *children)
     {
       for (unsigned int i = 0; i < GeometryInfo<dim>::max_children_per_cell;
            ++i)
         {
           if constexpr (dim == 2)
-            p4est_quadrant_child(element, children[i], i);
+            P4EST_QUADRANT_INIT(children + i);
           else if (dim == 3)
-            p8est_quadrant_child(element, children[i], i);
+            P8EST_QUADRANT_INIT(children + i);
           else
             DEAL_II_NOT_IMPLEMENTED();
         }
-    }
-
-    template <int dim>
-    void
-    element_new(const typename types<dim>::forest *,
-                typename types<dim>::eclass,
-                typename types<dim>::element *elements,
-                const unsigned int            length)
-    {
-      using element_type = std::remove_pointer_t<typename types<dim>::element>;
-      *elements          = new element_type[length];
-
-      if constexpr (running_in_debug_mode())
-        for (unsigned int i = 0; i < length; ++i)
-          {
-            if constexpr (dim == 2)
-              P4EST_QUADRANT_INIT(elements[i]);
-            else if (dim == 3)
-              P8EST_QUADRANT_INIT(elements[i]);
-            else
-              DEAL_II_NOT_IMPLEMENTED();
-          }
+      if constexpr (dim == 2)
+        p4est_quadrant_childrenv(element, children);
+      else if (dim == 3)
+        p8est_quadrant_childrenv(element, children);
+      else
+        DEAL_II_NOT_IMPLEMENTED();
     }
 
     template <int dim>
     int
     element_level(const typename types<dim>::forest *,
                   typename types<dim>::eclass,
-                  const typename types<dim>::element element)
+                  const typename types<dim>::element *element)
     {
       return element->level;
     }
 
     template <int dim>
     bool
-    cell_exists_in_tree(const typename types<dim>::tree    tree,
-                        const typename types<dim>::element element)
+    cell_exists_in_tree(const typename types<dim>::tree     tree,
+                        const typename types<dim>::element *element)
     {
       return (
         sc_array_bsearch(const_cast<sc_array_t *>(&tree->quadrants),
@@ -1220,8 +1217,8 @@ namespace internal
     template <int dim>
     bool
     element_overlaps_tree(const typename types<dim>::forest *,
-                          const typename types<dim>::tree    tree,
-                          const typename types<dim>::element element)
+                          const typename types<dim>::tree     tree,
+                          const typename types<dim>::element *element)
     {
       if constexpr (dim == 2)
         return p4est_quadrant_overlaps_tree(tree, element);
@@ -1230,16 +1227,6 @@ namespace internal
 
       DEAL_II_NOT_IMPLEMENTED();
       return false;
-    }
-
-    template <int dim>
-    void
-    element_destroy(const typename types<dim>::forest *,
-                    typename types<dim>::eclass,
-                    typename types<dim>::element *element,
-                    const unsigned int)
-    {
-      delete[] element;
     }
 
     template <int dim>
@@ -1272,8 +1259,8 @@ namespace internal
     int
     element_ancestor_id(const typename types<dim>::forest *,
                         typename types<dim>::eclass,
-                        const typename types<dim>::element element,
-                        int                                level)
+                        const typename types<dim>::element *element,
+                        int                                 level)
     {
       if constexpr (dim == 2)
         return p4est_quadrant_ancestor_id(element, level);
@@ -1288,10 +1275,10 @@ namespace internal
 
     template <int dim>
     int
-    comm_find_owner(const typename types<dim>::forest *forest,
-                    const typename types<dim>::locidx  which_tree,
-                    const typename types<dim>::element element,
-                    const int                          guess)
+    comm_find_owner(const typename types<dim>::forest  *forest,
+                    const typename types<dim>::locidx   which_tree,
+                    const typename types<dim>::element *element,
+                    const int                           guess)
     {
       if constexpr (dim == 2)
         return p4est_comm_find_owner(const_cast<typename types<dim>::forest *>(

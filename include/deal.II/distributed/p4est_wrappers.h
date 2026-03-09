@@ -93,7 +93,7 @@ namespace internal
       using connectivity              = p4est_connectivity_t;
       using forest                    = p4est_t;
       using tree                      = p4est_tree_t *;
-      using element                   = p4est_quadrant_t *;
+      using element                   = p4est_quadrant_t;
       using element_coord             = p4est_qcoord_t;
       using topidx                    = p4est_topidx_t;
       using locidx                    = p4est_locidx_t;
@@ -112,7 +112,7 @@ namespace internal
       using connectivity              = p8est_connectivity_t;
       using forest                    = p8est_t;
       using tree                      = p8est_tree_t *;
-      using element                   = p8est_quadrant_t *;
+      using element                   = p8est_quadrant_t;
       using element_coord             = p4est_qcoord_t;
       using topidx                    = p4est_topidx_t;
       using locidx                    = p4est_locidx_t;
@@ -148,9 +148,9 @@ namespace internal
     {
       static int (&element_compare)(const void *v1, const void *v2);
 
-      static void (&element_set_morton)(types<2>::element quadrant,
-                                        int               level,
-                                        std::uint64_t     id);
+      static void (&element_set_morton)(types<2>::element *quadrant,
+                                        int                level,
+                                        std::uint64_t      id);
 
       static types<2>::connectivity *(&connectivity_new)(
         types<2>::topidx num_vertices,
@@ -310,9 +310,9 @@ namespace internal
     {
       static int (&element_compare)(const void *v1, const void *v2);
 
-      static void (&element_set_morton)(types<3>::element element,
-                                        int               level,
-                                        std::uint64_t     id);
+      static void (&element_set_morton)(types<3>::element *element,
+                                        int                level,
+                                        std::uint64_t      id);
 
 
       static types<3>::connectivity *(&connectivity_new)(
@@ -524,7 +524,7 @@ namespace internal
     void
     init_coarse_element(const typename types<dim>::forest *forest,
                         typename types<dim>::eclass        eclass,
-                        typename types<dim>::element       element);
+                        typename types<dim>::element      *element);
 
 
     template <int dim>
@@ -541,9 +541,9 @@ namespace internal
 
     template <int dim>
     typename types<dim>::locidx
-    leaf_index_in_tree(const typename types<dim>::forest *forest,
-                       const typename types<dim>::locidx  ltreeid,
-                       const typename types<dim>::element leaf);
+    leaf_index_in_tree(const typename types<dim>::forest  *forest,
+                       const typename types<dim>::locidx   ltreeid,
+                       const typename types<dim>::element *leaf);
 
     template <int dim>
     typename types<dim>::tree
@@ -562,14 +562,6 @@ namespace internal
     template <int dim>
     typename types<dim>::eclass
     get_eclass_from_tree(const typename types<dim>::tree tree);
-
-
-    template <int dim>
-    void
-    element_new(const typename types<dim>::forest *forest,
-                typename types<dim>::eclass        eclass,
-                typename types<dim>::element      *elements,
-                const unsigned int                 length);
 
 
 
@@ -597,44 +589,38 @@ namespace internal
 
     template <int dim>
     bool
-    element_is_equal(const typename types<dim>::forest *forest,
-                     typename types<dim>::eclass        eclass,
-                     typename types<dim>::element       element_1,
-                     typename types<dim>::element       element_2);
+    element_is_equal(const typename types<dim>::forest  *forest,
+                     typename types<dim>::eclass         eclass,
+                     const typename types<dim>::element *element_1,
+                     const typename types<dim>::element *element_2);
 
     template <int dim>
     void
-    element_children(const typename types<dim>::forest *forest,
-                     typename types<dim>::eclass        eclass,
-                     const typename types<dim>::element element,
-                     typename types<dim>::element      *children);
+    element_children(const typename types<dim>::forest  *forest,
+                     typename types<dim>::eclass         eclass,
+                     const typename types<dim>::element *element,
+                     typename types<dim>::element       *children);
 
 
     template <int dim>
     int
-    element_level(const typename types<dim>::forest *forest,
-                  typename types<dim>::eclass        eclass,
-                  const typename types<dim>::element element);
+    element_level(const typename types<dim>::forest  *forest,
+                  typename types<dim>::eclass         eclass,
+                  const typename types<dim>::element *element);
 
 
     template <int dim>
     bool
-    cell_exists_in_tree(const typename types<dim>::tree    tree,
-                        const typename types<dim>::element element);
+    cell_exists_in_tree(const typename types<dim>::tree     tree,
+                        const typename types<dim>::element *element);
 
 
     template <int dim>
     bool
-    element_overlaps_tree(const typename types<dim>::forest *forest,
-                          const typename types<dim>::tree    tree,
-                          const typename types<dim>::element element);
+    element_overlaps_tree(const typename types<dim>::forest  *forest,
+                          const typename types<dim>::tree     tree,
+                          const typename types<dim>::element *element);
 
-    template <int dim>
-    void
-    element_destroy(const typename types<dim>::forest *forest,
-                    typename types<dim>::eclass        eclass,
-                    typename types<dim>::element      *element,
-                    const unsigned int                 length);
 
     template <int dim>
     typename types<dim>::ghost *
@@ -647,17 +633,17 @@ namespace internal
 
     template <int dim>
     int
-    element_ancestor_id(const typename types<dim>::forest *forest,
-                        typename types<dim>::eclass        eclass,
-                        const typename types<dim>::element element,
-                        int                                level);
+    element_ancestor_id(const typename types<dim>::forest  *forest,
+                        typename types<dim>::eclass         eclass,
+                        const typename types<dim>::element *element,
+                        int                                 level);
 
     template <int dim>
     int
-    comm_find_owner(const typename types<dim>::forest *forest,
-                    const typename types<dim>::locidx  which_tree,
-                    const typename types<dim>::element q,
-                    const int                          guess);
+    comm_find_owner(const typename types<dim>::forest  *forest,
+                    const typename types<dim>::locidx   which_tree,
+                    const typename types<dim>::element *q,
+                    const int                           guess);
 
 
     template <int dim>
