@@ -35,14 +35,16 @@ template <int dim>
 void
 test(std::ostream & /*out*/)
 {
-  const unsigned int max_level = internal::p4est::functions<dim>::max_level;
+  parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
+
+  GridGenerator::hyper_cube(tr);
+
+
+  const unsigned int max_level = internal::p4est::functions<dim>::get_max_level(tr.get_p4est());
 
   deallog << "The maximal level of p4est refinements is " << max_level
           << std::endl;
 
-  parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
-
-  GridGenerator::hyper_cube(tr);
   // The first refinement level is "1". So in order to refine past the
   // limit we have to attempt to refine max_level times:
   for (unsigned int i = 0; i < max_level; ++i)

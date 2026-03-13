@@ -244,7 +244,7 @@ namespace internal
 
 
       static unsigned int
-      get_max_level([[maybe_unused]] types<2>::forest *parallel_forest)
+      get_max_level([[maybe_unused]] const types<2>::forest *parallel_forest)
       {
         return P4EST_MAXLEVEL;
       };
@@ -407,7 +407,7 @@ namespace internal
         types<3>::connectivity *p4est);
 
       static unsigned int
-      get_max_level([[maybe_unused]] types<3>::forest *parallel_forest)
+      get_max_level([[maybe_unused]] const types<3>::forest *parallel_forest)
       {
         return P8EST_MAXLEVEL;
       };
