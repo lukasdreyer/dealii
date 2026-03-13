@@ -345,7 +345,7 @@ if constexpr (dim==2){
     // make sure that the p4est loop over cells hasn't gotten ahead of our own
     // pointer
     Assert(dealii::internal::amr::functions<dim>::element_compare(
-             &children[0], &*this_object->current_coarsen_pointer) <= 0,
+             children[0], &*this_object->current_coarsen_pointer) <= 0,
            ExcInternalError());
 
     // now, if the p4est cell is one in the list, it is supposed to be
