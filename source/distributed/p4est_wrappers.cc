@@ -210,15 +210,7 @@ namespace
           {
             if (cell->refine_flag_set())
               {
-                std::cout << "set refine flag for cell " << cell->id()
-                          << std::endl;
-                if constexpr (dim == 2)
-                  {
-                    p4est_quadrant_print(SC_LP_DEBUG, &amr_cell);
-                  }
                 refine_list.push_back(amr_cell);
-                std::cout << "num elems to refine:" << refine_list.size()
-                          << std::endl;
               }
             else if (cell->coarsen_flag_set())
               coarsen_list.push_back(amr_cell);
@@ -269,7 +261,6 @@ namespace
     if (coarse_cell_index <
         (*(this_object->current_refine_pointer)).p.which_tree)
       {
-        std::cout << "!!!!!!!!!!!" << std::endl;
         return 0;
       }
 
@@ -297,14 +288,10 @@ if constexpr (dim==2){
           element,
           &*this_object->current_refine_pointer)) // TODO get eclass
       {
-        std::cout << "decided to refine object with pointer"
-                  << std::addressof(*this_object->current_refine_pointer)
-                  << std::endl;
         ++this_object->current_refine_pointer;
         return 1;
       }
 
-    std::cout << "do not refine element" << std::endl;
     // p4est cell is not in list
     return 0;
   }
