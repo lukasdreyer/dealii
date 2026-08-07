@@ -18,6 +18,7 @@ set(_unity_include_src
   tria_base.cc
   shared_tria.cc
   p4est_wrappers.cc
+  t8code_wrappers.cc
   )
 
 set(_separate_src
@@ -31,6 +32,7 @@ set(_inst
   shared_tria.inst.in
   tria_base.inst.in
   p4est_wrappers.inst.in
+  t8code_wrappers.inst.in
   )
 
 if(DEAL_II_WITH_P4EST OR DEAL_II_WITH_T8CODE)

@@ -578,10 +578,7 @@ namespace internal
     template <int dim, int spacedim>
     typename types<dim>::forest *
     adapt(typename types<dim>::forest  *parallel_forest,
-          Triangulation<dim, spacedim> *triangulation,
-          const std::vector<dealii::types::global_dof_index>
-            &p4est_tree_to_coarse_cell_permutation,
-          const dealii::types::subdomain_id subdomain_id);
+          Triangulation<dim, spacedim> *triangulation);
 
     template <int dim>
     typename types<dim>::forest *
@@ -611,7 +608,8 @@ namespace internal
 
     template <int dim>
     bool
-    cell_exists_in_tree(const typename types<dim>::tree     tree,
+    cell_exists_in_tree(const typename types<dim>::forest *forest,
+                          const typename types<dim>::tree     tree,
                         const typename types<dim>::element *element);
 
 
@@ -639,7 +637,7 @@ namespace internal
                         int                                 level);
 
     template <int dim>
-    int
+    dealii::types::subdomain_id
     comm_find_owner(const typename types<dim>::forest  *forest,
                     const typename types<dim>::locidx   which_tree,
                     const typename types<dim>::element *q,

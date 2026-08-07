@@ -1191,7 +1191,8 @@ namespace internal
 
     template <int dim>
     bool
-    cell_exists_in_tree(const typename types<dim>::tree     tree,
+    cell_exists_in_tree(const typename types<dim>::forest *,
+                        const typename types<dim>::tree     tree,
                         const typename types<dim>::element *element)
     {
       return (
@@ -1261,7 +1262,7 @@ namespace internal
 
 
     template <int dim>
-    int
+    dealii::types::subdomain_id
     comm_find_owner(const typename types<dim>::forest  *forest,
                     const typename types<dim>::locidx   which_tree,
                     const typename types<dim>::element *element,

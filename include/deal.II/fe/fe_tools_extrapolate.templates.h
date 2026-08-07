@@ -498,7 +498,7 @@ namespace FETools
     {
       // check if this cell exists in the local p4est
       const bool cell_exists =
-        dealii::internal::amr::cell_exists_in_tree<dim>(tree, &p4est_cell);
+        dealii::internal::amr::cell_exists_in_tree<dim>(forest, tree, &p4est_cell);
 
       // if neither this cell nor one of it's children belongs to us, don't do
       // anything
@@ -829,7 +829,7 @@ namespace FETools
           // generate a bogus result
           {
             AssertThrow(!dealii::internal::amr::cell_exists_in_tree<dim>(
-                          tree, &p4est_coarse_cell),
+                          forest, tree, &p4est_coarse_cell),
                         ExcGridNotRefinedAtLeastOnce());
           }
 
@@ -857,7 +857,7 @@ namespace FETools
     {
       // check if this cell exists in the local p4est
       const bool cell_exists =
-        dealii::internal::amr::cell_exists_in_tree<dim>(tree, &p4est_cell);
+        dealii::internal::amr::cell_exists_in_tree<dim>(forest, tree, &p4est_cell);
 
       // if neither this cell nor one of it's children belongs to us, don't do
       // anything
@@ -1063,7 +1063,7 @@ namespace FETools
 
       // check if this cell exists in the local p4est
       const bool cell_exists =
-        dealii::internal::amr::cell_exists_in_tree<dim>(tree, &p4est_cell);
+        dealii::internal::amr::cell_exists_in_tree<dim>(forest, tree, &p4est_cell);
       // if neither this cell nor one of it's children belongs to us, don't do
       // anything
       if (!cell_exists && (dealii::internal::amr::element_overlaps_tree<dim>(

@@ -13,11 +13,11 @@
 
 for (deal_II_dimension : DIMENSIONS)
   {
-#ifdef DEAL_II_WITH_P4EST
+#ifdef DEAL_II_WITH_T8CODE
 
     namespace internal
     \{
-      namespace p4est
+      namespace t8code
       \{
 #  if deal_II_dimension > 1
 
@@ -28,14 +28,15 @@ for (deal_II_dimension : DIMENSIONS)
           const types<deal_II_dimension>::element *element_1,
           const types<deal_II_dimension>::element *element_2);
 
-
+#if 0
         template types<deal_II_dimension>::element
         get_ghost_elem_and_owner<deal_II_dimension>(
           const types<deal_II_dimension>::forest *parallel_forest,
           const types<deal_II_dimension>::topidx  global_tree_idx,
           const types<deal_II_dimension>::locidx  ghost_in_tree_idx,
           const types<deal_II_dimension>::eclass  ghost_eclass,
-          dealii::types::subdomain_id            &subdomain);
+          ::dealii::types::subdomain_id            &subdomain);
+#endif
 
         template types<deal_II_dimension>::eclass
         get_ghost_eclass<deal_II_dimension>(
@@ -72,11 +73,6 @@ for (deal_II_dimension : DIMENSIONS)
         template types<deal_II_dimension>::locidx
         get_num_leafs<deal_II_dimension>(
           const types<deal_II_dimension>::forest *forest);
-
-        template void
-        forest_set_user_pointer<deal_II_dimension>(
-          types<deal_II_dimension>::forest *forest,
-          void                             *user_pointer);
 
         template types<deal_II_dimension>::eclass
         get_eclass<deal_II_dimension>(
@@ -133,17 +129,12 @@ for (deal_II_dimension : DIMENSIONS)
           int                                      level);
 
 
-        template     dealii::types::subdomain_id
+        template ::dealii::types::subdomain_id
         comm_find_owner<deal_II_dimension>(
           const types<deal_II_dimension>::forest  *forest,
           const types<deal_II_dimension>::locidx   which_tree,
           const types<deal_II_dimension>::element *q,
-          const int                                guess);
-
-
-        template void *
-        forest_get_user_pointer<deal_II_dimension>(
-          const types<deal_II_dimension>::forest *forest);
+          const ::dealii::types::subdomain_id                guess);
 
 
         template void
@@ -162,23 +153,23 @@ for (deal_II_dimension : DIMENSIONS)
 
         template void
         vtk_write_file<deal_II_dimension>(
-          types<deal_II_dimension>::forest *forest,
+          const types<deal_II_dimension>::forest *forest,
           const char                       *baseName);
 
 #  endif
       \}
     \}
-#endif  // DEAL_II_WITH_P4EST
+#endif  // DEAL_II_WITH_T8CODE
   }
 
 
 for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
   {
-#ifdef DEAL_II_WITH_P4EST
+#ifdef DEAL_II_WITH_T8CODE
 
     namespace internal
     \{
-      namespace p4est
+      namespace t8code
       \{
 #  if deal_II_dimension > 1
 #    if deal_II_dimension <= deal_II_space_dimension
@@ -186,14 +177,11 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
         adapt<deal_II_dimension, deal_II_space_dimension>(
           types<deal_II_dimension>::forest *parallel_forest,
           Triangulation<deal_II_dimension, deal_II_space_dimension>
-            *triangulation,
-          const std::vector<dealii::types::global_dof_index>
-            &p4est_tree_to_coarse_cell_permutation,
-          const dealii::types::subdomain_id subdomain_id);
+            *triangulation);
 
 #    endif
 #  endif
       \}
     \}
-#endif  // DEAL_II_WITH_P4EST
+#endif  // DEAL_II_WITH_T8CODE
   }

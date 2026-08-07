@@ -11,11 +11,13 @@
 // -----------------------------------------------------------------------------
 
 
+#include "deal.II/base/exception_macros.h"
 #include <deal.II/base/logstream.h>
 #include <deal.II/base/memory_consumption.h>
 #include <deal.II/base/point.h>
 #include <deal.II/base/utilities.h>
 
+#include "deal.II/distributed/t8code_wrappers.h"
 #include <deal.II/distributed/amr.h>
 #include <deal.II/distributed/tria.h>
 
@@ -483,7 +485,7 @@ namespace
   {
     typename dealii::internal::amr::types<dim>::eclass eclass =
       dealii::internal::amr::get_eclass_from_tree<dim>(tree);
-    if (dealii::internal::amr::cell_exists_in_tree<dim>(tree, &amr_cell))
+    if (dealii::internal::amr::cell_exists_in_tree<dim>(forest, tree, &amr_cell))
       {
         // yes, cell found in local part of p4est
         delete_all_children<dim, spacedim>(dealii_cell);
@@ -1486,7 +1488,7 @@ namespace parallel
 
       setup_coarse_cell_to_p4est_tree_permutation();
 
-      copy_new_triangulation_to_p4est(std::integral_constant<int, dim>());
+      copy_new_triangulation_to_amr(std::integral_constant<int, dim>());
 
       try
         {
@@ -1574,7 +1576,7 @@ namespace parallel
 
 
 #  ifdef DEAL_II_WITH_P4EST
-    // TODO
+    // TODOP4
     template <int dim, int spacedim>
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::execute_transfer(
@@ -1651,6 +1653,112 @@ namespace parallel
           this->data_serializer.src_data_variable.shrink_to_fit();
         }
     }
+    #endif
+    #ifdef DEAL_II_WITH_T8CODE
+
+        template <int dim, int spacedim>
+    DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
+    void Triangulation<dim, spacedim>::execute_transfer(
+      const typename dealii::internal::t8code::types<dim>::forest
+        *parallel_forest,
+      const typename dealii::internal::t8code::types<dim>::forest
+        *old_forest)
+    {
+      Assert(this->data_serializer.sizes_fixed_cumulative.size() > 0,
+             ExcMessage("No data has been packed!"));
+
+      // Resize memory according to the data that we will receive.
+      this->data_serializer.dest_data_fixed.resize(
+        parallel_forest->local_num_leaf_elements *
+        this->data_serializer.sizes_fixed_cumulative.back());
+
+
+      sc_array_t src_data_view, dest_data_view;
+      sc_array_init_data(&src_data_view, this->data_serializer.src_data_fixed.data(), this->data_serializer.sizes_fixed_cumulative.back(), old_forest->local_num_leaf_elements);
+      sc_array_init_data(&dest_data_view, this->data_serializer.dest_data_fixed.data(), this->data_serializer.sizes_fixed_cumulative.back(), parallel_forest->local_num_leaf_elements);
+
+      t8_forest_partition_data(const_cast<typename dealii::internal::amr::types<dim>::forest *> (old_forest), const_cast<typename dealii::internal::amr::types<dim>::forest *>(parallel_forest), &src_data_view, &dest_data_view);
+
+      // Release memory of previously packed data.
+      this->data_serializer.src_data_fixed.clear();
+      this->data_serializer.src_data_fixed.shrink_to_fit();
+      if (this->data_serializer.variable_size_data_stored)
+        {
+          // Resize memory according to the data that we will receive.
+          this->data_serializer.dest_sizes_variable.resize(
+            parallel_forest->local_num_leaf_elements);
+      sc_array_t src_size_view, dest_size_view;
+      sc_array_init_data(&src_size_view, this->data_serializer.src_sizes_variable.data(), sizeof(int), old_forest->local_num_leaf_elements);
+      sc_array_init_data(&dest_size_view, this->data_serializer.dest_sizes_variable.data(), sizeof(int), parallel_forest->local_num_leaf_elements);
+
+      t8_forest_partition_data(const_cast<typename dealii::internal::amr::types<dim>::forest *>(old_forest), const_cast<typename dealii::internal::amr::types<dim>::forest *>(parallel_forest), &src_size_view, &dest_size_view);
+
+          // Resize memory according to the data that we will receive.
+          this->data_serializer.dest_data_variable.resize(
+            std::accumulate(this->data_serializer.dest_sizes_variable.begin(),
+                            this->data_serializer.dest_sizes_variable.end(),
+                            std::vector<int>::size_type(0)));
+
+      int max_data_size_loc =(this->data_serializer.src_sizes_variable.size() ? *std::max_element(this->data_serializer.src_sizes_variable.begin(),
+                            this->data_serializer.src_sizes_variable.end()) : 0 ); //collective?
+
+      int max_data_size;
+      MPI_Allreduce(&max_data_size_loc, &max_data_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+      std::cout <<"Max data size: "<<max_data_size<<", loc: "<<max_data_size_loc<<std::endl;
+
+      sc_array_t src_data_padded, dest_data_padded;
+      sc_array_init_count(&src_data_padded, max_data_size, old_forest->local_num_leaf_elements);
+      sc_array_init_count(&dest_data_padded, max_data_size, parallel_forest->local_num_leaf_elements);
+
+
+      std::cout<<"src representation:"<<std::endl;
+      for(const auto &char_rep : this->data_serializer.src_data_variable){
+        std::cout<<(int)char_rep<<" ";
+      }
+      std::cout<<std::endl;
+
+//memcpy src_data_variable in padded
+      size_t cumulative_index=0;
+      for(int idata = 0; idata< old_forest->local_num_leaf_elements; idata++){
+        std::cout<<"memcpy to, idata "<<idata<<", cumulative_index "<<cumulative_index<<std::endl;
+        if(this->data_serializer.src_sizes_variable[idata]){
+
+          memcpy(sc_array_index_int(&src_data_padded, idata) , &(this->data_serializer.src_data_variable[cumulative_index]), this->data_serializer.src_sizes_variable[idata]);
+        }
+        cumulative_index += this->data_serializer.src_sizes_variable[idata];
+      }
+
+//communicate padded data
+      t8_forest_partition_data(const_cast<typename dealii::internal::amr::types<dim>::forest *>(old_forest), const_cast<typename dealii::internal::amr::types<dim>::forest *>(parallel_forest), &src_data_padded, &dest_data_padded);
+
+//memcpy dest_data_variable from padded
+      cumulative_index = 0;
+      for(int idata = 0; idata< parallel_forest->local_num_leaf_elements; idata++){
+        std::cout<<"memcpy from, idata "<<idata<<", cumulative_index "<<cumulative_index<<std::endl;
+        if(this->data_serializer.dest_sizes_variable[idata]){
+
+          memcpy( &(this->data_serializer.dest_data_variable[cumulative_index]), sc_array_index_int(&dest_data_padded, idata), this->data_serializer.dest_sizes_variable[idata]);
+        }
+        cumulative_index += this->data_serializer.dest_sizes_variable[idata];
+      }
+      std::cout<<"dest representation:"<<std::endl;
+      for(const auto &char_rep : this->data_serializer.dest_data_variable){
+        std::cout<<(int)char_rep<<" ";
+      }
+      std::cout<<std::endl;
+
+
+//Release memory of padded data
+          sc_array_reset(&src_data_padded);
+          sc_array_reset(&dest_data_padded);
+          // Release memory of previously packed data.
+          this->data_serializer.src_sizes_variable.clear();
+          this->data_serializer.src_sizes_variable.shrink_to_fit();
+          this->data_serializer.src_data_variable.clear();
+          this->data_serializer.src_data_variable.shrink_to_fit();
+        }
+    }
+
 #  endif
 
 
@@ -1745,7 +1853,15 @@ namespace parallel
       // signal that serialization has finished
       this->signals.post_distributed_save();
     }
-#  endif
+#else
+    template <int dim, int spacedim>
+    DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
+    void Triangulation<dim, spacedim>::save(
+      const std::string &) const
+    {
+      DEAL_II_NOT_IMPLEMENTED();
+    }
+    #  endif
 
 
 #  ifdef DEAL_II_WITH_P4EST
@@ -1845,6 +1961,14 @@ namespace parallel
       this->update_periodic_face_map();
       this->update_number_cache();
     }
+#else
+    template <int dim, int spacedim>
+    DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
+    void Triangulation<dim, spacedim>::load(const std::string &)
+    {
+      DEAL_II_NOT_IMPLEMENTED();
+    }
+
 #  endif
 
 
@@ -1880,8 +2004,8 @@ namespace parallel
           forest);
       parallel_forest =
         dealii::internal::amr::functions<dim>::copy_forest(temp, false);
-// TODO
-#  ifdef DEAL_II_WITH_P4EST
+        #  ifdef DEAL_II_WITH_P4EST
+        // TODOP4
       parallel_forest->connectivity = connectivity;
 #  endif
       dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest,
@@ -1945,10 +2069,10 @@ namespace parallel
 // appear in the Doxygen documentation of dealii::Triangulation
 #  ifndef DOXYGEN
 
-#    ifdef DEAL_II_WITH_P4EST
+#    ifdef DEAL_II_WITH_P4EST //TODOP4
     template <>
     void
-    Triangulation<2, 2>::copy_new_triangulation_to_p4est(
+    Triangulation<2, 2>::copy_new_triangulation_to_amr(
       std::integral_constant<int, 2>)
     {
       const unsigned int dim = 2, spacedim = 2;
@@ -2009,7 +2133,7 @@ namespace parallel
     // specialize the dim template argument, but let spacedim open
     template <>
     void
-    Triangulation<2, 3>::copy_new_triangulation_to_p4est(
+    Triangulation<2, 3>::copy_new_triangulation_to_amr(
       std::integral_constant<int, 2>)
     {
       const unsigned int dim = 2, spacedim = 3;
@@ -2068,7 +2192,7 @@ namespace parallel
 
     template <>
     void
-    Triangulation<3, 3>::copy_new_triangulation_to_p4est(
+    Triangulation<3, 3>::copy_new_triangulation_to_amr(
       std::integral_constant<int, 3>)
     {
       const int dim = 3, spacedim = 3;
@@ -2198,29 +2322,21 @@ namespace parallel
         /* user_data_constructor = */ nullptr,
         /* user_pointer */ this);
     }
-#    else
-    template <>
-    void
-    Triangulation<2, 2>::copy_new_triangulation_to_p4est(
-      std::integral_constant<int, 2>)
-    {
-      DEAL_II_NOT_IMPLEMENTED();
-    }
-    template <>
-    void
-    Triangulation<2, 3>::copy_new_triangulation_to_p4est(
-      std::integral_constant<int, 2>)
-    {
-      DEAL_II_NOT_IMPLEMENTED();
-    }
-    template <>
-    void
-    Triangulation<3, 3>::copy_new_triangulation_to_p4est(
-      std::integral_constant<int, 3>)
-    {
-      DEAL_II_NOT_IMPLEMENTED();
-    }
+#else
 
+    template <int dim, int spacedim>
+    DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
+    void Triangulation<dim, spacedim>::copy_new_triangulation_to_amr(
+      std::integral_constant<int, dim>)
+    {
+      t8_cmesh_t cmesh = dealii::internal::amr::dealii_to_connectivity<dim,spacedim>(this);
+
+      typename dealii::internal::amr::types<dim>::scheme_collection *scheme_collection = t8_scheme_new_standalone();
+//      scheme_collection = t8_scheme_new_default();
+      parallel_forest   = t8_forest_new_uniform(
+        cmesh, scheme_collection, 0, 1, this->mpi_communicator);
+      t8_forest_set_user_data(parallel_forest, this);
+    }
 #    endif
 #  endif
 
@@ -2619,8 +2735,54 @@ namespace parallel
                 p4est_tree_to_coarse_cell_permutation[ghost_tree];
               typename dealii::internal::amr::types<dim>::eclass ghost_eclass =
                 0;
+                {
 
 #  endif
+#  ifdef DEAL_II_WITH_T8CODE
+          types::subdomain_id                              ghost_owner     = 0;
+          typename dealii::internal::t8code::types<dim>::gloidx global_tree_idx = 0;
+          typename dealii::internal::t8code::types<dim>::locidx num_ghost_trees =
+            t8_forest_get_num_ghost_trees(parallel_forest);
+          typename dealii::internal::t8code::types<dim>::locidx num_ghosts_in_tree;
+
+
+          for (typename dealii::internal::t8code::types<dim>::locidx
+                 local_ghost_tree_idx = 0;
+               local_ghost_tree_idx < num_ghost_trees;
+               local_ghost_tree_idx++)
+            {
+              t8_element_array_t *element_array =
+                t8_forest_ghost_get_tree_leaf_elements(parallel_forest,
+                                                  local_ghost_tree_idx);
+              typename dealii::internal::t8code::types<dim>::eclass ghost_eclass =
+                t8_forest_ghost_get_tree_class(parallel_forest, local_ghost_tree_idx);
+              
+              global_tree_idx =
+                t8_forest_ghost_get_global_treeid(parallel_forest,
+                                                  local_ghost_tree_idx);
+
+              num_ghosts_in_tree =
+                t8_forest_ghost_tree_num_leaf_elements(parallel_forest,
+                                                  local_ghost_tree_idx);
+              for (typename dealii::internal::t8code::types<dim>::locidx
+                     local_ghost_element_idx = 0;
+                   local_ghost_element_idx < num_ghosts_in_tree;
+                   local_ghost_element_idx++)
+                {
+                  typename dealii::internal::t8code::types<dim>::element
+                    *local_ghost_element = reinterpret_cast<dealii::internal::t8code::types<dim>::element*>(
+                      t8_element_array_index_locidx_mutable(element_array,
+                                                    local_ghost_element_idx));
+                  ghost_owner =
+                    t8_forest_element_find_owner(parallel_forest,
+                                                 global_tree_idx,
+                                                 reinterpret_cast<t8_element_t *>(local_ghost_element),
+                                                 ghost_eclass);
+                  unsigned int coarse_cell_index =
+                    p4est_tree_to_coarse_cell_permutation[global_tree_idx];
+
+#  endif
+
               match_element<dim, spacedim>(this,
                                            coarse_cell_index,
                                            parallel_forest,
@@ -2628,7 +2790,7 @@ namespace parallel
                                            ghost_eclass,
                                            ghost_owner);
             }
-
+          }
 
 
           // Fix all the flags to make sure we have a consistent local
@@ -3037,9 +3199,7 @@ namespace parallel
 
       parallel_forest =
         dealii::internal::amr::adapt<dim>(parallel_forest,
-                                          this,
-                                          p4est_tree_to_coarse_cell_permutation,
-                                          this->locally_owned_subdomain());
+                                          this);
 
 
       // enforce 2:1 hanging node condition
@@ -3056,20 +3216,28 @@ namespace parallel
 
       // before repartitioning the mesh, save a copy of the current positions
       // of elements only if data needs to be transferred later
+      #  ifdef DEAL_II_WITH_P4EST // TODOP4
       std::vector<typename dealii::internal::amr::types<dim>::gloidx>
         previous_global_first_element;
 
       if (this->cell_attached_data.n_attached_data_sets > 0)
         {
           previous_global_first_element.resize(parallel_forest->mpisize + 1);
-#  ifdef DEAL_II_WITH_P4EST // TODO
           std::memcpy(previous_global_first_element.data(),
                       parallel_forest->global_first_quadrant,
                       sizeof(
                         typename dealii::internal::amr::types<dim>::gloidx) *
                         (parallel_forest->mpisize + 1));
-#  endif
+                      }
+                      #  endif
+      #  ifdef DEAL_II_WITH_T8CODE
+      t8_forest_t old_forest;
+      if (this->cell_attached_data.n_attached_data_sets > 0)
+        {
+          old_forest = parallel_forest;
+          t8_forest_ref(old_forest);
         }
+        #endif
 
       if (!(settings & no_automatic_repartitioning))
         {
@@ -3113,7 +3281,9 @@ namespace parallel
               // TODO: reset element data?
               dealii::internal::amr::forest_set_user_pointer<dim>(
                 parallel_forest, nullptr);
-#  endif
+                #else
+                DEAL_II_NOT_IMPLEMENTED();
+                #  endif
             }
         }
 
@@ -3150,9 +3320,14 @@ namespace parallel
       // transfer data after triangulation got updated
       if (this->cell_attached_data.n_attached_data_sets > 0)
         {
+#ifdef DEAL_II_WITH_P4EST
           this->execute_transfer(parallel_forest,
                                  previous_global_first_element.data());
-
+#endif
+#ifdef DEAL_II_WITH_T8CODE
+          this->execute_transfer(parallel_forest,
+                                 old_forest);
+#endif
           // also update the CellStatus information on the new mesh
           this->data_serializer.unpack_cell_status(this->local_cell_relations);
         }
@@ -3243,12 +3418,11 @@ namespace parallel
 
       // before repartitioning the mesh, save a copy of the current positions
       // of elements only if data needs to be transferred later
+      #  ifdef DEAL_II_WITH_P4EST // TODOP4
       std::vector<typename dealii::internal::amr::types<dim>::gloidx>
         previous_global_first_element;
 
-#  ifdef DEAL_II_WITH_P4EST
-      // TODO
-      if (this->cell_attached_data.n_attached_data_sets > 0)
+        if (this->cell_attached_data.n_attached_data_sets > 0)
         {
           previous_global_first_element.resize(parallel_forest->mpisize + 1);
           std::memcpy(previous_global_first_element.data(),
@@ -3256,8 +3430,19 @@ namespace parallel
                       sizeof(
                         typename dealii::internal::amr::types<dim>::gloidx) *
                         (parallel_forest->mpisize + 1));
+                      }
+                        #  endif
+ 
+                        #  ifdef DEAL_II_WITH_T8CODE
+      t8_forest_t old_forest;
+      if (this->cell_attached_data.n_attached_data_sets > 0)
+        {
+          old_forest = parallel_forest;
+          t8_forest_ref(old_forest);
         }
-#  endif
+        #endif
+
+
 
       if (this->signals.weight.empty())
         {
@@ -3301,7 +3486,9 @@ namespace parallel
           // reset the user pointer to its previous state
           dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest,
                                                               this);
-#  endif
+#else
+DEAL_II_NOT_IMPLEMENTED();
+                                                              #  endif
         }
 
       // pack data before triangulation gets updated
@@ -3328,9 +3515,15 @@ namespace parallel
       // transfer data after triangulation got updated
       if (this->cell_attached_data.n_attached_data_sets > 0)
         {
+#ifdef DEAL_II_WITH_P4EST
           this->execute_transfer(parallel_forest,
                                  previous_global_first_element.data());
-        }
+#endif
+#ifdef DEAL_II_WITH_T8CODE
+          this->execute_transfer(parallel_forest,
+                                 old_forest);
+#endif
+                                }
 
       this->update_periodic_face_map();
 
@@ -3609,6 +3802,16 @@ namespace parallel
       // information
       this->update_number_cache();
     }
+
+#else
+    template <int dim, int spacedim>
+    DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
+    void Triangulation<dim, spacedim>::add_periodicity(
+      const std::vector<dealii::GridTools::PeriodicFacePair<cell_iterator>>
+        &)
+    {
+      DEAL_II_NOT_IMPLEMENTED();
+    }
 #  endif
 
 
@@ -3711,7 +3914,7 @@ namespace parallel
             dealii::internal::amr::functions<dim>::copy_forest(temp_forest,
                                                                false);
 #  ifdef DEAL_II_WITH_P4EST
-          // TODO
+          // TODOP4
           parallel_forest->connectivity = connectivity;
 #  endif
           dealii::internal::amr::forest_set_user_pointer<dim>(parallel_forest,
@@ -3721,7 +3924,7 @@ namespace parallel
         {
           triangulation_has_content = true;
           setup_coarse_cell_to_p4est_tree_permutation();
-          copy_new_triangulation_to_p4est(std::integral_constant<int, dim>());
+          copy_new_triangulation_to_amr(std::integral_constant<int, dim>());
         }
 
       try
@@ -3968,7 +4171,6 @@ namespace parallel
             dealii::parallel::distributed::Triangulation<dim, spacedim> *>(
             &tria))
     {
-#ifdef DEAL_II_WITH_P4EST
       if (distributed_tria != nullptr)
         {
           // Save the current set of refinement flags, and adjust the
@@ -4014,7 +4216,6 @@ namespace parallel
                 }
             }
         }
-#endif
     }
 
 
@@ -4022,17 +4223,14 @@ namespace parallel
     template <int dim, int spacedim>
     TemporarilyMatchRefineFlags<dim, spacedim>::~TemporarilyMatchRefineFlags()
     {
-#ifdef DEAL_II_WITH_P4EST
       if (distributed_tria)
         {
           // Undo the refinement flags modification.
           distributed_tria->load_coarsen_flags(saved_coarsen_flags);
           distributed_tria->load_refine_flags(saved_refine_flags);
         }
-#else
       // pretend that this destructor does something to silence clang-tidy
       (void)distributed_tria;
-#endif
     }
   } // namespace distributed
 } // namespace parallel
