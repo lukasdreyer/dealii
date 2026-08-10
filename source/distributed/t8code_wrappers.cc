@@ -16,19 +16,27 @@
 #include "deal.II/base/exception_macros.h"
 #include <deal.II/distributed/t8code_wrappers.h>
 #include <deal.II/distributed/tria.h>
+#include "deal.II/grid/reference_cell.h"
+#include "deal.II/grid/tria.h"
+#include <t8_eclass.h>
 #include <t8_forest/t8_forest_adapt.h>
 #include <t8_forest/t8_forest_general.h>
+#include <t8_forest/t8_forest_io.h>
 #include <t8_geometry/t8_geometry_implementations/t8_geometry_linear.hxx>
+#include <cstdint>
 
-DEAL_II_NAMESPACE_OPEN
 
 #ifdef DEAL_II_WITH_T8CODE
 #include <deal.II/distributed/p4est_wrappers.h>
 #  include <t8_schemes/t8_scheme.hxx>
 #  include <t8_forest/t8_forest_ghost.h>
 #  include <t8_forest/t8_forest_types.h>
-#  include <t8_cmesh/t8_cmesh.h>
+//#  include <t8_cmesh/t8_cmesh.h>
 #  include <t8_cmesh/t8_cmesh.hxx>
+#  include <t8_cmesh/t8_cmesh_internal/t8_cmesh_types.h>
+
+
+DEAL_II_NAMESPACE_OPEN
 
 namespace internal
 {
@@ -47,6 +55,18 @@ namespace internal
         {},//prism
         {}//pyramid
       };
+
+      static t8_eclass_t t8_eclass_from_reference_cell(const ReferenceCell &ref_cell){
+        switch (ref_cell) {
+          case ReferenceCells::Quadrilateral:
+            return T8_ECLASS_QUAD;
+          case ReferenceCells::Hexahedron:
+            return T8_ECLASS_HEX;
+          default:
+            DEAL_II_NOT_IMPLEMENTED();
+            return T8_ECLASS_INVALID;
+        }
+      }
 
       template <int dim, int spacedim>
       typename types<dim>::connectivity dealii_to_connectivity(typename ::dealii::parallel::distributed::Triangulation<dim,spacedim> *tria){
@@ -111,14 +131,42 @@ namespace internal
         }
         t8_cmesh_set_global_edges_of_tree(cmesh, t8_index, edge_list.data(), cell->n_lines());
       }
-      t8_cmesh_commit(cmesh, tria->mpi_communicator);
+      t8_cmesh_commit(cmesh, tria->get_mpi_communicator());
       return cmesh;
     }
+
+    template <int dim, int spacedim>
+    static void fill_adapt_list_recursively(const typename Triangulation<dim, spacedim>::cell_iterator &dealii_cell, std::vector<int> & adapt_list)
+    {
+      if(!dealii_cell->has_children())
+        if(dealii_cell->is_locally_owned())
+      {
+        if(dealii_cell->refine_flag_set()){
+          adapt_list.push_back(1);
+        }else if (dealii_cell->coarsen_flag_set()){
+          adapt_list.push_back(-1);
+        }else{
+          adapt_list.push_back(0);
+        }
+        return;
+      }
+
+      //loop over children in t8code order
+      for(unsigned int t8code_child=0; t8code_child < dealii_cell->n_children(); ++t8code_child){
+        const unsigned dealii_child = t8code_child; //TODO: permute_children[t8code_child] change t8code_child into dealii child
+        const auto &child = dealii_cell->child(dealii_child);
+
+        fill_adapt_list_recursively<dim,spacedim>(child, adapt_list);
+      }
+
+    }
+
 
     int adapt_from_vec(t8_forest_t , t8_forest_t forest_from, t8_locidx_t which_tree,
                                   const t8_eclass_t , t8_locidx_t lelement_id, const t8_scheme_c *,
                                   const int , const int , t8_element_t *[]){
-                                    std::vector<bool> *adapt_vec = (std::vector<bool> *)t8_forest_get_user_data(forest_from);
+                                    std::vector<int> *adapt_vec = (std::vector<int> *)t8_forest_get_user_data(forest_from);
+                                    std::cout<<"restored adapt_vec from adress "<<adapt_vec<<std::endl;
                                     const int idata = t8_forest_get_tree_element_offset(forest_from, which_tree) + lelement_id;
                                     return (*adapt_vec)[idata];
                                   }
@@ -127,11 +175,13 @@ namespace internal
     template <int dim, int spacedim>
     typename types<dim>::forest *
     adapt(typename types<dim>::forest  *parallel_forest,
-          Triangulation<dim, spacedim> *triangulation){
+          typename ::dealii::parallel::distributed::Triangulation<dim,spacedim> *triangulation){
 
+
+      std::cout<<"adapt forest with refcount "<<parallel_forest->rc.refcount<<std::endl;
       // count how many cells will be refined and coarsened, and allocate that
       // much memory
-      std::vector<bool> adapt_list;
+      std::vector<int> adapt_list;
       // copy refine and coarsen flags into p4est and execute the refinement
       // and coarsening. this uses the refine_and_coarsen_list just built,
       // which is communicated to the callback functions through
@@ -139,6 +189,24 @@ namespace internal
       Assert(forest_get_user_pointer<dim>(parallel_forest) == triangulation,
              ExcInternalError());
       forest_set_user_pointer<dim>(parallel_forest, &adapt_list);
+      std::cout<<"set pointer to adapt list "<<&adapt_list<<std::endl;
+
+
+
+      const auto &perm = triangulation->get_p4est_tree_to_coarse_cell_permutation();
+      for (unsigned int i=0; i< perm.size(); ++i)
+            {
+              const unsigned int cell_index =perm [i];
+
+              typename dealii::Triangulation<dim, spacedim>::cell_iterator dealii_cell(triangulation, 0, cell_index);
+
+              fill_adapt_list_recursively<dim,spacedim>(dealii_cell,adapt_list);
+            }
+
+            std::cout<<"list size:"<<adapt_list.size()<<", tria size:"<<triangulation->n_active_cells()<<std::endl;
+            for (const auto &entry: adapt_list){
+              std::cout<<(int)entry<<std::endl;
+            }
       
       t8_forest_t new_forest;
 
@@ -146,11 +214,14 @@ namespace internal
       t8_forest_set_adapt (new_forest, parallel_forest, adapt_from_vec, false);
       t8_forest_set_ghost (new_forest, true, T8_GHOST_VERTICES);
       t8_forest_commit (new_forest);
+//      std::cout<<"old forest with refcount "<<parallel_forest->rc.refcount<<std::endl;
+      std::cout<<"new forest with refcount "<<new_forest->rc.refcount<<std::endl;
+      
 
       // reset the pointer
-      forest_set_user_pointer<dim>(parallel_forest, triangulation);
+      forest_set_user_pointer<dim>(new_forest, triangulation);
 
-      return parallel_forest;
+      return new_forest;
           }
 
     template <int dim>
@@ -197,7 +268,7 @@ namespace internal
     {
       typename types<dim>::scheme_collection *scheme =
         t8_forest_get_scheme(const_cast<t8_forest_t >(forest));
-      scheme->element_get_level(eclass, (const t8_element_t*)element);
+//      scheme->element_get_level(eclass, (const t8_element_t*)element);
       scheme->set_to_root(eclass, (t8_element_t*)element);
     }
 
@@ -340,24 +411,41 @@ auto compare_lambda = [scheme,eclass](auto x, auto y) {
     template <int dim>
     typename types<dim>::ghost* ghost_new(typename types<dim>::forest      *forest)
                                                 {
-                                                  DEAL_II_NOT_IMPLEMENTED();
                                                   return forest->ghosts;
                                                 }
 
     template <int dim>
     void ghost_destroy(typename types<dim>::ghost **){
-      DEAL_II_NOT_IMPLEMENTED();
+      //do nothing, ghost gets destroyed by forest?
     }
 
            template <int dim> void
-      forest_destroy(typename types<dim>::forest **){
-        DEAL_II_NOT_IMPLEMENTED();
+      forest_destroy(typename types<dim>::forest **forest){
+        t8_forest_unref(forest);
       }
 
       template <int dim>   void
-      vtk_write_file(const typename types<dim>::forest *, const char *){
-        DEAL_II_NOT_IMPLEMENTED();
+      vtk_write_file(const typename types<dim>::forest *forest, const char *path){
+
+                t8_forest_write_vtk (const_cast<types<dim>::forest *>(forest), path);
       }
+
+
+    template <int dim>
+    void
+    forest_set_user_pointer(typename types<dim>::forest *forest,
+                            void                        *user_pointer)
+    {
+      forest->user_data = user_pointer;  //replace by function
+    };
+
+    template <int dim>
+    void *
+    forest_get_user_pointer(const typename types<dim>::forest *forest)
+    {
+      return forest->user_data; //replace by function
+    };
+
 
 
         template <int dim>

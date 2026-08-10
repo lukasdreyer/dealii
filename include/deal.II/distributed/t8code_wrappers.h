@@ -22,7 +22,8 @@
 
 #ifdef DEAL_II_WITH_T8CODE
 #  include <t8.h>
-#  include <t8_cmesh/t8_cmesh.h>
+//#  include <t8_cmesh/t8_cmesh.h>
+#  include <t8_cmesh/t8_cmesh_internal/t8_cmesh_types.h>
 #  include <t8_element.h>
 #  include <t8_forest/t8_forest.h>
 #  include <t8_forest/t8_forest_general.h>
@@ -46,7 +47,7 @@ namespace internal
       using connectivity      = t8_cmesh_t;
       using forest            = struct t8_forest;
       using tree              = t8_tree_t;
-      using element           = t8_standalone_element<(t8_eclass_t)dim>; //TODO: make standalone dependent on dim!
+      using element           = t8_standalone_element<dim == 3 ? (t8_eclass_t)4 : (t8_eclass_t)dim>; //TODO: make standalone dependent on dim!
       using element_coord     = t8_element_coord;
       using eclass            = t8_eclass_t;
       using scheme_collection = const t8_scheme;
@@ -105,7 +106,7 @@ namespace internal
     }; // struct functions
 
       template <int dim, int spacedim>
-      typename types<dim>::connectivity dealii_to_connectivity(Triangulation<dim,spacedim>*);
+      typename types<dim>::connectivity dealii_to_connectivity(typename ::dealii::parallel::distributed::Triangulation<dim,spacedim> *tria);
 
     template <int dim> types<dim>::forest *
       partition(typename types<dim>::forest *, typename types<dim>::weight weights);
@@ -186,7 +187,7 @@ namespace internal
     template <int dim, int spacedim>
     typename types<dim>::forest *
     adapt(typename types<dim>::forest  *parallel_forest,
-          Triangulation<dim, spacedim> *triangulation);
+           typename ::dealii::parallel::distributed::Triangulation<dim,spacedim> *triangulation);
 
     template <int dim>
     types<dim>::forest *

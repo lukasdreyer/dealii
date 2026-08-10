@@ -12,6 +12,7 @@
 
 
 #include "deal.II/base/exception_macros.h"
+#include "deal.II/base/exceptions.h"
 #include <deal.II/base/logstream.h>
 #include <deal.II/base/memory_consumption.h>
 #include <deal.II/base/point.h>
@@ -25,6 +26,7 @@
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
+#include <mpi.h>
 
 #include <algorithm>
 #include <fstream>
@@ -1532,12 +1534,14 @@ namespace parallel
 
       if (parallel_forest != nullptr)
         {
+          std::cout<<"try to destroy forest"<<&parallel_forest<<std::endl;
           dealii::internal::amr::forest_destroy<dim>(&parallel_forest);
           parallel_forest = nullptr;
         }
 
       if (connectivity != nullptr)
         {
+          std::cout<<"try to destroy connectivity"<<&connectivity<<std::endl;
           dealii::internal::amr::functions<dim>::connectivity_destroy(
             connectivity);
           connectivity = nullptr;
@@ -2336,6 +2340,11 @@ namespace parallel
       parallel_forest   = t8_forest_new_uniform(
         cmesh, scheme_collection, 0, 1, this->mpi_communicator);
       t8_forest_set_user_data(parallel_forest, this);
+      parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
+      // parallel_ghost= parallel_forest->ghosts;
+      std::cout<<"subdomain"<< this->my_subdomain <<", set ghost to "<<parallel_ghost<<"with locally active:"<<this->n_locally_owned_active_cells() <<std::endl;
+//TODO      Assert(this->n_subdomains==1U || this->n_locally_owned_active_cells()==0 || (parallel_ghost!=nullptr), ExcInternalError());
+
     }
 #    endif
 #  endif
@@ -2648,12 +2657,15 @@ namespace parallel
       // query p4est for the ghost cells
       if (parallel_ghost != nullptr)
         {
+          std::cout<<"reset parallel ghost"<<std::endl;
           dealii::internal::amr::ghost_destroy<dim>(&parallel_ghost);
           parallel_ghost = nullptr;
         }
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
+      std::cout<<"set parallel ghost to adress"<<parallel_ghost<<std::endl;
+      std::cout<<"subdomain"<< this->my_subdomain <<", set ghost to "<<parallel_ghost<<"with locally active:"<<this->n_locally_owned_active_cells() <<std::endl;
 
-      Assert(parallel_ghost, ExcInternalError());
+//TODO      Assert(this->n_subdomains == 1  || this->n_locally_owned_active_cells()==0 || parallel_ghost, ExcInternalError());
 
 
       // set all cells to artificial. we will later set it to the correct
@@ -3327,6 +3339,8 @@ namespace parallel
 #ifdef DEAL_II_WITH_T8CODE
           this->execute_transfer(parallel_forest,
                                  old_forest);
+        t8_forest_unref(&old_forest);
+        Assert(old_forest== nullptr, ExcMessage("old forest not freed"));
 #endif
           // also update the CellStatus information on the new mesh
           this->data_serializer.unpack_cell_status(this->local_cell_relations);
@@ -3522,6 +3536,8 @@ DEAL_II_NOT_IMPLEMENTED();
 #ifdef DEAL_II_WITH_T8CODE
           this->execute_transfer(parallel_forest,
                                  old_forest);
+        t8_forest_unref(&old_forest);
+        Assert(old_forest== nullptr, ExcMessage("old forest not freed"));
 #endif
                                 }
 

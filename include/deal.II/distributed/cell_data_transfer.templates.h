@@ -18,7 +18,7 @@
 
 #include <deal.II/distributed/cell_data_transfer.h>
 
-#ifdef DEAL_II_WITH_P4EST
+#if defined( DEAL_II_WITH_P4EST) || defined (DEAL_II_WITH_T8CODE)
 
 #  include <deal.II/lac/block_vector.h>
 #  include <deal.II/lac/la_parallel_block_vector.h>

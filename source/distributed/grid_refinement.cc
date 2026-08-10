@@ -18,7 +18,7 @@
 #include <deal.II/lac/trilinos_vector.h>
 #include <deal.II/lac/vector.h>
 
-#ifdef DEAL_II_WITH_P4EST
+#if defined( DEAL_II_WITH_P4EST) || defined(DEAL_II_WITH_T8CODE) 
 
 #  include <deal.II/distributed/grid_refinement.h>
 

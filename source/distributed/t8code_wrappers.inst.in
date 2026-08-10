@@ -53,6 +53,20 @@ for (deal_II_dimension : DIMENSIONS)
         tree_get_offset<deal_II_dimension>(
           const types<deal_II_dimension>::tree tree);
 
+              template types<deal_II_dimension>::connectivity dealii_to_connectivity(::dealii::parallel::distributed::Triangulation<deal_II_dimension> *tria);
+
+
+        template void
+        forest_set_user_pointer<deal_II_dimension>(
+          types<deal_II_dimension>::forest *forest,
+          void                             *user_pointer);
+
+
+        template void *
+        forest_get_user_pointer<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *forest);
+
+
 
         template bool
         tree_exists_locally<deal_II_dimension>(
@@ -176,8 +190,7 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
         template types<deal_II_dimension>::forest *
         adapt<deal_II_dimension, deal_II_space_dimension>(
           types<deal_II_dimension>::forest *parallel_forest,
-          Triangulation<deal_II_dimension, deal_II_space_dimension>
-            *triangulation);
+           ::dealii::parallel::distributed::Triangulation<deal_II_dimension,deal_II_space_dimension> *triangulation);
 
 #    endif
 #  endif
