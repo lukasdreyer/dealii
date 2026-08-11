@@ -14,6 +14,7 @@
 
 
 #include "deal.II/base/exception_macros.h"
+#include "deal.II/base/types.h"
 #include <deal.II/distributed/t8code_wrappers.h>
 #include <deal.II/distributed/tria.h>
 #include "deal.II/grid/reference_cell.h"
@@ -24,6 +25,7 @@
 #include <t8_forest/t8_forest_io.h>
 #include <t8_geometry/t8_geometry_implementations/t8_geometry_linear.hxx>
 #include <cstdint>
+#include <vector>
 
 
 #ifdef DEAL_II_WITH_T8CODE
@@ -42,6 +44,36 @@ namespace internal
 {
   namespace t8code
   {
+     std::pair<unsigned int, unsigned int> 
+      amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell, const unsigned int dealii_type, const unsigned int child)
+      {
+        if(ref_cell.is_hyper_cube())
+          return std::pair<unsigned int, unsigned int>{child, dealii_type};
+        else if(ref_cell == ReferenceCells::Triangle)
+        {
+          const ::dealii::ndarray<unsigned int, 6,4> triangle_type = {{
+            {{0,1,3,2}},
+            {{0,3,2,1}},
+            {{2,0,3,1}},
+            {{2,3,1,0}},
+            {{1,2,3,0}},
+            {{1,3,0,2}}
+          }};
+
+          const unsigned int child_index =  triangle_type[dealii_type][child];
+          const unsigned int child_type = (child_index == 3) ? (dealii_type + 1) % 6 : dealii_type;
+
+          return std::pair<unsigned int, unsigned int>{child_index, child_type};
+        }
+        else 
+        {
+          DEAL_II_NOT_IMPLEMENTED();
+        }
+        
+        return std::pair<unsigned int, unsigned int>{numbers::invalid_unsigned_int, numbers::invalid_unsigned_int};
+      }
+
+
 
       const std::vector<std::vector<int> >
         dealii_to_t8_faces = 
@@ -60,6 +92,8 @@ namespace internal
         switch (ref_cell) {
           case ReferenceCells::Quadrilateral:
             return T8_ECLASS_QUAD;
+          case ReferenceCells::Triangle:
+            return T8_ECLASS_TRIANGLE;
           case ReferenceCells::Hexahedron:
             return T8_ECLASS_HEX;
           default:
@@ -74,7 +108,8 @@ namespace internal
       //TODO!! coarse mesh permutation!!!
       t8_cmesh_init(&cmesh);
       t8_cmesh_register_geometry<t8_geometry_linear> (cmesh);
-      const auto &coarse_cell_permutation = tria->get_p4est_tree_to_coarse_cell_permutation();
+      const auto &coarse_cell_permutation = tria->get_coarse_cell_to_p4est_tree_permutation();
+      // const auto &coarse_cell_permutation = tria->get_p4est_tree_to_coarse_cell_permutation();
       for(const auto & cell:tria->active_cell_iterators()){ 
         const auto t8_index = coarse_cell_permutation[cell->index()];
         t8_eclass_t eclass = t8_eclass_from_reference_cell(cell->reference_cell());
@@ -101,7 +136,7 @@ namespace internal
               t8_eclass_t neigh_eclass = t8_eclass_from_reference_cell(cell->neighbor(iface)->reference_cell());
               int t8_ineighface = dealii_to_t8_faces[neigh_eclass][ineighface];
 
-              unsigned int orientation = (cell->face_orientation(iface) != cell->neighbor(iface)->face_orientation(ineighface));//cell->combined_face_orientation(iface);
+              bool orientation = (cell->face_orientation(iface) != cell->neighbor(iface)->face_orientation(ineighface));//cell->combined_face_orientation(iface);
               if(eclass == T8_ECLASS_TRIANGLE && iface == 2){
 //                std::cout<<"switched orientation because own cell is triangle and on face 2"<<std::endl;
                 orientation = !orientation;
@@ -114,7 +149,7 @@ namespace internal
 //              std::cout<<"added face join from cell "<<t8_index<<" face "<<t8_iface<<" to cell "<<t8_neighbor_index<<" face " << t8_ineighface <<" with orientation "<<orientation <<std::endl;
               std::cout<<cell->face_orientation(iface)<<" "<<cell->neighbor(iface)->face_orientation(ineighface)<<std::endl;
 //              std::cout<<"t8_cmesh_set_join(cmesh,"<< t8_index<<", "<<t8_neighbor_index<<", "<< t8_iface <<", "<< t8_ineighface<<", "<<orientation <<")"<<std::endl;
-              t8_cmesh_set_join(cmesh, t8_index, t8_neighbor_index, t8_iface, t8_ineighface, orientation);
+              t8_cmesh_set_join(cmesh, t8_index, t8_neighbor_index, t8_iface, t8_ineighface, (int) orientation);
             }
         }
 
@@ -136,7 +171,7 @@ namespace internal
     }
 
     template <int dim, int spacedim>
-    static void fill_adapt_list_recursively(const typename Triangulation<dim, spacedim>::cell_iterator &dealii_cell, std::vector<int> & adapt_list)
+    static void fill_adapt_list_recursively(const typename Triangulation<dim, spacedim>::cell_iterator &dealii_cell, const unsigned int dealii_type, std::vector<int> & adapt_list)
     {
       if(!dealii_cell->has_children())
         if(dealii_cell->is_locally_owned())
@@ -152,11 +187,12 @@ namespace internal
       }
 
       //loop over children in t8code order
-      for(unsigned int t8code_child=0; t8code_child < dealii_cell->n_children(); ++t8code_child){
-        const unsigned dealii_child = t8code_child; //TODO: permute_children[t8code_child] change t8code_child into dealii child
-        const auto &child = dealii_cell->child(dealii_child);
+      for(unsigned int t8code_child=0; t8code_child < dealii_cell->n_children(); ++t8code_child)
+      {
+        const std::pair<unsigned int, unsigned int> dealii_child_index_and_type = amr_to_dealii_child_index_and_type(dealii_cell->reference_cell(), dealii_type, t8code_child); 
+        const auto &dealii_child = dealii_cell->child(dealii_child_index_and_type.first);
 
-        fill_adapt_list_recursively<dim,spacedim>(child, adapt_list);
+        fill_adapt_list_recursively<dim,spacedim>(dealii_child, dealii_child_index_and_type.second, adapt_list);
       }
 
     }
@@ -166,7 +202,7 @@ namespace internal
                                   const t8_eclass_t , t8_locidx_t lelement_id, const t8_scheme_c *,
                                   const int , const int , t8_element_t *[]){
                                     std::vector<int> *adapt_vec = (std::vector<int> *)t8_forest_get_user_data(forest_from);
-                                    std::cout<<"restored adapt_vec from adress "<<adapt_vec<<std::endl;
+                                    // std::cout<<"restored adapt_vec from adress "<<adapt_vec<<std::endl;
                                     const int idata = t8_forest_get_tree_element_offset(forest_from, which_tree) + lelement_id;
                                     return (*adapt_vec)[idata];
                                   }
@@ -200,13 +236,13 @@ namespace internal
 
               typename dealii::Triangulation<dim, spacedim>::cell_iterator dealii_cell(triangulation, 0, cell_index);
 
-              fill_adapt_list_recursively<dim,spacedim>(dealii_cell,adapt_list);
+              fill_adapt_list_recursively<dim,spacedim>(dealii_cell, 0,adapt_list);
             }
 
-            std::cout<<"list size:"<<adapt_list.size()<<", tria size:"<<triangulation->n_active_cells()<<std::endl;
-            for (const auto &entry: adapt_list){
-              std::cout<<(int)entry<<std::endl;
-            }
+            // std::cout<<"list size:"<<adapt_list.size()<<", tria size:"<<triangulation->n_active_cells()<<std::endl;
+            // for (const auto &entry: adapt_list){
+            //   std::cout<<(int)entry<<std::endl;
+            // }
       
       t8_forest_t new_forest;
 
@@ -426,8 +462,7 @@ auto compare_lambda = [scheme,eclass](auto x, auto y) {
 
       template <int dim>   void
       vtk_write_file(const typename types<dim>::forest *forest, const char *path){
-
-                t8_forest_write_vtk (const_cast<types<dim>::forest *>(forest), path);
+               t8_forest_write_vtk_ext (const_cast<types<dim>::forest *>(forest), path, 1, 1, 1, 1, 1, 0, 0, 0, NULL);
       }
 
 

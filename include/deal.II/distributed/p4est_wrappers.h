@@ -680,6 +680,9 @@ namespace internal
     typename types<3>::connectivity *
     copy_connectivity<3>(const typename types<3>::connectivity *connectivity);
 #  endif
+
+std::pair<unsigned int, unsigned int> 
+      amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell, const unsigned int dealii_type, const unsigned int child);
   } // namespace p4est
 } // namespace internal
 

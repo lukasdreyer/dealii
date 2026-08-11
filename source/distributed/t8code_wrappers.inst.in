@@ -74,6 +74,11 @@ for (deal_II_dimension : DIMENSIONS)
           const types<deal_II_dimension>::topidx  coarse_grid_cell);
 
         template types<deal_II_dimension>::locidx
+        global_to_local_tree<deal_II_dimension>(
+          const types<deal_II_dimension>::forest *parallel_forest,
+          const types<deal_II_dimension>::topidx  coarse_grid_cell);
+
+        template types<deal_II_dimension>::locidx
         leaf_index_in_tree<deal_II_dimension>(
           const types<deal_II_dimension>::forest  *forest,
           const types<deal_II_dimension>::locidx   ltreeid,

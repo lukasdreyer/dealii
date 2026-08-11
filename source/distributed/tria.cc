@@ -22,6 +22,7 @@
 #include <deal.II/distributed/amr.h>
 #include <deal.II/distributed/tria.h>
 
+#include "deal.II/grid/grid_out.h"
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/tria_accessor.h>
@@ -33,6 +34,7 @@
 #include <iostream>
 #include <limits>
 #include <numeric>
+#include <string>
 
 
 DEAL_II_NAMESPACE_OPEN
@@ -193,7 +195,7 @@ namespace
     for (; cell != endc; ++cell)
       {
         const unsigned int index =
-          coarse_cell_to_p4est_tree_permutation[cell->index()];
+          coarse_cell_to_p4est_tree_permutation[cell->index()]; //TODO
 
         for (const unsigned int v : GeometryInfo<dim>::vertex_indices())
           {
@@ -455,7 +457,7 @@ namespace
           p4est_child[GeometryInfo<dim>::max_children_per_cell];
 
 
-        dealii::internal::amr::element_children<dim>(forest,
+        dealii::internal::amr::element_children<dim>(forest, //TODO
                                                      eclass,
                                                      &amr_cell,
                                                      p4est_child);
@@ -483,7 +485,8 @@ namespace
     const typename Triangulation<dim, spacedim>::cell_iterator &dealii_cell,
     const typename dealii::internal::amr::types<dim>::element  &amr_cell,
     const typename dealii::internal::amr::types<dim>::forest   *forest,
-    const types::subdomain_id                                   my_subdomain)
+    const types::subdomain_id                                   my_subdomain,
+    const unsigned int dealii_type)
   {
     typename dealii::internal::amr::types<dim>::eclass eclass =
       dealii::internal::amr::get_eclass_from_tree<dim>(tree);
@@ -513,18 +516,20 @@ namespace
                                                          &amr_cell,
                                                          p4est_child);
 
-            for (unsigned int c = 0;
-                 c < GeometryInfo<dim>::max_children_per_cell;
-                 ++c)
+            for (unsigned int t8_child = 0;
+                 t8_child < dealii_cell->reference_cell().n_isotropic_children();
+                 ++t8_child){
+            const std::pair<unsigned int, unsigned int> dealii_child_index_and_type = dealii::internal::amr::amr_to_dealii_child_index_and_type(dealii_cell->reference_cell(), dealii_type, t8_child); 
+            const unsigned int dealii_child_index =dealii_child_index_and_type.first;
               if (dealii::internal::amr::element_overlaps_tree<dim>(
-                    forest, tree, p4est_child + c) == false)
+                    forest, tree, p4est_child + t8_child) == false)
                 {
                   // no, this child is locally not available in the p4est.
                   // delete all its children but, because this may not be
                   // successful, make sure to mark all children recursively
                   // as not local.
-                  delete_all_children<dim, spacedim>(dealii_cell->child(c));
-                  dealii_cell->child(c)->recursively_set_subdomain_id(
+                  delete_all_children<dim, spacedim>(dealii_cell->child(dealii_child_index));
+                  dealii_cell->child(dealii_child_index)->recursively_set_subdomain_id(
                     numbers::artificial_subdomain_id);
                 }
               else
@@ -532,11 +537,12 @@ namespace
                   // at least some part of the tree rooted in this child is
                   // locally available
                   match_tree_recursively<dim, spacedim>(tree,
-                                                        dealii_cell->child(c),
-                                                        p4est_child[c],
+                                                        dealii_cell->child(dealii_child_index),
+                                                        p4est_child[t8_child],
                                                         forest,
-                                                        my_subdomain);
+                                                        my_subdomain, dealii_child_index_and_type.second);
                 }
+              }
           }
       }
   }
@@ -1303,7 +1309,8 @@ namespace
     std::vector<cell_relation_t<dim, spacedim>>                &cell_rel,
     const typename dealii::internal::amr::types<dim>::locidx    ltreeid,
     const typename Triangulation<dim, spacedim>::cell_iterator &dealii_cell,
-    const typename dealii::internal::amr::types<dim>::element  &amr_cell)
+    const typename dealii::internal::amr::types<dim>::element  &amr_cell,
+  const unsigned int dealii_type)
   {
     typename dealii::internal::amr::types<dim>::eclass eclass =
       dealii::internal::amr::get_eclass<dim>(forest, ltreeid);
@@ -1324,18 +1331,20 @@ namespace
       {
         // recurse further
         typename dealii::internal::amr::types<dim>::element
-          p4est_child[GeometryInfo<dim>::max_children_per_cell];
+          p4est_child[GeometryInfo<dim>::max_children_per_cell]; //TODO
 
         dealii::internal::amr::element_children<dim>(forest,
                                                      eclass,
                                                      &amr_cell,
                                                      p4est_child);
 
-        for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-             ++c)
+        for (unsigned int t8_child = 0; t8_child < dealii_cell->n_children();
+             ++t8_child)
           {
+            const std::pair<unsigned int, unsigned int> dealii_child_index_and_type = dealii::internal::amr::amr_to_dealii_child_index_and_type(dealii_cell->reference_cell(), dealii_type, t8_child); 
+            const auto &dealii_child = dealii_cell->child(dealii_child_index_and_type.first);
             update_cell_relations_recursively<dim, spacedim>(
-              forest, cell_rel, ltreeid, dealii_cell->child(c), p4est_child[c]);
+              forest, cell_rel, ltreeid, dealii_child, p4est_child[t8_child], dealii_child_index_and_type.second);
           }
       }
     else if (!p4est_has_children && !dealii_cell->has_children())
@@ -1366,17 +1375,18 @@ namespace
         // all with the parent cell unpack algorithm will be called only on
         // CellStatus::cell_will_be_refined flagged element
         CellStatus cell_status;
-        for (unsigned int i = 0; i < GeometryInfo<dim>::max_children_per_cell;
-             ++i)
+        for (unsigned int t8_child = 0; t8_child < dealii_cell->reference_cell().n_isotropic_children();
+             ++t8_child)
           {
+            const std::pair<unsigned int, unsigned int> dealii_child_index_and_type = dealii::internal::amr::amr_to_dealii_child_index_and_type(dealii_cell->reference_cell(), dealii_type, t8_child); 
             const int idx_in_tree =
               dealii::internal::amr::leaf_index_in_tree<dim>(forest,
                                                              ltreeid,
-                                                             p4est_child + i);
+                                                             p4est_child + t8_child);
 
             // only put status on first child, partiiton for coarsening
             // gurantees that info can be distributed to other children
-            cell_status = (i == 0) ? CellStatus::cell_will_be_refined :
+            cell_status = (dealii_child_index_and_type.first == 0) ? CellStatus::cell_will_be_refined :
                                      CellStatus::cell_invalid;
 
             add_single_cell_relation<dim, spacedim>(
@@ -1477,11 +1487,11 @@ namespace parallel
           DEAL_II_ASSERT_UNREACHABLE();
         }
 
-      Assert(
-        this->all_reference_cells_are_hyper_cube(),
-        ExcMessage(
-          "The class parallel::distributed::Triangulation only supports meshes "
-          "consisting only of hypercube-like cells."));
+      // Assert(
+      //   this->all_reference_cells_are_hyper_cube(),
+      //   ExcMessage(
+      //     "The class parallel::distributed::Triangulation only supports meshes "
+      //     "consisting only of hypercube-like cells."));
 
       // note that now we have some content in the p4est objects and call the
       // functions that do the actual work (which are dimension dependent, so
@@ -2594,6 +2604,12 @@ namespace parallel
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::copy_local_forest_to_triangulation()
     {
+          // std::cout<<"beginning of copy"<<std::endl;
+          // for(const auto &cell: this->active_cell_iterators())
+          // {
+          //   std::cout << "Refine flag: " << int(cell->refine_flag_set()) << ", coarsen flag: " << int(cell->coarsen_flag_set()) << std::endl;
+          // }
+      dealii::internal::amr::vtk_write_file<dim>(parallel_forest, "t8_grid");
       // Disable mesh smoothing for recreating the deal.II triangulation,
       // otherwise we might not be able to reproduce the p4est mesh
       // exactly. We restore the original smoothing at the end of this
@@ -2652,6 +2668,11 @@ namespace parallel
                 DEAL_II_ASSERT_UNREACHABLE();
               }
           }
+          // std::cout<<"after mesh reconstruction:"<<std::endl;
+          // for(const auto &cell: this->active_cell_iterators())
+          // {
+          //   std::cout << "Refine flag: " << int(cell->refine_flag_set()) << ", coarsen flag: " << int(cell->coarsen_flag_set()) << std::endl;
+          // }
 
 
       // query p4est for the ghost cells
@@ -2677,14 +2698,17 @@ namespace parallel
         {
           for (const auto &cell : this->cell_iterators_on_level(0))
             {
-              const unsigned int tree_index =
-                coarse_cell_to_p4est_tree_permutation[cell->index()];
-
+          typename dealii::internal::amr::types<dim>::gloidx gtreeid =
+            coarse_cell_to_p4est_tree_permutation[cell->index()];
+          typename dealii::internal::amr::types<dim>::locidx ltreeid =
+          dealii::internal::amr::global_to_local_tree<dim>(parallel_forest,
+          gtreeid);
+              // std::cout <<"consider dealii cell "<<cell->id()<<" with index "<<cell->index()<<" with global "<<gtreeid<<"and local"<<ltreeid<<std::endl;
               // if this processor stores no part of the forest that comes out
               // of this coarse grid cell, then we need to delete all children
               // of this cell (the coarse grid cell remains)
               if (dealii::internal::amr::tree_exists_locally<dim>(
-                    parallel_forest, tree_index) == false)
+                    parallel_forest, gtreeid) == false)
                 {
                   delete_all_children<dim, spacedim>(cell);
                   if (cell->is_active())
@@ -2701,11 +2725,11 @@ namespace parallel
 
                   typename dealii::internal::amr::types<dim>::tree tree =
                     dealii::internal::amr::forest_get_tree<dim>(parallel_forest,
-                                                                tree_index);
+                                                                ltreeid);
 
                   const auto eclass =
                     dealii::internal::amr::get_eclass<dim>(parallel_forest,
-                                                           tree_index);
+                                                           ltreeid);
 
 
                   dealii::internal::amr::init_coarse_element<dim>(
@@ -2715,7 +2739,7 @@ namespace parallel
                                                         cell,
                                                         p4est_coarse_cell,
                                                         parallel_forest,
-                                                        this->my_subdomain);
+                                                        this->my_subdomain, 0/*dealii_type*/);
                 }
             }
 
@@ -2803,6 +2827,14 @@ namespace parallel
                                            ghost_owner);
             }
           }
+
+
+          // std::cout<<"before fixing"<<std::endl;
+          // for(const auto &cell: this->active_cell_iterators())
+          // {
+          //   std::cout << "Refine flag: " << int(cell->refine_flag_set()) << ", coarsen flag: " << int(cell->coarsen_flag_set()) << std::endl;
+          // }
+          
 
 
           // Fix all the flags to make sure we have a consistent local
@@ -2931,8 +2963,8 @@ namespace parallel
             {
               typename dealii::internal::amr::types<dim>::element
                                  p4est_coarse_cell;
-              const unsigned int tree_index =
-                coarse_cell_to_p4est_tree_permutation[cell->index()];
+              const unsigned int tree_index = dealii::internal::amr::global_to_local_tree<dim>(parallel_forest,
+                coarse_cell_to_p4est_tree_permutation[cell->index()]);
 
               typename dealii::internal::amr::types<dim>::tree tree =
                 dealii::internal::amr::forest_get_tree<dim>(parallel_forest,
@@ -3036,6 +3068,24 @@ namespace parallel
       // repartitioning, further refinement/coarsening, and unpacking
       // of stored or transferred data.
       update_cell_relations();
+
+      for(auto &cell: this->active_cell_iterators())
+      {
+        if(cell->is_locally_owned())
+          cell->set_material_id(0);
+        else if(cell->is_ghost())
+          cell->set_material_id(1);
+        else if(cell->is_artificial())
+          cell->set_material_id(2);
+        else
+          DEAL_II_ASSERT_UNREACHABLE();
+          
+      }
+      std::ofstream out("grid-" + std::to_string(this->my_subdomain) +".vtk");
+      GridOut       grid_out;
+//      grid_out.write_mesh_per_processor_as_vtu(*this, "grid", false, true);
+       grid_out.write_vtk(*this, out);
+      std::cout << "Grid written to grid-"<<this->my_subdomain<<".vtk" << std::endl;
     }
 
 
@@ -3972,11 +4022,14 @@ DEAL_II_NOT_IMPLEMENTED();
       // recurse over p4est
       for (const auto &cell : this->cell_iterators_on_level(0))
         {
-          typename dealii::internal::amr::types<dim>::locidx ltreeid =
+          typename dealii::internal::amr::types<dim>::gloidx gtreeid =
             coarse_cell_to_p4est_tree_permutation[cell->index()];
-          // skip coarse cells that are not ours
+          typename dealii::internal::amr::types<dim>::locidx ltreeid =
+          dealii::internal::amr::global_to_local_tree<dim>(parallel_forest,
+          gtreeid);
+            // skip coarse cells that are not ours
           if (dealii::internal::amr::tree_exists_locally<dim>(parallel_forest,
-                                                              ltreeid) == false)
+                                                              gtreeid) == false)
             continue;
 
           // initialize auxiliary top level p4est element
@@ -3995,7 +4048,7 @@ DEAL_II_NOT_IMPLEMENTED();
             this->local_cell_relations,
             ltreeid,
             cell,
-            p4est_coarse_cell);
+            p4est_coarse_cell, /*dealii_type*/0);
         }
     }
 

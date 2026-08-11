@@ -11,6 +11,8 @@
 // -----------------------------------------------------------------------------
 
 
+#include "deal.II/base/exception_macros.h"
+#include "deal.II/base/exceptions.h"
 #include <deal.II/base/array_view.h>
 #include <deal.II/base/geometry_info.h>
 #include <deal.II/base/memory_consumption.h>
@@ -4623,7 +4625,7 @@ namespace internal
               Implementation::get_line_indices_of_cell(*child);
             for (const unsigned int l : cell->line_indices())
               --line_cell_count[line_indices[l]];
-            for (auto f : GeometryInfo<dim>::face_indices())
+            for (auto f : child->face_indices())
               --quad_cell_count[child->quad_index(f)];
           }
 
@@ -4714,7 +4716,7 @@ namespace internal
             cell->child(child)->clear_user_data();
             cell->child(child)->clear_user_flag();
 
-            for (auto f : GeometryInfo<dim>::face_indices())
+            for (auto f : cell->child(child)->face_indices())
               // set flags denoting deviations from standard orientation of
               // faces back to initialization values
               cell->child(child)->set_combined_face_orientation(
@@ -4737,7 +4739,7 @@ namespace internal
         // can delete them. first for quads (and
         // their inner lines).
 
-        for (const unsigned int quad_no : GeometryInfo<dim>::face_indices())
+        for (const unsigned int quad_no : cell->face_indices())
           {
             typename Triangulation<dim, spacedim>::quad_iterator quad =
               cell->face(quad_no);
@@ -6315,6 +6317,8 @@ namespace internal
         }
 
         // If we get here, we are doing anisotropic refinement.
+
+        Assert(triangulation.all_reference_cells_are_hyper_cube(), ExcNotImplemented());
 
         // Check whether a new level is needed. We have to check for
         // this on the highest level only
@@ -8158,6 +8162,8 @@ namespace internal
         // vertices onto the manifold just as we do for the other
         // functions above.
         Assert(spacedim == 3, ExcNotImplemented());
+
+        Assert(triangulation.all_reference_cells_are_hyper_cube(), ExcNotImplemented());
 
         // Check whether a new level is needed. We have to check for
         // this on the highest level only
@@ -12527,7 +12533,7 @@ namespace internal
               // look
               const RefinementCase<dim> ref_case = cell->refine_flag_set();
               for (const unsigned int face_no :
-                   GeometryInfo<dim>::face_indices())
+                   cell->face_indices())
                 if (cell->face(face_no)->at_boundary())
                   {
                     // this is the critical face at the boundary.
@@ -13002,11 +13008,47 @@ namespace internal
       template <int dim, int spacedim>
       static bool
       coarsening_allowed(
-        const typename Triangulation<dim, spacedim>::cell_iterator &)
+        const typename Triangulation<dim, spacedim>::cell_iterator &cell)
       {
-        AssertThrow(false, ExcNotImplemented());
-
+        DEAL_II_ASSERT_UNREACHABLE();
         return false;
+        // in 1d, coarsening is always allowed since we don't enforce
+        // the 2:1 constraint there
+        if (dim == 1)
+          return true;
+
+        //Check/Assert that cell has children??
+
+
+        //Loop over children
+        for (unsigned int c=0; c< cell->n_children(); c++){
+          const typename Triangulation<dim, spacedim>::cell_iterator
+            child_cell = cell->child(c);
+          //Loop over faces
+          for(unsigned int n=0; n<cell->n_faces(); n++){
+            if(child_cell->at_boundary(n))
+              continue;
+
+            if (!child_cell->neighbor_is_coarser(n))
+              {
+              const typename Triangulation<dim, spacedim>::cell_iterator
+                child_neighbor = child_cell->neighbor(n);
+
+                // if the neighbor of the child will be coarsened then we also can be coarsend
+                if (child_neighbor->has_children())
+                for(unsigned int i = 0; i < child_neighbor->n_children(); ++i)
+                    if(!(child_neighbor->child(i)->is_active() &&
+                      child_neighbor->child(i)->coarsen_flag_set()))
+                  return false;
+
+                // the same applies, if the neighbors children are not
+                // refined but will be after refinement
+                if (child_neighbor->refine_flag_set())
+                  return false;
+              }
+          }
+        }
+        return true;
       }
     };
 
@@ -17644,6 +17686,8 @@ void Triangulation<dim, spacedim>::fix_coarsen_flags()
             continue;
 
           const unsigned int n_children       = cell->n_children();
+          Assert(n_children > 0, ExcInternalError());
+
           unsigned int       flagged_children = 0;
           for (unsigned int child = 0; child < n_children; ++child)
             {
@@ -17658,6 +17702,7 @@ void Triangulation<dim, spacedim>::fix_coarsen_flags()
 
           // flag the children for coarsening again if all children were
           // flagged and if the policy allows it
+          // std::cout << "flagged children " << flagged_children << " of n children" << n_children << std::endl;
           if (flagged_children == n_children &&
               this->policy->coarsening_allowed(cell))
             for (unsigned int c = 0; c < n_children; ++c)
@@ -17844,7 +17889,7 @@ namespace
       {
         // use first algorithm
         unsigned int refined_neighbors = 0, unrefined_neighbors = 0;
-        for (const unsigned int face : GeometryInfo<dim>::face_indices())
+        for (const unsigned int face : cell->face_indices())
           if (!cell->at_boundary(face))
             {
               if (face_will_be_refined_by_neighbor(cell, face))
@@ -17862,7 +17907,7 @@ namespace
             // there were any unrefined neighbors at all, see if any
             // of those will have to be refined as well
             if (unrefined_neighbors > 0)
-              for (const unsigned int face : GeometryInfo<dim>::face_indices())
+              for (const unsigned int face : cell->face_indices())
                 if (!cell->at_boundary(face) &&
                     (face_will_be_refined_by_neighbor(cell, face) == false) &&
                     (cell->neighbor(face)->has_children() == false) &&
@@ -17873,6 +17918,7 @@ namespace
       }
     else
       {
+        Assert(cell->reference_cell().is_hyper_cube(), ExcInternalError());
         // variable to store the cell refine case needed to fulfill
         // all smoothing requirements
         RefinementCase<dim> smoothing_cell_refinement_case =

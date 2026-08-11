@@ -61,6 +61,10 @@ namespace internal
       using element_array     = t8_element_array_t *;
     };
 
+
+    std::pair<unsigned int, unsigned int> 
+      amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell, const unsigned int dealii_type, const unsigned int child);
+
     template <int dim>
     struct functions
     {
@@ -248,6 +252,13 @@ namespace internal
       return ((coarse_grid_cell >= parallel_forest->first_local_tree) &&
               (coarse_grid_cell <= parallel_forest->last_local_tree));
     }
+
+    template <int dim>
+    types<dim>::locidx
+    global_to_local_tree(const typename types<dim>::forest *parallel_forest,
+                        const typename types<dim>::topidx  coarse_grid_cell){
+                          return t8_forest_get_local_id(const_cast<typename types<dim>::forest *> (parallel_forest), coarse_grid_cell);
+                        }
 
     template <int dim>
     typename types<dim>::connectivity *
