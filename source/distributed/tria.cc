@@ -563,6 +563,7 @@ namespace
                                                 ghost_eclass,
                                                 &ghost_element);
     // TODO: dealii type
+    int dealii_type=0;
     for (unsigned int i = 0; i < l; ++i)
       {
         typename Triangulation<dim, spacedim>::cell_iterator cell(tria,
@@ -575,9 +576,13 @@ namespace
             return;
           }
 
-        const int child_id = dealii::internal::amr::element_ancestor_id<dim>(
+        const int t8_child_id = dealii::internal::amr::element_ancestor_id<dim>(
           forest, ghost_eclass, &ghost_element, i + 1);
-        dealii_index = cell->child_index(child_id);
+        const std::pair<unsigned int, unsigned int> dealii_child_index_and_type = dealii::internal::amr::amr_to_dealii_child_index_and_type(cell->reference_cell(), dealii_type, t8_child_id); 
+        const unsigned int dealii_child_index =dealii_child_index_and_type.first;
+        dealii_type = dealii_child_index_and_type.second;
+
+        dealii_index = cell->child_index(dealii_child_index);
       }
 
     typename Triangulation<dim, spacedim>::cell_iterator cell(tria,
