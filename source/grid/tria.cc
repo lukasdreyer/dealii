@@ -12969,15 +12969,527 @@ namespace internal
             cell->set_neighbor(f, get_entry(cell->face(f)->index(), cell));
       }
 
-      template <int dim, int spacedim>
+     template <int dim, int spacedim>
       static void
       delete_children(
-        Triangulation<dim, spacedim> & /*triangulation*/,
-        typename Triangulation<dim, spacedim>::cell_iterator & /*cell*/,
-        std::vector<unsigned int> & /*line_cell_count*/,
-        std::vector<unsigned int> & /*quad_cell_count*/)
+        Triangulation<dim, spacedim>                         &triangulation,
+        typename Triangulation<dim, spacedim>::cell_iterator &cell,
+        std::vector<unsigned int>                            &line_cell_count,
+        std::vector<unsigned int>                            &quad_cell_count)
       {
-        AssertThrow(false, ExcNotImplemented());
+        if constexpr (dim == 1)
+          {
+            // first we need to reset the
+            // neighbor pointers of the
+            // neighbors of this cell's
+            // children to this cell. This is
+            // different for one dimension,
+            // since there neighbors can have a
+            // refinement level differing from
+            // that of this cell's children by
+            // more than one level.
+
+            Assert(!cell->child(0)->has_children() &&
+                     !cell->child(1)->has_children(),
+                   ExcInternalError());
+
+            // first do it for the cells to the
+            // left
+            if (cell->neighbor(0).state() == IteratorState::valid)
+              if (cell->neighbor(0)->has_children())
+                {
+                  typename Triangulation<dim, spacedim>::cell_iterator
+                    neighbor = cell->neighbor(0);
+                  Assert(neighbor->level() == cell->level(),
+                         ExcInternalError());
+
+                  // right child
+                  neighbor = neighbor->child(1);
+                  while (true)
+                    {
+                      Assert(neighbor->neighbor(1) == cell->child(0),
+                             ExcInternalError());
+                      neighbor->set_neighbor(1, cell);
+
+                      // move on to further
+                      // children on the
+                      // boundary between this
+                      // cell and its neighbor
+                      if (neighbor->has_children())
+                        neighbor = neighbor->child(1);
+                      else
+                        break;
+                    }
+                }
+
+            // now do it for the cells to the
+            // left
+            if (cell->neighbor(1).state() == IteratorState::valid)
+              if (cell->neighbor(1)->has_children())
+                {
+                  typename Triangulation<dim, spacedim>::cell_iterator
+                    neighbor = cell->neighbor(1);
+                  Assert(neighbor->level() == cell->level(),
+                         ExcInternalError());
+
+                  // left child
+                  neighbor = neighbor->child(0);
+                  while (true)
+                    {
+                      Assert(neighbor->neighbor(0) == cell->child(1),
+                             ExcInternalError());
+                      neighbor->set_neighbor(0, cell);
+
+                      // move on to further
+                      // children on the
+                      // boundary between this
+                      // cell and its neighbor
+                      if (neighbor->has_children())
+                        neighbor = neighbor->child(0);
+                      else
+                        break;
+                    }
+                }
+
+            // delete the vertex which will not
+            // be needed anymore. This vertex
+            // is the second of the first child
+            triangulation.vertices_used[cell->child(0)->vertex_index(1)] =
+              false;
+
+            // invalidate children.  clear user
+            // pointers, to avoid that they may
+            // appear at unwanted places later
+            // on...
+            for (unsigned int child = 0; child < cell->n_children(); ++child)
+              {
+                cell->child(child)->clear_user_data();
+                cell->child(child)->clear_user_flag();
+                cell->child(child)->clear_used_flag();
+              }
+
+
+            // delete pointer to children
+            cell->clear_children();
+            cell->clear_user_flag();
+          }
+        else if constexpr (dim == 2)
+          {
+            Assert(cell->refinement_case() ==
+                     RefinementCase<dim>::isotropic_refinement,
+                   ExcInternalError());
+
+            Assert(line_cell_count.size() == triangulation.n_raw_lines(),
+                   ExcInternalError());
+
+            // vectors to hold all lines which
+            // may be deleted
+            std::vector<typename Triangulation<dim, spacedim>::line_iterator>
+              lines_to_delete(0);
+
+            const auto ref_cell = cell->reference_cell();
+
+            lines_to_delete.reserve(ref_cell.is_hyper_cube() ? 4 * 2 + 4 : 9);
+
+            // now we decrease the counters for
+            // lines contained in the child
+            // cells
+            for (unsigned int c = 0; c < cell->n_children(); ++c)
+              {
+                typename Triangulation<dim, spacedim>::cell_iterator child =
+                  cell->child(c);
+                for (unsigned int l = 0; l < ref_cell.n_lines(); ++l)
+                  --line_cell_count[child->line_index(l)];
+              }
+
+            // for the quad delete the inner vertex and lines
+            if (ref_cell.is_hyper_cube())
+              {
+                triangulation
+                  .vertices_used[cell->child(0)->line(1)->vertex_index(1)] =
+                  false;
+
+                lines_to_delete.push_back(cell->child(0)->line(1));
+                lines_to_delete.push_back(cell->child(0)->line(3));
+                lines_to_delete.push_back(cell->child(3)->line(0));
+                lines_to_delete.push_back(cell->child(3)->line(2));
+              }
+            else
+              {
+                // for the tri delete the inner lines
+                lines_to_delete.push_back(cell->child(3)->line(0));
+                lines_to_delete.push_back(cell->child(3)->line(1));
+                lines_to_delete.push_back(cell->child(3)->line(2));
+              }
+
+            // invalidate children
+            for (unsigned int child = 0; child < cell->n_children(); ++child)
+              {
+                cell->child(child)->clear_user_data();
+                cell->child(child)->clear_user_flag();
+                cell->child(child)->clear_used_flag();
+              }
+
+
+            // delete pointer to children
+            cell->clear_children();
+            cell->clear_refinement_case();
+            cell->clear_user_flag();
+
+            // look at the refinement of outer
+            // lines. if nobody needs those
+            // anymore we can add them to the
+            // list of lines to be deleted.
+            for (unsigned int line_no = 0; line_no < ref_cell.n_lines();
+                 ++line_no)
+              {
+                typename Triangulation<dim, spacedim>::line_iterator line =
+                  cell->line(line_no);
+
+                if (line->has_children())
+                  {
+                    // if one of the cell counters is
+                    // zero, the other has to be as well
+
+                    Assert((line_cell_count[line->child_index(0)] == 0 &&
+                            line_cell_count[line->child_index(1)] == 0) ||
+                             (line_cell_count[line->child_index(0)] > 0 &&
+                              line_cell_count[line->child_index(1)] > 0),
+                           ExcInternalError());
+
+                    if (line_cell_count[line->child_index(0)] == 0)
+                      {
+                        for (unsigned int c = 0; c < 2; ++c)
+                          Assert(!line->child(c)->has_children(),
+                                 ExcInternalError());
+
+                        // we may delete the line's
+                        // children and the middle vertex
+                        // as no cell references them
+                        // anymore
+                        triangulation
+                          .vertices_used[line->child(0)->vertex_index(1)] =
+                          false;
+
+                        lines_to_delete.push_back(line->child(0));
+                        lines_to_delete.push_back(line->child(1));
+
+                        line->clear_children();
+                      }
+                  }
+              }
+
+            // finally, delete unneeded lines
+
+            // clear user pointers, to avoid that
+            // they may appear at unwanted places
+            // later on...
+            // same for user flags, then finally
+            // delete the lines
+            typename std::vector<
+              typename Triangulation<dim, spacedim>::line_iterator>::iterator
+              line    = lines_to_delete.begin(),
+              endline = lines_to_delete.end();
+            for (; line != endline; ++line)
+              {
+                (*line)->clear_user_data();
+                (*line)->clear_user_flag();
+                (*line)->clear_used_flag();
+              }
+          }
+        else if constexpr (dim == 3)
+          {
+            Assert(line_cell_count.size() == triangulation.n_raw_lines(),
+                   ExcInternalError());
+            Assert(quad_cell_count.size() == triangulation.n_raw_quads(),
+                   ExcInternalError());
+
+            const auto ref_cell = cell->reference_cell();
+
+            if (ref_cell.is_simplex())
+              Assert(cell->refinement_case() > 0 && cell->refinement_case() < 4,
+                     ExcInternalError());
+            else
+              Assert(cell->refinement_case() ==
+                       RefinementCase<dim>::isotropic_refinement,
+                     ExcInternalError());
+
+            // vectors to hold all lines and quads which
+            // may be deleted
+            std::vector<typename Triangulation<dim, spacedim>::line_iterator>
+              lines_to_delete(0);
+            std::vector<typename Triangulation<dim, spacedim>::quad_iterator>
+              quads_to_delete(0);
+
+            Assert(ref_cell.is_simplex() || ref_cell.is_hyper_cube(),
+                   ExcNotImplemented());
+
+            // n_lines*n_children_of_lines(=2)+
+            // n_faces*n_lines_in_face(quad=4,tri=3) + new_lines_for_refinement
+            lines_to_delete.reserve(ref_cell.is_hyper_cube() ?
+                                      12 * 2 + 6 * 4 + 6 :
+                                      6 * 2 + 4 * 3 + 1);
+            // n_faces * n_children_per_face + new_inner_faces_for_refinement
+            quads_to_delete.reserve(ref_cell.is_hyper_cube() ? 6 * 4 + 12 :
+                                                               4 * 4 + 8);
+
+            // now we decrease the counters for lines and
+            // quads contained in the child cells
+            for (unsigned int c = 0; c < cell->n_children(); ++c)
+              {
+                typename Triangulation<dim, spacedim>::cell_iterator child =
+                  cell->child(c);
+
+                const auto line_indices = TriaAccessorImplementation::
+                  Implementation::get_line_indices_of_cell(*child);
+
+                for (const unsigned int l : cell->line_indices())
+                  --line_cell_count[line_indices[l]];
+
+                for (const auto f : child->face_indices())
+                  --quad_cell_count[child->quad_index(f)];
+              }
+
+            //-------------------------------------
+            // delete interior quads and lines and the
+            // interior vertex for the hex
+
+            switch (ref_cell)
+              {
+                case ReferenceCells::Hexahedron:
+                  quads_to_delete.push_back(cell->child(0)->face(1));
+                  quads_to_delete.push_back(cell->child(2)->face(1));
+                  quads_to_delete.push_back(cell->child(4)->face(1));
+                  quads_to_delete.push_back(cell->child(6)->face(1));
+
+                  quads_to_delete.push_back(cell->child(0)->face(3));
+                  quads_to_delete.push_back(cell->child(1)->face(3));
+                  quads_to_delete.push_back(cell->child(4)->face(3));
+                  quads_to_delete.push_back(cell->child(5)->face(3));
+
+                  quads_to_delete.push_back(cell->child(0)->face(5));
+                  quads_to_delete.push_back(cell->child(1)->face(5));
+                  quads_to_delete.push_back(cell->child(2)->face(5));
+                  quads_to_delete.push_back(cell->child(3)->face(5));
+
+                  lines_to_delete.push_back(cell->child(0)->line(5));
+                  lines_to_delete.push_back(cell->child(0)->line(7));
+                  lines_to_delete.push_back(cell->child(0)->line(11));
+                  lines_to_delete.push_back(cell->child(7)->line(0));
+                  lines_to_delete.push_back(cell->child(7)->line(2));
+                  lines_to_delete.push_back(cell->child(7)->line(8));
+                  // delete the vertex which will not
+                  // be needed anymore. This vertex
+                  // is the vertex at the heart of
+                  // this cell, which is the sixth of
+                  // the first child
+                  triangulation.vertices_used[cell->child(0)->vertex_index(7)] =
+                    false;
+                  break;
+
+                case ReferenceCells::Tetrahedron:
+                  {
+                    // we want to delete all inner faces, which are faces 0-7 in
+                    // the refined tet
+                    const auto new_isotropic_child_cell_faces =
+                      ReferenceCells::Tetrahedron
+                        .new_isotropic_child_cell_faces(
+                          cell->refinement_case() - 1);
+                    std::array<std::pair<unsigned int, unsigned int>, 8>
+                      child_and_face_index_quad;
+
+                    for (unsigned int i = 0; i < 8; ++i)
+                      for (unsigned int child_index = 4; child_index < 8;
+                           ++child_index)
+                        for (unsigned int face_index = 1; face_index < 4;
+                             ++face_index)
+                          if (new_isotropic_child_cell_faces[child_index]
+                                                            [face_index] == i)
+                            child_and_face_index_quad[i] =
+                              std::pair<unsigned int, unsigned int>{child_index,
+                                                                    face_index};
+
+                    for (const auto &p : child_and_face_index_quad)
+                      quads_to_delete.push_back(
+                        cell->child(p.first)->face(p.second));
+
+                    // line 12 should be deleted, which is the shortest line 
+                    // between nodes 6->8, 5->7 and 4->9
+                    // it is different in each refinement case
+                    if (cell->refinement_case() == 1)
+                      lines_to_delete.push_back(cell->child(4)->line(5));
+                    else if (cell->refinement_case() == 2)
+                      lines_to_delete.push_back(cell->child(6)->line(5));
+                    else if (cell->refinement_case() == 3)
+                      lines_to_delete.push_back(cell->child(7)->line(5));
+                    else
+                      DEAL_II_ASSERT_UNREACHABLE();
+                  }
+                  break;
+                default:
+                  DEAL_II_ASSERT_UNREACHABLE();
+                  break;
+              }
+
+            // invalidate children
+            for (unsigned int child = 0; child < cell->n_children(); ++child)
+              {
+                cell->child(child)->clear_user_data();
+                cell->child(child)->clear_user_flag();
+
+                for (const auto f : cell->face_indices())
+                  // set flags denoting deviations from standard orientation of
+                  // faces back to initialization values
+                  cell->child(child)->set_combined_face_orientation(
+                    f, numbers::default_geometric_orientation);
+
+                cell->child(child)->clear_used_flag();
+              }
+
+            // delete pointer to children
+            cell->clear_children();
+            cell->clear_refinement_case();
+            cell->clear_user_flag();
+
+            // so far we only looked at inner faces,
+            // lines and vertices. Now we have to
+            // consider outer ones as well. here, we have
+            // to check, whether there are other cells
+            // still needing these objects. otherwise we
+            // can delete them. first for faces (and
+            // their inner lines).
+
+            for (const unsigned int face_no : cell->face_indices())
+              {
+                typename Triangulation<dim, spacedim>::quad_iterator quad =
+                  cell->face(face_no);
+
+                // if one of the cell counters is
+                // zero, the others have to be as
+                // well
+                for (unsigned int i = 1;
+                     i < quad->reference_cell().n_isotropic_children();
+                     ++i)
+                  {
+                    if (quad_cell_count[quad->child_index(0)] == 0)
+                      Assert(quad_cell_count[quad->child_index(i)] == 0,
+                             ExcInternalError());
+                    else
+                      Assert(quad_cell_count[quad->child_index(i)] > 0,
+                             ExcInternalError());
+                  }
+
+                if (quad_cell_count[quad->child_index(0)] == 0)
+                  {
+                    // we may delete the quad's
+                    // children, the inner lines
+                    // and the middle vertex as no
+                    // cell references them anymore
+                    if (quad->reference_cell().is_hyper_cube())
+                      {
+                        lines_to_delete.push_back(quad->child(0)->line(1));
+                        lines_to_delete.push_back(quad->child(3)->line(0));
+                        lines_to_delete.push_back(quad->child(0)->line(3));
+                        lines_to_delete.push_back(quad->child(3)->line(2));
+
+                        triangulation
+                          .vertices_used[quad->child(0)->vertex_index(3)] =
+                          false;
+                      }
+                    else
+                      {
+                        lines_to_delete.push_back(quad->child(3)->line(0));
+                        lines_to_delete.push_back(quad->child(3)->line(1));
+                        lines_to_delete.push_back(quad->child(3)->line(2));
+                      }
+
+                    for (unsigned int child = 0; child < quad->n_children();
+                         ++child)
+                      quads_to_delete.push_back(quad->child(child));
+
+                    quad->clear_children();
+                    quad->clear_refinement_case();
+                  }
+              }
+
+            // now we repeat a similar procedure
+            // for the outer lines of this cell.
+
+            // if in debug mode: check that each
+            // of the lines for which we consider
+            // deleting the children in fact has
+            // children (the bits/coarsening_3d
+            // test tripped over this initially)
+            for (unsigned int line_no = 0; line_no < cell->n_lines(); ++line_no)
+              {
+                typename Triangulation<dim, spacedim>::line_iterator line =
+                  cell->line(line_no);
+
+                if (line->has_children())
+                  {
+                    // if one of the cell counters is
+                    // zero, the other has to be as well
+                    Assert((line_cell_count[line->child_index(0)] == 0 &&
+                            line_cell_count[line->child_index(1)] == 0) ||
+                             (line_cell_count[line->child_index(0)] > 0 &&
+                              line_cell_count[line->child_index(1)] > 0),
+                           ExcInternalError());
+
+                    if (line_cell_count[line->child_index(0)] == 0)
+                      {
+                        for (unsigned int c = 0; c < 2; ++c)
+                          Assert(!line->child(c)->has_children(),
+                                 ExcInternalError());
+
+                        // we may delete the line's
+                        // children and the middle vertex
+                        // as no cell references them
+                        // anymore
+                        triangulation
+                          .vertices_used[line->child(0)->vertex_index(1)] =
+                          false;
+
+                        lines_to_delete.push_back(line->child(0));
+                        lines_to_delete.push_back(line->child(1));
+
+                        line->clear_children();
+                      }
+                  }
+              }
+
+            // finally, delete unneeded quads and lines
+
+            // clear user pointers, to avoid that
+            // they may appear at unwanted places
+            // later on...
+            // same for user flags, then finally
+            // delete the quads and lines
+            typename std::vector<
+              typename Triangulation<dim, spacedim>::line_iterator>::iterator
+              line    = lines_to_delete.begin(),
+              endline = lines_to_delete.end();
+            for (; line != endline; ++line)
+              {
+                (*line)->clear_user_data();
+                (*line)->clear_user_flag();
+                (*line)->clear_used_flag();
+              }
+
+            typename std::vector<
+              typename Triangulation<dim, spacedim>::quad_iterator>::iterator
+              quad    = quads_to_delete.begin(),
+              endquad = quads_to_delete.end();
+            for (; quad != endquad; ++quad)
+              {
+                (*quad)->clear_user_data();
+                (*quad)->clear_children();
+                (*quad)->clear_refinement_case();
+                (*quad)->clear_user_flag();
+                (*quad)->clear_used_flag();
+              }
+          }
+        else
+          DEAL_II_NOT_IMPLEMENTED();
       }
 
       template <int dim, int spacedim>
@@ -13010,8 +13522,6 @@ namespace internal
       coarsening_allowed(
         const typename Triangulation<dim, spacedim>::cell_iterator &cell)
       {
-        DEAL_II_ASSERT_UNREACHABLE();
-        return false;
         // in 1d, coarsening is always allowed since we don't enforce
         // the 2:1 constraint there
         if (dim == 1)

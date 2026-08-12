@@ -554,7 +554,7 @@ namespace Step40
       locally_relevant_solution,
       estimated_error_per_cell);
     parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(
-      triangulation, estimated_error_per_cell, 0.3, 0.00);
+      triangulation, estimated_error_per_cell, 0.3, 0.1);
 
     // for(const auto &cell: triangulation.active_cell_iterators())
     // {
@@ -650,17 +650,17 @@ namespace Step40
           << " on " << Utilities::MPI::n_mpi_processes(mpi_communicator)
           << " MPI rank(s)..." << std::endl;
 
-    const unsigned int n_cycles = 5;
+    const unsigned int n_cycles = 8;
     for (unsigned int cycle = 0; cycle < n_cycles; ++cycle)
       {
         pcout << "Cycle " << cycle << ':' << std::endl;
 
         if (cycle == 0)
           {
-            GridGenerator::subdivided_hyper_cube_with_simplices(triangulation, 1);
-//            GridGenerator::reference_cell(triangulation, ReferenceCells::Triangle);
+            // GridGenerator::subdivided_hyper_cube_with_simplices(triangulation, 1);
+            GridGenerator::reference_cell(triangulation, ReferenceCells::Triangle);
             
-            triangulation.refine_global(3);
+            triangulation.refine_global(2);
           }
         else
           refine_grid();
@@ -713,7 +713,7 @@ int main(int argc, char *argv[])
 
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-      LaplaceProblem<2> laplace_problem_2d;
+      LaplaceProblem<3> laplace_problem_2d;
       laplace_problem_2d.run();
     }
   catch (std::exception &exc)
