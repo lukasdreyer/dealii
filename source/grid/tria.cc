@@ -7083,8 +7083,8 @@ namespace internal
                 tri_lines_tri{{{{0, 8, 5, X}},
                                {{1, 2, 6, X}},
                                {{7, 3, 4, X}},
-                              // {{6, 7, 8, X}}}};
-                                {{7, 8, 6, X}}}};
+                               // {{6, 7, 8, X}}}};
+                               {{7, 8, 6, X}}}};
 
               // The defined lines in `line_vertices_tri` do not satisfy the
               // expected orientations of all the children's reference cells.
@@ -7096,7 +7096,7 @@ namespace internal
                    {{{{3, 1}}, {{1, 4}}, {{4, 3}}, {{X, X}}}},
                    {{{{5, 4}}, {{4, 2}}, {{2, 5}}, {{X, X}}}},
                    //{{{{3, 4}}, {{4, 5}}, {{5, 3}}, {{X, X}}}}}};
-                    {{{{4, 5}}, {{5, 3}}, {{3, 4}}, {{X, X}}}}}};
+                   {{{{4, 5}}, {{5, 3}}, {{3, 4}}, {{X, X}}}}}};
 
               // Select lookup table according to reference cell of parent.
               const auto &line_vertices =
