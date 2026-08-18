@@ -6318,7 +6318,8 @@ namespace internal
 
         // If we get here, we are doing anisotropic refinement.
 
-        Assert(triangulation.all_reference_cells_are_hyper_cube(), ExcNotImplemented());
+        Assert(triangulation.all_reference_cells_are_hyper_cube(),
+               ExcNotImplemented());
 
         // Check whether a new level is needed. We have to check for
         // this on the highest level only
@@ -7082,7 +7083,8 @@ namespace internal
                 tri_lines_tri{{{{0, 8, 5, X}},
                                {{1, 2, 6, X}},
                                {{7, 3, 4, X}},
-                               {{6, 7, 8, X}}}};
+                              // {{6, 7, 8, X}}}};
+                                {{7, 8, 6, X}}}};
 
               // The defined lines in `line_vertices_tri` do not satisfy the
               // expected orientations of all the children's reference cells.
@@ -7093,7 +7095,8 @@ namespace internal
                   {{{{{0, 3}}, {{3, 5}}, {{5, 0}}, {{X, X}}}},
                    {{{{3, 1}}, {{1, 4}}, {{4, 3}}, {{X, X}}}},
                    {{{{5, 4}}, {{4, 2}}, {{2, 5}}, {{X, X}}}},
-                   {{{{3, 4}}, {{4, 5}}, {{5, 3}}, {{X, X}}}}}};
+                   //{{{{3, 4}}, {{4, 5}}, {{5, 3}}, {{X, X}}}}}};
+                    {{{{4, 5}}, {{5, 3}}, {{3, 4}}, {{X, X}}}}}};
 
               // Select lookup table according to reference cell of parent.
               const auto &line_vertices =
@@ -7756,12 +7759,18 @@ namespace internal
                               // the table below relating the lines of the
                               // oriented face to their counterparts on the
                               // reference cell face.
-                              tri_line_perm = {{{{0, 1, 2}}, // 0
-                                                {{1, 0, 2}},
-                                                {{2, 0, 1}}, // 2
+                              // tri_line_perm = {{{{0, 1, 2}}, // 0
+                              //                   {{1, 0, 2}},
+                              //                   {{2, 0, 1}}, // 2
+                              //                   {{0, 2, 1}},
+                              //                   {{1, 2, 0}}, // 4
+                              //                   {{2, 1, 0}}}};
+                              tri_line_perm = {{{{2, 0, 1}},
                                                 {{0, 2, 1}},
-                                                {{1, 2, 0}}, // 4
-                                                {{2, 1, 0}}}};
+                                                {{1, 2, 0}},
+                                                {{2, 1, 0}},
+                                                {{0, 1, 2}},
+                                                {{1, 0, 2}}}};
 
                             const auto combined_orientation =
                               cell->combined_face_orientation(f);
@@ -8163,7 +8172,8 @@ namespace internal
         // functions above.
         Assert(spacedim == 3, ExcNotImplemented());
 
-        Assert(triangulation.all_reference_cells_are_hyper_cube(), ExcNotImplemented());
+        Assert(triangulation.all_reference_cells_are_hyper_cube(),
+               ExcNotImplemented());
 
         // Check whether a new level is needed. We have to check for
         // this on the highest level only
@@ -12532,8 +12542,7 @@ namespace internal
               // anisotropic refinement. Therefore, we have a closer
               // look
               const RefinementCase<dim> ref_case = cell->refine_flag_set();
-              for (const unsigned int face_no :
-                   cell->face_indices())
+              for (const unsigned int face_no : cell->face_indices())
                 if (cell->face(face_no)->at_boundary())
                   {
                     // this is the critical face at the boundary.
@@ -12969,7 +12978,7 @@ namespace internal
             cell->set_neighbor(f, get_entry(cell->face(f)->index(), cell));
       }
 
-     template <int dim, int spacedim>
+      template <int dim, int spacedim>
       static void
       delete_children(
         Triangulation<dim, spacedim>                         &triangulation,
@@ -13313,7 +13322,7 @@ namespace internal
                       quads_to_delete.push_back(
                         cell->child(p.first)->face(p.second));
 
-                    // line 12 should be deleted, which is the shortest line 
+                    // line 12 should be deleted, which is the shortest line
                     // between nodes 6->8, 5->7 and 4->9
                     // it is different in each refinement case
                     if (cell->refinement_case() == 1)
@@ -13527,37 +13536,41 @@ namespace internal
         if (dim == 1)
           return true;
 
-        //Check/Assert that cell has children??
+        // Check/Assert that cell has children??
 
 
-        //Loop over children
-        for (unsigned int c=0; c< cell->n_children(); c++){
-          const typename Triangulation<dim, spacedim>::cell_iterator
-            child_cell = cell->child(c);
-          //Loop over faces
-          for(unsigned int n=0; n<cell->n_faces(); n++){
-            if(child_cell->at_boundary(n))
-              continue;
-
-            if (!child_cell->neighbor_is_coarser(n))
+        // Loop over children
+        for (unsigned int c = 0; c < cell->n_children(); c++)
+          {
+            const typename Triangulation<dim, spacedim>::cell_iterator
+              child_cell = cell->child(c);
+            // Loop over faces
+            for (unsigned int n = 0; n < cell->n_faces(); n++)
               {
-              const typename Triangulation<dim, spacedim>::cell_iterator
-                child_neighbor = child_cell->neighbor(n);
+                if (child_cell->at_boundary(n))
+                  continue;
 
-                // if the neighbor of the child will be coarsened then we also can be coarsend
-                if (child_neighbor->has_children())
-                for(unsigned int i = 0; i < child_neighbor->n_children(); ++i)
-                    if(!(child_neighbor->child(i)->is_active() &&
-                      child_neighbor->child(i)->coarsen_flag_set()))
-                  return false;
+                if (!child_cell->neighbor_is_coarser(n))
+                  {
+                    const typename Triangulation<dim, spacedim>::cell_iterator
+                      child_neighbor = child_cell->neighbor(n);
 
-                // the same applies, if the neighbors children are not
-                // refined but will be after refinement
-                if (child_neighbor->refine_flag_set())
-                  return false;
+                    // if the neighbor of the child will be coarsened then we
+                    // also can be coarsend
+                    if (child_neighbor->has_children())
+                      for (unsigned int i = 0; i < child_neighbor->n_children();
+                           ++i)
+                        if (!(child_neighbor->child(i)->is_active() &&
+                              child_neighbor->child(i)->coarsen_flag_set()))
+                          return false;
+
+                    // the same applies, if the neighbors children are not
+                    // refined but will be after refinement
+                    if (child_neighbor->refine_flag_set())
+                      return false;
+                  }
               }
           }
-        }
         return true;
       }
     };
@@ -18195,10 +18208,10 @@ void Triangulation<dim, spacedim>::fix_coarsen_flags()
           if (cell->is_active())
             continue;
 
-          const unsigned int n_children       = cell->n_children();
+          const unsigned int n_children = cell->n_children();
           Assert(n_children > 0, ExcInternalError());
 
-          unsigned int       flagged_children = 0;
+          unsigned int flagged_children = 0;
           for (unsigned int child = 0; child < n_children; ++child)
             {
               const auto child_cell = cell->child(child);
@@ -18212,7 +18225,8 @@ void Triangulation<dim, spacedim>::fix_coarsen_flags()
 
           // flag the children for coarsening again if all children were
           // flagged and if the policy allows it
-          // std::cout << "flagged children " << flagged_children << " of n children" << n_children << std::endl;
+          // std::cout << "flagged children " << flagged_children << " of n
+          // children" << n_children << std::endl;
           if (flagged_children == n_children &&
               this->policy->coarsening_allowed(cell))
             for (unsigned int c = 0; c < n_children; ++c)
