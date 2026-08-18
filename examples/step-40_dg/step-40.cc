@@ -387,10 +387,10 @@ namespace Step40DG
     , quadrature_face(fe.tensor_degree() + 1)
     , pcout(std::cout,
             (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
-    // , computing_timer(mpi_communicator,
-    //                   pcout,
-    //                   TimerOutput::never,
-    //                   TimerOutput::wall_times)
+  // , computing_timer(mpi_communicator,
+  //                   pcout,
+  //                   TimerOutput::never,
+  //                   TimerOutput::wall_times)
   {}
 
 
@@ -416,9 +416,10 @@ namespace Step40DG
   {
     // TimerOutput::Scope t(computing_timer, "setup");
 
-    std::cout<<"n_levels"<<triangulation.n_levels()<<std::endl;
-    std::cout<<"n_active"<<triangulation.n_active_cells()<<std::endl;
-    std::cout<<"n_global_active_cells"<<triangulation.n_global_active_cells()<<std::endl;
+    std::cout << "n_levels" << triangulation.n_levels() << std::endl;
+    std::cout << "n_active" << triangulation.n_active_cells() << std::endl;
+    std::cout << "n_global_active_cells"
+              << triangulation.n_global_active_cells() << std::endl;
 
 
     dof_handler.reinit(triangulation);
@@ -757,12 +758,12 @@ namespace Step40DG
     //    additional_data.max_basis_size = 100;
     LA::SolverGMRES solver(solver_control, additional_data);
     // LA::MPI::PreconditionBlockSSOR preconditioner;
-    //TrilinosWrappers::PreconditionBlockSSOR preconditioner;
-   // LA::MPI::PreconditionIdentity preconditioner;
-   PETScWrappers::PreconditionNone preconditioner;
-   preconditioner.initialize(system_matrix);
+    // TrilinosWrappers::PreconditionBlockSSOR preconditioner;
+    // LA::MPI::PreconditionIdentity preconditioner;
+    PETScWrappers::PreconditionNone preconditioner;
+    preconditioner.initialize(system_matrix);
 
-//    preconditioner.initialize(system_matrix, fe.n_dofs_per_cell());
+    //    preconditioner.initialize(system_matrix, fe.n_dofs_per_cell());
     solver.solve(system_matrix,
                  completely_distributed_solution,
                  system_rhs,
@@ -868,9 +869,9 @@ namespace Step40DG
                              DataOut<dim>::type_dof_data);
 
     Vector<float> subdomain(triangulation.n_active_cells());
-      for (unsigned int i = 0; i < subdomain.size(); ++i)
-        subdomain(i) = triangulation.locally_owned_subdomain();
-      data_out.add_data_vector(subdomain, "subdomain");
+    for (unsigned int i = 0; i < subdomain.size(); ++i)
+      subdomain(i) = triangulation.locally_owned_subdomain();
+    data_out.add_data_vector(subdomain, "subdomain");
 
     data_out.build_patches(mapping);
 

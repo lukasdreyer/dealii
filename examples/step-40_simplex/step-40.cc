@@ -175,8 +175,8 @@ namespace Step40
     parallel::distributed::Triangulation<dim> triangulation;
 
     const FE_SimplexP<dim> fe;
-    const MappingFE<dim> mapping;
-    DoFHandler<dim> dof_handler;
+    const MappingFE<dim>   mapping;
+    DoFHandler<dim>        dof_handler;
 
     IndexSet locally_owned_dofs;
     IndexSet locally_relevant_dofs;
@@ -208,9 +208,10 @@ namespace Step40
   LaplaceProblem<dim>::LaplaceProblem()
     : mpi_communicator(MPI_COMM_WORLD)
     , triangulation(mpi_communicator,
-                    typename Triangulation<dim>::MeshSmoothing(Triangulation<dim>::none))
-                   //   Triangulation<dim>::smoothing_on_refinement |
-                   //   Triangulation<dim>::smoothing_on_coarsening))
+                    typename Triangulation<dim>::MeshSmoothing(
+                      Triangulation<dim>::none))
+    //   Triangulation<dim>::smoothing_on_refinement |
+    //   Triangulation<dim>::smoothing_on_coarsening))
     , fe(2)
     , mapping(FE_SimplexP<dim>(1))
     , dof_handler(triangulation)
@@ -249,8 +250,8 @@ namespace Step40
 
     pcout << "   Number of active cells:       "
           << triangulation.n_global_active_cells() << std::endl
-          << "   Number of degrees of freedom: " << dof_handler.n_dofs() << " with fe " << fe.get_name() 
-          << std::endl;
+          << "   Number of degrees of freedom: " << dof_handler.n_dofs()
+          << " with fe " << fe.get_name() << std::endl;
 
 
     // The next two lines extract some information we will need later on,
@@ -558,7 +559,8 @@ namespace Step40
 
     // for(const auto &cell: triangulation.active_cell_iterators())
     // {
-    //   std::cout << "Refine flag: " << int(cell->refine_flag_set()) << ", coarsen flag: " << int(cell->coarsen_flag_set()) << std::endl;
+    //   std::cout << "Refine flag: " << int(cell->refine_flag_set()) << ",
+    //   coarsen flag: " << int(cell->coarsen_flag_set()) << std::endl;
     // }
     triangulation.execute_coarsening_and_refinement();
   }
@@ -657,9 +659,11 @@ namespace Step40
 
         if (cycle == 0)
           {
-            // GridGenerator::subdivided_hyper_cube_with_simplices(triangulation, 1);
-            GridGenerator::reference_cell(triangulation, ReferenceCells::Triangle);
-            
+            // GridGenerator::subdivided_hyper_cube_with_simplices(triangulation,
+            // 1);
+            GridGenerator::reference_cell(triangulation,
+                                          ReferenceCells::Triangle);
+
             triangulation.refine_global(2);
           }
         else

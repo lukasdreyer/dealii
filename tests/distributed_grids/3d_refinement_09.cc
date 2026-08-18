@@ -40,7 +40,8 @@ test(std::ostream & /*out*/)
   GridGenerator::hyper_cube(tr);
 
 
-  const unsigned int max_level = internal::p4est::functions<dim>::get_max_level(tr.get_p4est());
+  const unsigned int max_level =
+    internal::p4est::functions<dim>::get_max_level(tr.get_p4est());
 
   deallog << "The maximal level of p4est refinements is " << max_level
           << std::endl;

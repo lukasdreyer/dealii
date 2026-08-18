@@ -14,6 +14,7 @@
 #define dealii_t8code_wrappers_h
 
 #include <deal.II/base/config.h>
+
 #include <deal.II/base/types.h>
 
 #include <deal.II/grid/tria.h>

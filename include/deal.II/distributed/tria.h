@@ -804,23 +804,23 @@ namespace parallel
        * Data has to be previously packed with
        * DistributedTriangulationBase::DataTransfer::pack_data().
        */
-#ifdef DEAL_II_WITH_P4EST
+#  ifdef DEAL_II_WITH_P4EST
       void
       execute_transfer(const typename dealii::internal::amr::types<dim>::forest
                          *parallel_forest,
                        const typename dealii::internal::amr::types<dim>::gloidx
                          *previous_global_first_quadrant);
-#endif
-#ifdef DEAL_II_WITH_T8CODE
+#  endif
+#  ifdef DEAL_II_WITH_T8CODE
       void
-      execute_transfer(const typename dealii::internal::amr::types<dim>::forest
-                         *parallel_forest,
-                       const typename dealii::internal::amr::types<dim>::forest
-                         *old_forest);
-#endif
+      execute_transfer(
+        const typename dealii::internal::amr::types<dim>::forest
+          *parallel_forest,
+        const typename dealii::internal::amr::types<dim>::forest *old_forest);
+#  endif
 
 
-    /**
+      /**
        * Two arrays that store which p4est tree corresponds to which coarse
        * grid cell and vice versa. We need these arrays because p4est goes
        * with the original order of coarse cells when it sets up its forest,
@@ -851,8 +851,9 @@ namespace parallel
        *
        * This function exists in 2d and 3d variants.
        */
-//      void copy_new_triangulation_to_amr(std::integral_constant<int, 1>);
-//      void copy_new_triangulation_to_amr(std::integral_constant<int, 2>);
+      //      void copy_new_triangulation_to_amr(std::integral_constant<int,
+      //      1>); void
+      //      copy_new_triangulation_to_amr(std::integral_constant<int, 2>);
       void copy_new_triangulation_to_amr(std::integral_constant<int, dim>);
 
       /**

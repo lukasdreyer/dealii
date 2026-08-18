@@ -608,8 +608,8 @@ namespace internal
 
     template <int dim>
     bool
-    cell_exists_in_tree(const typename types<dim>::forest *forest,
-                          const typename types<dim>::tree     tree,
+    cell_exists_in_tree(const typename types<dim>::forest  *forest,
+                        const typename types<dim>::tree     tree,
                         const typename types<dim>::element *element);
 
 
@@ -681,8 +681,10 @@ namespace internal
     copy_connectivity<3>(const typename types<3>::connectivity *connectivity);
 #  endif
 
-std::pair<unsigned int, unsigned int> 
-      amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell, const unsigned int dealii_type, const unsigned int child);
+    std::pair<unsigned int, unsigned int>
+    amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell,
+                                       const unsigned int   dealii_type,
+                                       const unsigned int   child);
   } // namespace p4est
 } // namespace internal
 

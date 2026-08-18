@@ -23,6 +23,11 @@
 // Output of grids in various graphics formats:
 #include <deal.II/grid/grid_out.h>
 
+#include <deal.II/grid/grid_tools.h>
+#include <deal.II/fe/mapping_fe.h>
+#include <deal.II/fe/fe_simplex_p.h>
+#include <deal.II/base/quadrature_lib.h>
+
 // This is needed for C++ output:
 #include <iostream>
 #include <fstream>
@@ -44,6 +49,75 @@ using namespace dealii;
 // and produce a globally refined grid from it.
 void first_grid()
 {
+  {
+    std::cout << "Shortest edge refinement" << std::endl;
+    MappingFE<3>     mapping(FE_SimplexP<3>(1));
+    QGaussSimplex<3> quad(3);
+    Triangulation<3> tria, temp;
+    GridGenerator::subdivided_hyper_cube(temp, 2);
+    GridGenerator::convert_hypercube_to_simplex_mesh(temp, tria);
+    // tria.refine_global(3);
+    for (unsigned int cycle = 0; cycle < 4; ++cycle)
+      {
+        for (auto &cell : tria.active_cell_iterators())
+          cell->set_refine_flag();
+        tria.execute_coarsening_and_refinement();
+
+        const double max_aspect_ratio =
+          GridTools::compute_maximum_aspect_ratio(mapping, tria, quad);
+
+        std::array<unsigned int, 4> chosen_ref_cases{{0, 0, 0, 0}};
+        for (auto &cell : tria.cell_iterators_on_level(cycle))
+          ++chosen_ref_cases[int(cell->refinement_case())];
+
+        std::cout << "maximum aspect ratio of " << max_aspect_ratio
+                  << " in level " << cycle << std::endl;
+        std::cout << "chosen refinement cases invalid/6-8/5-7/4-9: "
+                  << chosen_ref_cases[0] << " " << chosen_ref_cases[1] << " "
+                  << chosen_ref_cases[2] << " " << chosen_ref_cases[3]
+                  << std::endl;
+      }
+    std::cout << "Number of cells: " << tria.n_cells() << std::endl;
+    std::cout << std::endl;
+  }
+  {
+    std::cout << "Labeled edge refinement" << std::endl;
+    MappingFE<3>     mapping(FE_SimplexP<3>(1));
+    QGaussSimplex<3> quad(3);
+    Triangulation<3> tria, temp;
+    GridGenerator::subdivided_hyper_cube(temp, 2);
+    GridGenerator::convert_hypercube_to_simplex_mesh(temp, tria);
+    // tria.refine_global(3);
+    for (unsigned int cycle = 0; cycle < 4; ++cycle)
+      {
+        for (auto &cell : tria.active_cell_iterators())
+          {
+            cell->set_refine_flag();
+            cell->set_refine_choice(static_cast<std::uint8_t>(1));
+          }
+        tria.execute_coarsening_and_refinement();
+
+        const double max_aspect_ratio =
+          GridTools::compute_maximum_aspect_ratio(mapping, tria, quad);
+
+        std::array<unsigned int, 4> chosen_ref_cases{{0, 0, 0, 0}};
+        for (auto &cell : tria.cell_iterators_on_level(cycle))
+          ++chosen_ref_cases[int(cell->refinement_case())];
+
+        std::cout << "maximum aspect ratio of " << max_aspect_ratio
+                  << " in level " << cycle << std::endl;
+        std::cout << "chosen refinement cases invalid/6-8/5-7/4-9: "
+                  << chosen_ref_cases[0] << " " << chosen_ref_cases[1] << " "
+                  << chosen_ref_cases[2] << " " << chosen_ref_cases[3]
+                  << std::endl;
+      }
+
+    std::cout << "Number of cells: " << tria.n_cells() << std::endl;
+    std::cout << std::endl;
+  }
+  return;
+
+
   // The first thing to do is to define an object for a triangulation of a
   // two-dimensional domain:
   Triangulation<2> triangulation;
@@ -276,5 +350,5 @@ void second_grid()
 int main()
 {
   first_grid();
-  second_grid();
+  // second_grid();
 }

@@ -374,12 +374,14 @@ namespace internal
   namespace p4est
   {
 
-    std::pair<unsigned int, unsigned int> 
-      amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell, const unsigned int dealii_type, const unsigned int child)
-      {
-        (void) ref_cell;
-        return std::pair<unsigned int, unsigned int>{child, dealii_type};
-      }
+    std::pair<unsigned int, unsigned int>
+    amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell,
+                                       const unsigned int   dealii_type,
+                                       const unsigned int   child)
+    {
+      (void)ref_cell;
+      return std::pair<unsigned int, unsigned int>{child, dealii_type};
+    }
 
     namespace
     {
