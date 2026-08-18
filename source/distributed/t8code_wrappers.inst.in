@@ -28,7 +28,7 @@ for (deal_II_dimension : DIMENSIONS)
           const types<deal_II_dimension>::element *element_1,
           const types<deal_II_dimension>::element *element_2);
 
-#if 0
+#    if 0
         template types<deal_II_dimension>::element
         get_ghost_elem_and_owner<deal_II_dimension>(
           const types<deal_II_dimension>::forest *parallel_forest,
@@ -36,7 +36,7 @@ for (deal_II_dimension : DIMENSIONS)
           const types<deal_II_dimension>::locidx  ghost_in_tree_idx,
           const types<deal_II_dimension>::eclass  ghost_eclass,
           ::dealii::types::subdomain_id            &subdomain);
-#endif
+#    endif
 
         template types<deal_II_dimension>::eclass
         get_ghost_eclass<deal_II_dimension>(
@@ -53,7 +53,6 @@ for (deal_II_dimension : DIMENSIONS)
         tree_get_offset<deal_II_dimension>(
           const types<deal_II_dimension>::tree tree);
 
-              template types<deal_II_dimension>::connectivity dealii_to_connectivity(::dealii::parallel::distributed::Triangulation<deal_II_dimension> *tria);
 
 
         template void
@@ -153,7 +152,7 @@ for (deal_II_dimension : DIMENSIONS)
           const types<deal_II_dimension>::forest  *forest,
           const types<deal_II_dimension>::locidx   which_tree,
           const types<deal_II_dimension>::element *q,
-          const ::dealii::types::subdomain_id                guess);
+          const ::dealii::types::subdomain_id      guess);
 
 
         template void
@@ -173,7 +172,7 @@ for (deal_II_dimension : DIMENSIONS)
         template void
         vtk_write_file<deal_II_dimension>(
           const types<deal_II_dimension>::forest *forest,
-          const char                       *baseName);
+          const char                             *baseName);
 
 #  endif
       \}
@@ -195,7 +194,15 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
         template types<deal_II_dimension>::forest *
         adapt<deal_II_dimension, deal_II_space_dimension>(
           types<deal_II_dimension>::forest *parallel_forest,
-           ::dealii::parallel::distributed::Triangulation<deal_II_dimension,deal_II_space_dimension> *triangulation);
+          ::dealii::parallel::distributed::Triangulation<
+            deal_II_dimension,
+            deal_II_space_dimension> *triangulation);
+
+
+        template types<deal_II_dimension>::connectivity
+        dealii_to_connectivity(::dealii::parallel::distributed::Triangulation<
+                               deal_II_dimension,
+                               deal_II_space_dimension> *tria);
 
 #    endif
 #  endif

@@ -14,24 +14,27 @@
 #define dealii_t8code_wrappers_h
 
 #include <deal.II/base/config.h>
+#include <deal.II/base/types.h>
 
-#include "deal.II/base/types.h"
-
-#include "deal.II/grid/tria.h"
-#include <t8_schemes/t8_standalone/t8_standalone_elements.hxx>
+#include <deal.II/grid/tria.h>
 
 #ifdef DEAL_II_WITH_T8CODE
-#  include <t8.h>
-//#  include <t8_cmesh/t8_cmesh.h>
-#  include <t8_cmesh/t8_cmesh_internal/t8_cmesh_types.h>
-#  include <t8_element.h>
-#  include <t8_forest/t8_forest.h>
-#  include <t8_forest/t8_forest_general.h>
-#  include <t8_forest/t8_forest_types.h>
-#  include <t8_schemes/t8_scheme.hxx>
+
+// clang-format off
+#include <t8_schemes/t8_standalone/t8_standalone_elements.hxx>
+
+#include <t8.h>
+// #include <t8_cmesh/t8_cmesh.h>
+#include <t8_cmesh/t8_cmesh_internal/t8_cmesh_types.h>
+#include <t8_element.h>
+#include <t8_forest/t8_forest.h>
+#include <t8_forest/t8_forest_general.h>
+#include <t8_forest/t8_forest_types.h>
+#include <t8_schemes/t8_scheme.hxx>
 #include <t8_forest/t8_forest_ghost.h>
 #include <t8_forest/t8_forest_partition.h>
 #include <t8_data/t8_element_array_iterator.hxx>
+// clang-format on
 
 DEAL_II_NAMESPACE_OPEN
 namespace internal
@@ -44,10 +47,12 @@ namespace internal
     template <int dim>
     struct types
     { // TODO: check which should be pointer, and which not
-      using connectivity      = t8_cmesh_t;
-      using forest            = struct t8_forest;
-      using tree              = t8_tree_t;
-      using element           = t8_standalone_element<dim == 3 ? (t8_eclass_t)4 : (t8_eclass_t)dim>; //TODO: make standalone dependent on dim!
+      using connectivity = t8_cmesh_t;
+      using forest       = struct t8_forest;
+      using tree         = t8_tree_t;
+      using element      = t8_standalone_element<
+        dim == 3 ? (t8_eclass_t)4 :
+                        (t8_eclass_t)dim>; // TODO: make standalone dependent on dim!
       using element_coord     = t8_element_coord;
       using eclass            = t8_eclass_t;
       using scheme_collection = const t8_scheme;
@@ -61,32 +66,49 @@ namespace internal
       using element_array     = t8_element_array_t *;
     };
 
-
-    std::pair<unsigned int, unsigned int> 
-      amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell, const unsigned int dealii_type, const unsigned int child);
+    std::pair<unsigned int, unsigned int>
+    amr_to_dealii_child_index_and_type(const ReferenceCell &ref_cell,
+                                       const unsigned int   dealii_type,
+                                       const unsigned int   child);
 
     template <int dim>
     struct functions
     {
-
       static types<dim>::forest
       adapt_balance_partition(types<dim>::forest,
                               t8_forest_adapt_t adapt_callback,
                               t8_ghost_type_t   ghost_type);
 
-
       static void
-      connectivity_destroy(types<dim>::connectivity *connectivity);
+      connectivity_destroy(types<dim>::connectivity *connectivity)
+      {
+        (void)connectivity;
+        DEAL_II_NOT_IMPLEMENTED();
+      };
 
       static std::size_t
-      forest_memory_used(const types<dim>::forest *forest);
-      static std::size_t
-      connectivity_memory_used(const types<dim>::connectivity *cmesh);
+      forest_memory_used(const types<dim>::forest *forest)
+      {
+        (void)forest;
+        DEAL_II_NOT_IMPLEMENTED();
+        return -1;
+      };
 
+      static std::size_t
+      connectivity_memory_used(const types<dim>::connectivity *cmesh)
+      {
+        (void)cmesh;
+        DEAL_II_NOT_IMPLEMENTED();
+        return -1;
+      };
 
       static unsigned int
-      checksum(const types<dim>::forest *forest);
-
+      checksum(const types<dim>::forest *forest)
+      {
+        (void)forest;
+        DEAL_II_NOT_IMPLEMENTED();
+        return numbers::invalid_unsigned_int;
+      };
 
       static void
       element_destroy(const types<dim>::forest *forest,
@@ -94,7 +116,7 @@ namespace internal
                       types<dim>::locidx        length,
                       types<dim>::element      *element);
 
-     static unsigned int
+      static unsigned int
       get_max_level(const typename types<dim>::forest *parallel_forest)
       {
         return t8_forest_get_maxlevel(
@@ -102,106 +124,121 @@ namespace internal
       };
 
       static types<dim>::forest *
-      copy_forest(types<dim>::forest *input, int copy_data);
-
-
-
-
+      copy_forest(types<dim>::forest *input, int copy_data)
+      {
+        (void)input;
+        (void)copy_data;
+        DEAL_II_NOT_IMPLEMENTED();
+        return input;
+      };
     }; // struct functions
 
-      template <int dim, int spacedim>
-      typename types<dim>::connectivity dealii_to_connectivity(typename ::dealii::parallel::distributed::Triangulation<dim,spacedim> *tria);
+    template <int dim, int spacedim>
+    typename types<dim>::connectivity
+    dealii_to_connectivity(
+      typename ::dealii::parallel::distributed::Triangulation<dim, spacedim>
+        *tria);
 
-    template <int dim> types<dim>::forest *
-      partition(typename types<dim>::forest *, typename types<dim>::weight weights);
+    template <int dim>
+    types<dim>::forest *
+    partition(typename types<dim>::forest *,
+              typename types<dim>::weight weights);
 
-      template <int dim>   void
-      vtk_write_file(const typename types<dim>::forest *forest, const char *baseName);
+    template <int dim>
+    void
+    vtk_write_file(const typename types<dim>::forest *forest,
+                   const char                        *baseName);
 
-      // TODO: forest const?
-      template <int dim>  types<dim>::eclass
-      get_eclass(const typename types<dim>::forest *parallel_forest,
-                 typename types<dim>::locidx        local_tree)
-      {
-        return t8_forest_get_eclass(
-          const_cast<types<dim>::forest *>(parallel_forest), local_tree);
-      }
+    // TODO: forest const?
+    template <int dim>
+    types<dim>::eclass
+    get_eclass(const typename types<dim>::forest *parallel_forest,
+               typename types<dim>::locidx        local_tree)
+    {
+      return t8_forest_get_eclass(
+        const_cast<types<dim>::forest *>(parallel_forest), local_tree);
+    }
 
- 
-       template <int dim> void
-      ghost_destroy(typename types<dim>::ghost **ghost);
-       template <int dim> types<dim>::ghost *
-      ghost_new(typename types<dim>::forest *forest);
-       template <int dim> void
-      forest_destroy(typename types<dim>::forest **forest);
+    template <int dim>
+    void
+    ghost_destroy(typename types<dim>::ghost **ghost);
 
+    template <int dim>
+    types<dim>::ghost *
+    ghost_new(typename types<dim>::forest *forest);
 
-       template <int dim> int
-      element_level(const typename types<dim>::forest *forest,
-                    typename types<dim>::eclass        eclass,
-                    const typename types<dim>::element *element);
+    template <int dim>
+    void
+    forest_destroy(typename types<dim>::forest **forest);
 
+    template <int dim>
+    int
+    element_level(const typename types<dim>::forest  *forest,
+                  typename types<dim>::eclass         eclass,
+                  const typename types<dim>::element *element);
 
-       template <int dim>  void
-      element_child(const typename types<dim>::forest *forest,
-                   typename  types<dim>::eclass        tree_class,
-                    const typename types<dim>::element *element,
-                    int                       childid,
-                    typename types<dim>::element       *child);
+    template <int dim>
+    void
+    element_child(const typename types<dim>::forest  *forest,
+                  typename types<dim>::eclass         tree_class,
+                  const typename types<dim>::element *element,
+                  int                                 childid,
+                  typename types<dim>::element       *child);
 
-       template <int dim>  bool
-      element_overlaps_tree(const typename types<dim>::forest *forest,
-                            const typename types<dim>::tree    tree,
-                            const typename types<dim>::element *element);
-
-
-
-       template <int dim>  bool
-      element_is_equal(const typename types<dim>::forest *forest,
-                       typename types<dim>::eclass        eclass,
-                       const typename types<dim>::element       *element_1,
-                       const typename types<dim>::element       *element_2);
-
-                       template <int dim>  bool
-      cell_exists_in_tree(const typename types<dim>::forest *forest,
-                          const typename types<dim>::tree    tree,
+    template <int dim>
+    bool
+    element_overlaps_tree(const typename types<dim>::forest  *forest,
+                          const typename types<dim>::tree     tree,
                           const typename types<dim>::element *element);
 
-                          template <int dim>  int
-      element_ancestor_id(const typename types<dim>::forest *forest,
-                          typename types<dim>::eclass        eclass,
-                          const typename types<dim>::element *element,
-                          int                       level);
+    template <int dim>
+    bool
+    element_is_equal(const typename types<dim>::forest  *forest,
+                     typename types<dim>::eclass         eclass,
+                     const typename types<dim>::element *element_1,
+                     const typename types<dim>::element *element_2);
 
+    template <int dim>
+    bool
+    cell_exists_in_tree(const typename types<dim>::forest  *forest,
+                        const typename types<dim>::tree     tree,
+                        const typename types<dim>::element *element);
 
-      template <int dim>  void
-      element_children(const typename types<dim>::forest *forest,
-                       typename types<dim>::eclass        eclass,
-                       const typename types<dim>::element *element,
-                       typename types<dim>::element      *children);
+    template <int dim>
+    int
+    element_ancestor_id(const typename types<dim>::forest  *forest,
+                        typename types<dim>::eclass         eclass,
+                        const typename types<dim>::element *element,
+                        int                                 level);
 
-      template <int dim> dealii::types::subdomain_id
-      comm_find_owner(const typename types<dim>::forest *forest,
-                      const typename types<dim>::locidx  ltreeid,
-                      const typename types<dim>::element *amr_cell,
-                      dealii::types::subdomain_id        subdomain);
+    template <int dim>
+    void
+    element_children(const typename types<dim>::forest  *forest,
+                     typename types<dim>::eclass         eclass,
+                     const typename types<dim>::element *element,
+                     typename types<dim>::element       *children);
 
-
+    template <int dim>
+    dealii::types::subdomain_id
+    comm_find_owner(const typename types<dim>::forest  *forest,
+                    const typename types<dim>::locidx   ltreeid,
+                    const typename types<dim>::element *amr_cell,
+                    dealii::types::subdomain_id         subdomain);
 
     template <int dim, int spacedim>
     typename types<dim>::forest *
-    adapt(typename types<dim>::forest  *parallel_forest,
-           typename ::dealii::parallel::distributed::Triangulation<dim,spacedim> *triangulation);
+    adapt(typename types<dim>::forest *parallel_forest,
+          typename ::dealii::parallel::distributed::Triangulation<dim, spacedim>
+            *triangulation);
 
     template <int dim>
     types<dim>::forest *
     balance_full(typename types<dim>::forest *forest);
 
-
     template <int dim>
     void
     forest_set_user_pointer(typename types<dim>::forest *forest,
-                            void                              *user_pointer);
+                            void                        *user_pointer);
 
     template <int dim>
     void *
@@ -211,8 +248,8 @@ namespace internal
     types<dim>::scheme_collection *
     forest_get_scheme(const typename types<dim>::forest *forest);
 
-
-/*    template <int dim>
+    /*
+    template <int dim>
     types<dim>::element
     get_ghost_elem_and_owner(
       const typename types<dim>::forest *parallel_forest,
@@ -220,18 +257,19 @@ namespace internal
       const typename types<dim>::locidx  ghost_in_tree_idx,
       const typename types<dim>::eclass  ghost_eclass,
       dealii::types::subdomain_id       &subdomain);
-*/
+    */
+
     template <int dim>
     types<dim>::eclass
     get_ghost_eclass(const typename types<dim>::forest *parallel_forest,
                      const typename types<dim>::locidx  local_ghost_tree_idx);
 
-      template <int dim>
-      types<dim>::eclass
-      get_eclass_from_tree(const typename types<dim>::tree tree)
-      {
-        return tree->eclass;
-      }
+    template <int dim>
+    types<dim>::eclass
+    get_eclass_from_tree(const typename types<dim>::tree tree)
+    {
+      return tree->eclass;
+    }
 
     template <int dim>
     types<dim>::tree
@@ -241,8 +279,6 @@ namespace internal
     template <int dim>
     types<dim>::gloidx
     tree_get_offset(const typename types<dim>::tree tree);
-
-
 
     template <int dim>
     bool
@@ -256,45 +292,46 @@ namespace internal
     template <int dim>
     types<dim>::locidx
     global_to_local_tree(const typename types<dim>::forest *parallel_forest,
-                        const typename types<dim>::topidx  coarse_grid_cell){
-                          return t8_forest_get_local_id(const_cast<typename types<dim>::forest *> (parallel_forest), coarse_grid_cell);
-                        }
+                         const typename types<dim>::topidx  coarse_grid_cell)
+    {
+      return t8_forest_get_local_id(const_cast<typename types<dim>::forest *>(
+                                      parallel_forest),
+                                    coarse_grid_cell);
+    }
 
     template <int dim>
     typename types<dim>::connectivity *
     get_connectivity(const typename types<dim>::forest *forest);
 
-
-
     template <int dim>
     typename types<dim>::locidx
-    leaf_index_in_tree(const typename types<dim>::forest *forest,
-                       const typename types<dim>::locidx  ltreeid,
+    leaf_index_in_tree(const typename types<dim>::forest  *forest,
+                       const typename types<dim>::locidx   ltreeid,
                        const typename types<dim>::element *leaf);
 
     template <int dim>
     typename types<dim>::locidx
     get_num_leafs(const typename types<dim>::forest *forest);
 
-
     template <int dim>
     typename types<dim>::connectivity *
-    copy_connectivity(const typename types<dim>::connectivity *connectivity);
-
+    copy_connectivity(const typename types<dim>::connectivity *connectivity)
+    {
+      (void)connectivity;
+      DEAL_II_NOT_IMPLEMENTED();
+      return const_cast<typename types<dim>::connectivity *>(connectivity);
+    };
 
     template <int dim>
     void
     init_coarse_element(const typename types<dim>::forest *forest,
                         typename types<dim>::eclass        eclass,
-                        typename types<dim>::element       *element);
-
-
+                        typename types<dim>::element      *element);
   } // namespace t8code
 } // namespace internal
 DEAL_II_NAMESPACE_CLOSE
 
 #else
-
 // Make sure the scripts that create the C++20 module input files have
 // something to latch on if the preprocessor #ifdef above would
 // otherwise lead to an empty content of the file.
