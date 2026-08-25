@@ -555,7 +555,7 @@ namespace Step40
       locally_relevant_solution,
       estimated_error_per_cell);
     parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(
-      triangulation, estimated_error_per_cell, 0.3, 0.1);
+      triangulation, estimated_error_per_cell, 0.3, 0.0);
 
     // for(const auto &cell: triangulation.active_cell_iterators())
     // {
@@ -662,9 +662,9 @@ namespace Step40
             // GridGenerator::subdivided_hyper_cube_with_simplices(triangulation,
             // 1);
             GridGenerator::reference_cell(triangulation,
-                                          ReferenceCells::Triangle);
+                                          ReferenceCells::Tetrahedron);
 
-            triangulation.refine_global(2);
+            triangulation.refine_global(1);
           }
         else
           refine_grid();
