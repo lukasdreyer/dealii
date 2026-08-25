@@ -58,7 +58,7 @@ namespace internal
         return std::pair<unsigned int, unsigned int>{child, dealii_type};
       else if (ref_cell == ReferenceCells::Triangle)
         {
-          const ::dealii::ndarray<unsigned int, 6, 4> triangle_type = {
+          const ::dealii::ndarray<unsigned int, 6, 4> triangle_perms = {
             {{{0, 1, 3, 2}},
              {{0, 3, 2, 1}},
              {{2, 0, 3, 1}},
@@ -66,11 +66,77 @@ namespace internal
              {{1, 2, 3, 0}},
              {{1, 3, 0, 2}}}};
 
-          const unsigned int child_index = triangle_type[dealii_type][child];
+          const unsigned int child_index = triangle_perms[dealii_type][child];
           const unsigned int child_type =
             (child_index == 3) ? (dealii_type + 1) % 6 : dealii_type;
 
           return std::pair<unsigned int, unsigned int>{child_index, child_type};
+        }
+      else if (ref_cell == ReferenceCells::Tetrahedron)
+        {
+const ::dealii::ndarray<unsigned int, 24, 8> tet_perms_t8_to_dealii = {{
+  {{0, 1, 4, 5, 2, 7, 6, 3}},
+  {{1, 0, 5, 4, 3, 6, 7, 2}},
+  {{2, 3, 6, 7, 0, 5, 4, 1}},
+  {{3, 2, 7, 6, 1, 4, 5, 0}},
+  {{0, 6, 3, 5, 2, 7, 4, 1}},
+  {{3, 5, 0, 6, 1, 4, 7, 2}},
+  {{2, 4, 1, 7, 0, 5, 6, 3}},
+  {{1, 7, 2, 4, 3, 6, 5, 0}},
+  {{0, 3, 6, 5, 7, 4, 2, 1}},
+  {{3, 0, 5, 6, 4, 7, 1, 2}},
+  {{2, 1, 4, 7, 5, 6, 0, 3}},
+  {{1, 2, 7, 4, 6, 5, 3, 0}},
+  {{0, 1, 5, 4, 6, 7, 2, 3}},
+  {{1, 0, 4, 5, 7, 6, 3, 2}},
+  {{2, 3, 7, 6, 4, 5, 0, 1}},
+  {{3, 2, 6, 7, 5, 4, 1, 0}},
+  {{0, 5, 4, 1, 6, 2, 7, 3}},
+  {{1, 4, 5, 0, 7, 3, 6, 2}},
+  {{2, 7, 6, 3, 4, 0, 5, 1}},
+  {{3, 6, 7, 2, 5, 1, 4, 0}},
+  {{0, 5, 6, 3, 4, 7, 2, 1}},
+  {{3, 6, 5, 0, 7, 4, 1, 2}},
+  {{2, 7, 4, 1, 6, 5, 0, 3}},
+  {{1, 4, 7, 2, 5, 6, 3, 0}}
+}};
+
+
+const ::dealii::ndarray<unsigned int, 24, 8> tet_child_types = {{
+  {{0, 0, 0, 0, 6, 14, 19, 8}},
+  {{1, 1, 1, 1, 14, 6, 11, 18}},
+  {{2, 2, 2, 2, 17, 9, 4, 13}},
+  {{3, 3, 3, 3, 9, 17, 12, 7}},
+  {{4, 4, 4, 4, 23, 8, 2, 12}},
+  {{5, 5, 5, 5, 15, 0, 10, 22}},
+  {{6, 6, 6, 6, 0, 15, 21, 9}},
+  {{7, 7, 7, 7, 8, 23, 13, 3}},
+  {{8, 8, 8, 8, 7, 20, 18, 0}},
+  {{9, 9, 9, 9, 3, 16, 22, 6}},
+  {{10, 10, 10, 10, 16, 3, 5, 21}},
+  {{11, 11, 11, 11, 20, 7, 1, 19}},
+  {{12, 12, 12, 12, 22, 18, 3, 4}},
+  {{13, 13, 13, 13, 18, 22, 7, 2}},
+  {{14, 14, 14, 14, 1, 5, 20, 17}},
+  {{15, 15, 15, 15, 5, 1, 16, 23}},
+  {{16, 16, 16, 16, 10, 2, 15, 20}},
+  {{17, 17, 17, 17, 2, 10, 23, 14}},
+  {{18, 18, 18, 18, 13, 21, 8, 1}},
+  {{19, 19, 19, 19, 21, 13, 0, 11}},
+  {{20, 20, 20, 20, 11, 4, 14, 16}},
+  {{21, 21, 21, 21, 19, 12, 6, 10}},
+  {{22, 22, 22, 22, 12, 19, 9, 5}},
+  {{23, 23, 23, 23, 4, 11, 17, 15}}
+}};
+
+
+
+          const unsigned int dealii_child_index = tet_perms_t8_to_dealii[dealii_type][child];
+
+          const unsigned int dealii_child_type = tet_child_types[dealii_type][dealii_child_index];
+
+          return std::pair<unsigned int, unsigned int>{dealii_child_index, dealii_child_type};
+
         }
       else
         {
@@ -105,6 +171,8 @@ namespace internal
             return T8_ECLASS_TRIANGLE;
           case ReferenceCells::Hexahedron:
             return T8_ECLASS_HEX;
+          case ReferenceCells::Tetrahedron:
+            return T8_ECLASS_TET;
           default:
             DEAL_II_NOT_IMPLEMENTED();
             return T8_ECLASS_INVALID;
@@ -138,9 +206,12 @@ namespace internal
               const auto &vertex = cell->vertex(ivertex);
               for (unsigned int idim = 0; idim < dim; idim++)
                 {
+                  std::cout<<"vertex[idim]"<<vertex[idim]<<std::endl;
                   coords[3 * ivertex + idim] = vertex[idim];
                 }
             }
+
+          t8_cmesh_disable_negative_volume_check(cmesh);
           t8_cmesh_set_tree_vertices(cmesh,
                                      t8_index,
                                      coords.data(),
@@ -242,7 +313,7 @@ namespace internal
       const unsigned int                                          dealii_type,
       std::vector<int>                                           &adapt_list)
     {
-      if (!dealii_cell->has_children())
+      if (!dealii_cell->has_children()){
         if (dealii_cell->is_locally_owned())
           {
             if (dealii_cell->refine_flag_set())
@@ -257,8 +328,9 @@ namespace internal
               {
                 adapt_list.push_back(0);
               }
-            return;
-          }
+            }
+          return;
+      }
 
       // loop over children in t8code order
       for (unsigned int t8code_child = 0;

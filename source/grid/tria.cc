@@ -14447,7 +14447,7 @@ void Triangulation<dim, spacedim>::set_all_refine_flags()
     {
       cell->clear_coarsen_flag();
       cell->set_refine_flag();
-      cell->set_refine_choice();
+      cell->set_refine_choice(static_cast<char>(IsotropicRefinementChoice::cut_tet_68));
     }
 }
 

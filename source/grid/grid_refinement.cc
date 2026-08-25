@@ -202,6 +202,7 @@ GridRefinement::refine(Triangulation<dim, spacedim> &tria,
           break;
         ++marked;
         cell->set_refine_flag();
+        cell->set_refine_choice(static_cast<char>(IsotropicRefinementChoice::cut_tet_68));
       }
 }
 

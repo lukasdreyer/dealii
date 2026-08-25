@@ -3433,6 +3433,14 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
                 }
 
               return neighbor_child;
+            } else {
+              auto neighbor = this->neighbor(face);
+
+              return neighbor->child(
+                  neighbor->reference_cell().child_cell_on_face(
+                      this->neighbor_of_neighbor(face), subface,
+                      neighbor->combined_face_orientation(
+                          this->neighbor_of_neighbor(face))));
             }
 
           // if no reference cell type matches

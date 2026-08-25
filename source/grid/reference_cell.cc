@@ -309,8 +309,9 @@ ReferenceCell::equivalent_refinement_case(
     }
   else if constexpr (dim == 3)
     {
-      Assert(*this == ReferenceCells::Hexahedron, ExcNotImplemented());
-
+      switch (*this) {
+        case ReferenceCells::Hexahedron:
+{
       static const RefinementCase<dim - 1>
         equivalent_refine_case[internal::SubfaceCase<dim>::case_isotropic + 1]
                               [GeometryInfo<3>::max_children_per_face] = {
@@ -427,7 +428,20 @@ ReferenceCell::equivalent_refinement_case(
                                               face_rotation,
                                               equivalent_refinement_case);
 
-      return std::make_pair(final_subface_no, final_refinement_case);
+        return std::make_pair(final_subface_no, final_refinement_case);
+        }
+      case ReferenceCells::Tetrahedron:
+      {
+        Assert(subface_case == internal::SubfaceCase<dim>::case_isotropic, ExcInternalError());
+
+        const unsigned int final_subface_no =  (subface_no < 3) ?
+              triangle_vertex_permutations[combined_face_orientation][subface_no]: subface_no;
+        return std::make_pair(final_subface_no, RefinementCase<dim-1>::isotropic_refinement);
+      }
+      default:
+        DEAL_II_NOT_IMPLEMENTED();
+
+      }
     }
   else
     {

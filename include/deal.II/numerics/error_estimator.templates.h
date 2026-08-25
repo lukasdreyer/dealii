@@ -15,6 +15,7 @@
 
 #include <deal.II/base/config.h>
 
+#include "deal.II/base/ndarray.h"
 #include <deal.II/base/geometry_info.h>
 #include <deal.II/base/numbers.h>
 #include <deal.II/base/quadrature.h>
@@ -770,7 +771,7 @@ namespace internal
 
     // store which number @p{cell} has in the list of neighbors of
     // @p{neighbor}
-    const unsigned int neighbor_neighbor = cell->neighbor_of_neighbor(face_no);
+    unsigned int neighbor_neighbor = cell->neighbor_of_neighbor(face_no);
     Assert(neighbor_neighbor < GeometryInfo<dim>::faces_per_cell,
            ExcInternalError());
 
@@ -778,6 +779,13 @@ namespace internal
     for (unsigned int subface_no = 0; subface_no < face->n_children();
          ++subface_no)
       {
+        //The middle (i.e. last) face child of a tet is always the first face of that tet.
+        //TODO: this is only a temporary fix, it would be nicer to adjust the neighbor_of_neighbor interface to subfaces
+        if(cell->reference_cell().is_simplex()&&dim==3&&subface_no==face->n_children()-1){
+          const dealii::ndarray<int, 4> middle_child_neighbor_neighbor = {{0,0,2,3}};
+          neighbor_neighbor = middle_child_neighbor_neighbor[neighbor_neighbor];
+        }
+
         // get an iterator pointing to the cell behind the present subface
         const typename DoFHandler<dim, spacedim>::active_cell_iterator
           neighbor_child = cell->neighbor_child_on_subface(face_no, subface_no);

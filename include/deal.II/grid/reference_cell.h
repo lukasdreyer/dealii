@@ -3312,6 +3312,26 @@ ReferenceCell::child_cell_on_face(
             face_rotation);
         }
       case ReferenceCells::Tetrahedron:
+        {
+            AssertIndexRange(face, 4);
+            AssertIndexRange(subface, 4);
+            AssertIndexRange(combined_orientation, 6);
+
+            const unsigned int std_subface = (subface < 3) ?
+              triangle_vertex_permutations[combined_orientation][subface]: subface;
+
+            static constexpr unsigned int
+              child_table[4][4] =
+              {
+                  /* face 0 */ {0,1,2,4},
+                  /* face 1 */ {1,0,3,5},
+                  /* face 2 */ {0,2,3,6},
+                  /* face 3 */ {2,1,3,7}
+              };
+
+            return child_table[face][std_subface];
+
+        }
       case ReferenceCells::Pyramid:
       case ReferenceCells::Wedge:
         {
