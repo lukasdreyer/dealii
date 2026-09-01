@@ -3433,14 +3433,73 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
                 }
 
               return neighbor_child;
-            } else {
-              auto neighbor = this->neighbor(face);
+            } 
+            else 
+            {
+              Assert(this->reference_cell() == ReferenceCells::Tetrahedron, ExcInternalError());
 
-              return neighbor->child(
-                  neighbor->reference_cell().child_cell_on_face(
-                      this->neighbor_of_neighbor(face), subface,
+              const auto neighbor = this->neighbor(face);
+              const unsigned int neighbor_face = this->neighbor_of_neighbor(face);
+              Assert(*(this->neighbor(face)->neighbor(neighbor_face)) == *this, ExcInternalError());
+
+              //unsigned int subface_index = subface;
+              if(this->combined_face_orientation(face) != numbers::default_geometric_orientation)
+              {
+                // if(neighbor->combined_face_orientation(neighbor_face) != numbers::default_geometric_orientation)
+                //  std::cout << "face " << this->face(face)->index() << " in non standard orientations " << int(this->combined_face_orientation(face)) << " and " << int(neighbor->combined_face_orientation(neighbor_face)) << std::endl;
+                Assert(neighbor->combined_face_orientation(neighbor_face) == numbers::default_geometric_orientation, ExcInternalError());
+                //adjust subface index for orientation but only if subface is not the middle child
+                // if(subface != 3)
+                // {
+                //   subface_index = this->reference_cell().standard_to_real_face_vertex(subface, 0, this->combined_face_orientation(face));
+                // }
+              }
+              //subface_index = subface;
+              const unsigned int  child_index = 
+                neighbor->reference_cell().child_cell_on_face(
+                      neighbor_face, 
+                      subface, //subface_index,
                       neighbor->combined_face_orientation(
-                          this->neighbor_of_neighbor(face))));
+                      neighbor_face));
+
+              const auto neighbor_child_here = neighbor->child(child_index);
+              {
+                // std::cout << "face, face index and vertices: " << face << ", " << this->face(face)->index() << "; " << this->face(face)->vertex(0) << ", " << this->face(face)->vertex(1) << ", " << this->face(face)->vertex(2) << std::endl;
+                // std::cout << "subface, subface index and vertices: " << subface << ", " << this->face(face)->child(subface)->index() << "; " << this->face(face)->child(subface)->vertex(0) << ", " << this->face(face)->child(subface)->vertex(1) << ", " << this->face(face)->child(subface)->vertex(2) << std::endl;
+                
+                // const auto neighbor_face_it = neighbor->face(neighbor_face);
+                // std::cout << "neighbor face, face index and vertices: " << neighbor_face << ", " << neighbor_face_it->index() << "; " << neighbor_face_it->vertex(0) << ", " << neighbor_face_it->vertex(1) << ", " << neighbor_face_it->vertex(2) << std::endl;
+                // if constexpr(dim == 3)
+                // std::cout << "neighbor child, child index and vertices: " << subface << ", " << neighbor_child_here->index() << "; " << neighbor_child_here->vertex(0) << ", " << neighbor_child_here->vertex(1) << ", " << neighbor_child_here->vertex(2) << ", " << neighbor_child_here->vertex(3) << std::endl;
+                if constexpr(dim == 3)
+                {
+                  bool found_all_points = true;
+                  for(unsigned int i = 0; i < 3; ++i)
+                  {
+                    const auto v = this->face(face)->child(subface)->vertex(i);
+                    bool found_point = false;
+                    for(unsigned int j = 0; j < 4; ++j)
+                    if(v.distance(neighbor_child_here->vertex(j)) < 1e-12)
+                      found_point = true;
+
+                    if(found_point == false)
+                      found_all_points = false;
+                  }
+                  if(found_all_points == false)
+                  {
+                     std::cout << "face " << this->face(face)->index() << " in orientations " << int(this->combined_face_orientation(face)) << " and " << int(neighbor->combined_face_orientation(neighbor_face)) << std::endl;
+                std::cout << "subface vertices: " << subface << ", " << this->face(face)->child(subface)->vertex(0) << ", " << this->face(face)->child(subface)->vertex(1) << ", " << this->face(face)->child(subface)->vertex(2) << std::endl;
+                
+                const auto neighbor_face_it = neighbor->face(neighbor_face);
+                if constexpr(dim == 3)
+                std::cout << "neighbor child vertices: " << neighbor_child_here->vertex(0) << ", " << neighbor_child_here->vertex(1) << ", " << neighbor_child_here->vertex(2) << ", " << neighbor_child_here->vertex(3) << std::endl;
+               
+                  }
+                  Assert(found_all_points, ExcInternalError());
+                }
+                
+              }
+              return neighbor_child_here;
             }
 
           // if no reference cell type matches

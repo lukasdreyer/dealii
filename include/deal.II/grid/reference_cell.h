@@ -2354,15 +2354,21 @@ ReferenceCell::new_isotropic_child_cell_faces(
                     // {{19, 3, 7, 6, X, X}},
                     // {{23, 7, 5, 2, X, X}},
                     // fixed wedge refinement + labled edge
-                    {{11, 5, 1, 4, X, X}},
-                    {{15, 6, 0, 4, X, X}},
-                    {{3, 7, 19, 6, X, X}},
-                    {{7, 2, 5, 23, X, X}},
+                    // {{11, 5, 1, 4, X, X}},
+                    // {{15, 6, 0, 4, X, X}},
+                    // {{3, 7, 19, 6, X, X}},
+                    // {{7, 2, 5, 23, X, X}},
+                    // labled edge
+                    {{1, 4, 11, 5, X, X}},
+                    {{0, 4, 15, 6, X, X}},
+                    {{7, 3, 6, 19, X, X}},
+                    {{23, 5, 2, 7, X, X}},
                     {{X, X, X, X, X, X}},
                     {{X, X, X, X, X, X}},
                   }};
                 case 1:
                   // new line is (5, 7)
+                  DEAL_II_NOT_IMPLEMENTED();
                   return {{
                     {{8, 13, 16, 0, X, X}},
                     {{9, 12, 1, 21, X, X}},
@@ -2382,6 +2388,7 @@ ReferenceCell::new_isotropic_child_cell_faces(
                   }};
                 case 2:
                   // new line is (4, 9)
+                  DEAL_II_NOT_IMPLEMENTED();
                   return {{
                     {{8, 13, 16, 0, X, X}},
                     {{9, 12, 1, 21, X, X}},
@@ -2507,14 +2514,20 @@ ReferenceCell::new_isotropic_child_cell_vertices(
                     // {{9, 7, 6, 8, X, X, X, X}},
                     // {{8, 9, 5, 6, X, X, X, X}},
                     // fixed edge refinement + labled edge
-                    {{5, 6, 4, 8, X, X, X, X}},
-                    {{7, 8, 4, 6, X, X, X, X}},
-                    {{9, 8, 7, 6, X, X, X, X}},
-                    {{6, 9, 8, 5, X, X, X, X}},
+                    // {{5, 6, 4, 8, X, X, X, X}},
+                    // {{7, 8, 4, 6, X, X, X, X}},
+                    // {{9, 8, 7, 6, X, X, X, X}},
+                    // {{6, 9, 8, 5, X, X, X, X}},
+                    // labled edge
+                    {{4, 8, 5, 6, X, X, X, X}},
+                    {{4, 6, 7, 8, X, X, X, X}},
+                    {{8, 9, 6, 7, X, X, X, X}},
+                    {{5, 8, 9, 6, X, X, X, X}},
                     {{X, X, X, X, X, X, X, X}},
                     {{X, X, X, X, X, X, X, X}},
                   }};
                 case 1:
+                  DEAL_II_NOT_IMPLEMENTED();
                   // new line is (5,7)
                   return {{
                     {{0, 4, 6, 7, X, X, X, X}},
@@ -2534,6 +2547,7 @@ ReferenceCell::new_isotropic_child_cell_vertices(
                     {{X, X, X, X, X, X, X, X}},
                   }};
                 case 2:
+                  DEAL_II_NOT_IMPLEMENTED();
                   // new line is (4,9)
                   return {{
                     {{0, 4, 6, 7, X, X, X, X}},
