@@ -9217,6 +9217,7 @@ namespace internal
                                       make_array_view(vertices_1.cbegin(),
                                                       vertices_1.cbegin() +
                                                         face->n_vertices())));
+				std::cout<<"set face orientation of face "<<face->index()<<" to "<<(int) new_cell->combined_face_orientation(f)<<std::endl;
                               }
                           }
                       }
