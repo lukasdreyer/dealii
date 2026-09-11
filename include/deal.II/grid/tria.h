@@ -2223,6 +2223,9 @@ public:
   virtual bool
   prepare_coarsening_and_refinement();
 
+  virtual void
+  print_internal_structures();
+
   /** @} */
 
   /**

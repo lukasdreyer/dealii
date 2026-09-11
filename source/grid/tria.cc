@@ -19647,6 +19647,32 @@ namespace
   }
 } // namespace
 
+
+template <int dim, int spacedim>
+DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
+void Triangulation<dim, spacedim>::print_internal_structures()
+{
+  
+  std::cout<<"Internal structures:"<<std::endl;
+  std::cout<<"vertices"<<std::endl;
+  for (auto &vertex : get_vertices()){
+    std::cout<<vertex<<std::endl;
+  }
+  if constexpr (dim > 1){
+    std::cout<<"lines"<<std::endl;
+    for (auto line = this->begin_raw_line(); line != this->end_line(); line++){
+      std::cout<<line->vertex_index(0)<<" "<<line->vertex_index(1)<<std::endl;
+    }
+  }
+  if constexpr (dim > 2){
+    std::cout<<"faces"<<std::endl;
+    for (auto quad = this->begin_raw_quad(); quad != this->end_quad(); quad++){
+      std::cout<<quad->vertex_index(0)<<" "<<quad->vertex_index(1)<<" "<<quad->vertex_index(2)<<std::endl;
+    }
+  }
+}
+
+
 #ifndef DOXYGEN
 template <int dim, int spacedim>
 DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
