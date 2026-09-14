@@ -710,6 +710,10 @@ namespace parallel
       std::any_of(this->begin_active(this->n_global_levels() - 2),
                   this->end_active(this->n_global_levels() - 2),
                   [](const CellAccessor<dim, spacedim> &cell) {
+                    std::cout<<cell.id()<<" is "<<std::endl;
+                    if(cell.is_locally_owned())
+                      std::cout<< "not ";
+                    std::cout<<"locally owned"<<std::endl;
                     return cell.is_locally_owned();
                   });
 

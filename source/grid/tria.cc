@@ -6609,6 +6609,7 @@ namespace internal
       execute_refinement_isotropic(Triangulation<3, spacedim> &triangulation,
                                    const bool check_for_distorted_cells)
       {
+        std::cout<<"Into execute_refinement_isotropic!"<<std::endl;
         static const int          dim = 3;
         static const unsigned int X   = numbers::invalid_unsigned_int;
         using raw_line_iterator =
@@ -6818,6 +6819,13 @@ namespace internal
               triangulation.vertices.resize(needed_vertices, Point<spacedim>());
               triangulation.vertices_used.resize(needed_vertices, false);
             }
+
+          std::cout<<"Need: "<<std::endl;
+          std::cout<<"needed_vertices "<<needed_vertices<<std::endl;
+          std::cout<<"needed_lines_single "<<needed_lines_single<<std::endl;
+          std::cout<<"needed_faces_single "<<needed_faces_single<<std::endl;
+          std::cout<<"needed_lines_pair "<<needed_lines_pair<<std::endl;
+          std::cout<<"needed_faces_pair "<<needed_faces_pair<<std::endl;
         } // STORAGE
 
         //-----------------------------------------
@@ -6893,6 +6901,7 @@ namespace internal
                                        triangulation.vertices_used);
               triangulation.vertices[current_vertex] = line->center(true);
 
+              std::cout<<"line "<<line->index()<<" gets refined into children with indices "<<children[0]->index()<<" and"<<children[1]->index()<<std::endl;
               children[0]->set_bounding_object_indices(
                 {line->vertex_index(0), current_vertex});
               children[1]->set_bounding_object_indices(
@@ -7274,6 +7283,7 @@ namespace internal
                     RefinementCase<dim>::no_refinement)
                   continue;
 
+                std::cout<<"create children cells of cell "<<cell->id()<<std::endl;
                 // Copy the requested refinement case to the cell's actual
                 // refinement flag, informing the cell how it has been refined.
                 const RefinementCase<dim> ref_case = cell->refine_flag_set();
@@ -7516,8 +7526,12 @@ namespace internal
                         triangulation.vertices[current_vertex] =
                           cell->center(true, true);
                       }
+                      std::cout<<"vertex_indices:"<<std::endl;
+                      for (unsigned int i=0; i<k; i++){
+                        std::cout<<vertex_indices[i]<<" ";
+                      }
+                      std::cout<<std::endl;
                   } // GET_VERTICES
-
 
                   unsigned int chosen_line_tetrahedron = 0;
 
@@ -7581,6 +7595,7 @@ namespace internal
 
                           // chosen_line_tetrahedron = 0; //TODO move this in
                           // distributed/tria.cc
+                          std::cout<<"chosen_line_tetrahedron: "<<chosen_line_tetrahedron<<std::endl;
 
                           cell->set_refinement_case(
                             RefinementCase<dim>(chosen_line_tetrahedron + 1));
@@ -7817,16 +7832,20 @@ namespace internal
                       }
 
                     // 3. Fill end of `relevant_lines` with `new_lines`.
-                    for (unsigned int i = 0, k = relevant_lines_counter;
+                    for (unsigned int i = 0;
                          i < n_new_lines;
-                         ++i, ++k)
-                      relevant_lines[k] = new_lines[i];
+                         ++i, ++relevant_lines_counter)
+                      relevant_lines[relevant_lines_counter] = new_lines[i];
 
 
                     // 4. Extract and store indices of the relevant lines.
-                    for (unsigned int i = 0; i < relevant_line_indices.size();
-                         ++i)
-                      relevant_line_indices[i] = relevant_lines[i]->index();
+                         std::cout<<"relevant lines"<<std::endl;
+                    for (unsigned int i = 0; i < relevant_lines_counter;
+                         ++i){
+                           relevant_line_indices[i] = relevant_lines[i]->index();
+                           std::cout <<   relevant_line_indices[i] << " ";
+                         }
+                         std::cout<<std::endl;
 
 
                     // New faces (internal to the parent) are required for the
@@ -7849,15 +7868,19 @@ namespace internal
                                         // new line is (6,8)
                                         constexpr dealii::
                                           ndarray<unsigned int, 13, 4>
-                                            new_quad_lines_tet_68 = {
+                                            new_quad_lines_tet_68 = { // Woher kommt die order der lines?
                                               {{{2, 3, 8, X}},
                                                {{0, 9, 5, X}},
                                                {{1, 6, 11, X}},
                                                {{4, 10, 7, X}},
-                                               {{2, 12, 5, X}},
-                                               {{1, 9, 12, X}},
-                                               {{4, 8, 12, X}},
-                                               {{6, 12, 10, X}},
+                                               {{5, 2, 12, X}},
+                                               {{9, 1, 12, X}},
+                                               {{8, 12, 4, X}},
+                                               {{10, 6, 12, X}},
+                                              //  {{2, 12, 5, X}},
+                                              //  {{1, 9, 12, X}},
+                                              //  {{4, 8, 12, X}},
+                                              //  {{6, 12, 10, X}},
                                                {{X, X, X, X}},
                                                {{X, X, X, X}},
                                                {{X, X, X, X}},
@@ -8033,21 +8056,21 @@ namespace internal
                                                    {{8, 9}},
                                                    {{9, 7}},
                                                    {{X, X}}}},
-                                                 {{{{4, 6}},
-                                                   {{6, 8}},
-                                                   {{8, 4}},
-                                                   {{X, X}}}},
-                                                 {{{{6, 5}},
-                                                   {{5, 8}},
-                                                   {{8, 6}},
-                                                   {{X, X}}}},
-                                                 {{{{8, 7}},
-                                                   {{7, 6}},
+                                                 {{{{8, 4}},
+                                                   {{4, 6}},
                                                    {{6, 8}},
                                                    {{X, X}}}},
-                                                 {{{{9, 6}},
+                                                 {{{{8, 5}},
+                                                   {{5, 6}},
                                                    {{6, 8}},
-                                                   {{8, 9}},
+                                                   {{X, X}}}},
+                                                 {{{{7, 6}},
+                                                   {{6, 8}},
+                                                   {{8, 7}},
+                                                   {{X, X}}}},
+                                                 {{{{8, 9}},
+                                                   {{9, 6}},
+                                                   {{6, 8}},
                                                    {{X, X}}}},
                                                  {{{{X, X}},
                                                    {{X, X}},
@@ -8425,6 +8448,7 @@ namespace internal
                     for (unsigned int q = 0; q < n_new_faces; ++q)
                       {
                         auto &new_face = new_faces[q];
+                        std::cout<<"create new face "<<new_face->index()<<" with line indices ";
 
                         if (new_face_lines[q][3] == X)
                           {
@@ -8437,6 +8461,8 @@ namespace internal
                               {relevant_line_indices[new_face_lines[q][0]],
                                relevant_line_indices[new_face_lines[q][1]],
                                relevant_line_indices[new_face_lines[q][2]]});
+                            std::cout<<new_face_lines[q][0]<<" "<<new_face_lines[q][1]<<" "<<new_face_lines[q][2];
+                            std::cout<<"("<<relevant_line_indices[new_face_lines[q][0]]<<" "<<relevant_line_indices[new_face_lines[q][1]]<<" "<<relevant_line_indices[new_face_lines[q][2]]<<")"<<std::endl;
                           }
                         else
                           {
@@ -9110,7 +9136,7 @@ namespace internal
                         auto      &new_cell = new_cells[c];
                         const auto child_reference_cell =
                           new_cell->reference_cell();
-
+                        std::cout<<"new cell "<<new_cell->id()<<std::endl;
                         // Set the bounding faces of the new cells
                         // This seems to be the only option since
                         // set_bounding_object_indices() takes an
@@ -9123,6 +9149,11 @@ namespace internal
                                  face_indices[cell_faces[c][1]],
                                  face_indices[cell_faces[c][2]],
                                  face_indices[cell_faces[c][3]]});
+                              std::cout<<"with face indices: ";
+                              std::cout<<face_indices[cell_faces[c][0]]<<" ";
+                              std::cout<<face_indices[cell_faces[c][1]]<<" ";
+                              std::cout<<face_indices[cell_faces[c][2]]<<" ";
+                              std::cout<<face_indices[cell_faces[c][3]]<<std::endl;
                               break;
 
                             // Pyramids and Wedges share same number of faces
@@ -9164,7 +9195,11 @@ namespace internal
 
                                 // load correct vertices of cell
                                 auto new_cell_vertices = new_cells_vertices[c];
-
+                                std::cout<<"fix orientation of face"<<face->index()<<"with vertices: ";
+                                for (auto vertex: new_cell_vertices){
+                                  std::cout<<vertex<<" ";
+                                }
+                                std::cout<<std::endl;
                                 // Load correct indices of vertices of face `f`
                                 std::array<unsigned int, 4> vertices_0,
                                   vertices_1;
@@ -9184,7 +9219,6 @@ namespace internal
                                           face_vertex_no,
                                           numbers::
                                             default_geometric_orientation);
-
                                     // Get according index from
                                     // `vertex_indices`. Use `cell_vertex_no` as
                                     // the index in the table describing which
@@ -9198,11 +9232,24 @@ namespace internal
                                     // `vertex_indices`.
                                     vertices_0[face_vertex_no] = vertex_indices
                                       [new_cell_vertices[cell_vertex_no]];
+                                    std::cout<<"face "<<f<<" with facevertex "<<face_vertex_no<<"has cell vertex "<<cell_vertex_no<<"and global vertex"<< vertices_0[face_vertex_no] <<std::endl;
                                   }
 
                                 // max 4 vertices (if face is quad)
                                 for (const auto i : face->vertex_indices())
                                   vertices_1[i] = face->vertex_index(i);
+
+                                std::cout<<"vertices_0: ";
+                                for(const auto i: face->vertex_indices()){
+                                  std::cout <<vertices_0[i]<<" ";
+                                }
+                                std::cout<<std::endl;
+
+                                std::cout<<"vertices_1: ";
+                                for(const auto i: face->vertex_indices()){
+                                  std::cout <<vertices_1[i]<<" ";
+                                }
+                                std::cout<<std::endl;
 
                                 // Calculate combined orientation as permutation
                                 // of desired face vertex indices an actual
@@ -19654,20 +19701,25 @@ void Triangulation<dim, spacedim>::print_internal_structures()
 {
   
   std::cout<<"Internal structures:"<<std::endl;
-  std::cout<<"vertices"<<std::endl;
+  std::cout<<"global vertices"<<std::endl;
+  int counter;
+
+  counter=0;
   for (auto &vertex : get_vertices()){
-    std::cout<<vertex<<std::endl;
+    std::cout<<counter++<<": "<<vertex<<std::endl;
   }
   if constexpr (dim > 1){
-    std::cout<<"lines"<<std::endl;
+    counter=0;
+    std::cout<<"global lines"<<std::endl;
     for (auto line = this->begin_raw_line(); line != this->end_line(); line++){
-      std::cout<<line->vertex_index(0)<<" "<<line->vertex_index(1)<<std::endl;
+      std::cout<<counter++<<": "<<line->vertex_index(0)<<" "<<line->vertex_index(1)<<std::endl;
     }
   }
   if constexpr (dim > 2){
-    std::cout<<"faces"<<std::endl;
+    counter=0;
+    std::cout<<"global faces"<<std::endl;
     for (auto quad = this->begin_raw_quad(); quad != this->end_quad(); quad++){
-      std::cout<<quad->vertex_index(0)<<" "<<quad->vertex_index(1)<<" "<<quad->vertex_index(2)<<std::endl;
+      std::cout<<counter++<<": "<<quad->vertex_index(0)<<" "<<quad->vertex_index(1)<<" "<<quad->vertex_index(2)<<std::endl;
     }
   }
 }
