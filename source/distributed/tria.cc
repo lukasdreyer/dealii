@@ -2704,13 +2704,15 @@ namespace parallel
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::copy_local_forest_to_triangulation()
     {
+      static unsigned int global_cycle=0;
       // std::cout<<"beginning of copy"<<std::endl;
       // for(const auto &cell: this->active_cell_iterators())
       // {
       //   std::cout << "Refine flag: " << int(cell->refine_flag_set()) << ",
       //   coarsen flag: " << int(cell->coarsen_flag_set()) << std::endl;
       // }
-      dealii::internal::amr::vtk_write_file<dim>(parallel_forest, "t8_grid");
+      std::string t8_file = "t8_grid_" + std::to_string(global_cycle);
+      dealii::internal::amr::vtk_write_file<dim>(parallel_forest,t8_file.c_str());
       // Disable mesh smoothing for recreating the deal.II triangulation,
       // otherwise we might not be able to reproduce the p4est mesh
       // exactly. We restore the original smoothing at the end of this
@@ -2801,6 +2803,7 @@ namespace parallel
       for (const auto &cell : this->cell_iterators_on_level(0))
         cell->recursively_set_subdomain_id(numbers::artificial_subdomain_id);
 
+      unsigned int mesh_loop_counter=0;
       do
         {
           for (const auto &cell : this->cell_iterators_on_level(0))
@@ -3008,7 +3011,15 @@ namespace parallel
                   {
                     dealii::Triangulation<dim, spacedim>::
                       execute_coarsening_and_refinement();
-                  }
+              std::string filename = "grid-cycle_" + std::to_string(global_cycle) + "_loop_" + std::to_string(mesh_loop_counter++) + "_proc_" + std::to_string(this->my_subdomain) +
+                                ".vtk";
+              std::ofstream out(filename);
+              GridOut       grid_out;
+              //      grid_out.write_mesh_per_processor_as_vtu(*this, "grid",
+              //      false, true);
+              grid_out.write_vtk(*this, out);
+              std::cout << filename << std::endl;
+                    }
                 catch (
                   const typename Triangulation<dim, spacedim>::DistortedCellList
                     &)
@@ -3020,7 +3031,6 @@ namespace parallel
               }
               while (mesh_changed)
                 ;
-
               if constexpr (running_in_debug_mode())
                 {
                   // check if correct number of ghosts is created
@@ -3213,14 +3223,18 @@ namespace parallel
                   else
                     DEAL_II_ASSERT_UNREACHABLE();
                 }
-              std::ofstream out("grid-" + std::to_string(this->my_subdomain) +
-                                ".vtk");
+
+              std::string end_file = "grid-" + std::to_string(global_cycle) + "_p_" + std::to_string(this->my_subdomain) +
+                                ".vtk";
+              std::ofstream out(end_file);
               GridOut       grid_out;
               //      grid_out.write_mesh_per_processor_as_vtu(*this, "grid",
               //      false, true);
               grid_out.write_vtk(*this, out);
-              std::cout << "Grid written to grid-" << this->my_subdomain
-                        << ".vtk" << std::endl;
+              std::cout << "Grid written to "<< end_file << std::endl;
+
+              global_cycle++;
+
             }
 
 

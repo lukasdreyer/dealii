@@ -209,7 +209,7 @@ namespace Step40
     : mpi_communicator(MPI_COMM_WORLD)
     , triangulation(mpi_communicator,
                     typename Triangulation<dim>::MeshSmoothing(
-                      Triangulation<dim>::none))
+                      parallel::distributed::Triangulation<dim>::mesh_reconstruction_after_repartitioning))
     //   Triangulation<dim>::smoothing_on_refinement |
     //   Triangulation<dim>::smoothing_on_coarsening))
     , fe(2)
@@ -555,7 +555,7 @@ namespace Step40
       locally_relevant_solution,
       estimated_error_per_cell);
     parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(
-      triangulation, estimated_error_per_cell, 0.3, 0.0);
+      triangulation, estimated_error_per_cell, 0.3, 0.1);
 
     // for(const auto &cell: triangulation.active_cell_iterators())
     // {
