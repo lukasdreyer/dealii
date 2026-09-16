@@ -1475,6 +1475,7 @@ namespace parallel
       , parallel_forest(nullptr)
     {
       parallel_ghost = nullptr;
+      std::cout<<"constructed triangulation with settings "<<settings<<std::endl;
     }
 
 
@@ -2705,6 +2706,7 @@ namespace parallel
     void Triangulation<dim, spacedim>::copy_local_forest_to_triangulation()
     {
       static unsigned int global_cycle=0;
+      std::cout<<"settings for global_cycle "<<std::to_string(global_cycle)<<":"<<std::to_string(settings)<<"/"<<settings<<std::endl;
       // std::cout<<"beginning of copy"<<std::endl;
       // for(const auto &cell: this->active_cell_iterators())
       // {
@@ -2748,6 +2750,7 @@ namespace parallel
       if (settings & mesh_reconstruction_after_repartitioning)
         while (this->n_levels() > 1)
           {
+            std::cout<<"still "<<this->n_levels()<<"remaining"<<std::endl;
             // Instead of marking all active cells, we slice off the finest
             // level, one level at a time. This takes the same number of
             // iterations but solves an issue where not all cells on a

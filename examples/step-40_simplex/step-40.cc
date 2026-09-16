@@ -208,8 +208,8 @@ namespace Step40
   LaplaceProblem<dim>::LaplaceProblem()
     : mpi_communicator(MPI_COMM_WORLD)
     , triangulation(mpi_communicator,
-                    typename Triangulation<dim>::MeshSmoothing(
-                      parallel::distributed::Triangulation<dim>::mesh_reconstruction_after_repartitioning))
+                    typename Triangulation<dim>::MeshSmoothing(Triangulation<dim>::limit_level_difference_at_vertices),
+                      parallel::distributed::Triangulation<dim>::mesh_reconstruction_after_repartitioning)
     //   Triangulation<dim>::smoothing_on_refinement |
     //   Triangulation<dim>::smoothing_on_coarsening))
     , fe(2)

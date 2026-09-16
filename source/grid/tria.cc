@@ -8497,6 +8497,16 @@ namespace internal
                               {vertex_indices[new_face_lines_vert[q][l][0]],
                                vertex_indices[new_face_lines_vert[q][l][1]]}};
 
+                            std::cout<<"vertices_0:";
+                            for(const auto &vertex:vertices_0){
+                              std::cout<<vertex<<" ";
+                            }
+                            std::cout<<std::endl;
+                            std::cout<<"vertices_1:";
+                            for(const auto &vertex:vertices_1){
+                              std::cout<<vertex<<" ";
+                            }
+                            std::cout<<std::endl;
                             const auto orientation =
                               ReferenceCells::Line.get_combined_orientation(
                                 make_array_view(vertices_0),
