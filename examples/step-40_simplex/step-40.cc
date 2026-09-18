@@ -717,6 +717,12 @@ int main(int argc, char *argv[])
 
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
+      unsigned int rank=  Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
+    std::ofstream debug_file(
+    "debug_rank_" + std::to_string(rank) + ".txt");
+
+    std::cout.rdbuf(debug_file.rdbuf());
+
       LaplaceProblem<3> laplace_problem_2d;
       laplace_problem_2d.run();
     }

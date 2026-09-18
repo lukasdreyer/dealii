@@ -6981,6 +6981,20 @@ namespace internal
 
                   face->set_children(2 * f, new_faces[2 * f]->index());
                 }
+              std::cout<<"face "<<face->index()<<" has children faces "<<
+                new_faces[0]<<" "<<
+                new_faces[1]<<" "<<
+                new_faces[2]<<" "<<
+                new_faces[3]<<" "<<std::endl;
+              std::cout<<"and vertices "<<
+                face->vertex_index(0)<<" "<<
+                face->vertex_index(1)<<" "<<
+                face->vertex_index(2)<<std::endl;
+              std::cout<<"and new vertices "<<
+                face->line(0)->child(0)->vertex_index(1)<<" "<<
+                face->line(1)->child(0)->vertex_index(1)<<" "<<
+                face->line(2)->child(0)->vertex_index(1)<<std::endl;
+                
               // Tell the original face that is has been isotropically refined.
               face->set_refinement_case(RefinementCase<2>::cut_xy);
 
@@ -7157,6 +7171,7 @@ namespace internal
                 {
                   // 5.a) Create faces
                   auto &new_face = new_faces[i];
+                  std::cout<<"set properties of new face "<<new_face->index()<<" with vertices:"<<std::endl;
 
                   // We assume here that all children have the same type as the
                   // parent face.
@@ -7166,11 +7181,47 @@ namespace internal
                   switch (reference_face_type)
                     {
                       case ReferenceCells::Triangle:
+                      {
                         new_face->set_bounding_object_indices(
                           {line_indices[face_lines[i][0]],
                            line_indices[face_lines[i][1]],
                            line_indices[face_lines[i][2]]});
-                        break;
+                           std::cout<<"added lines:"<<std::endl;
+                           unsigned int index;
+                           index = line_indices[face_lines[i][0]];
+                           auto line = triangulation.begin_raw_line();
+                           std::advance(line, index);
+
+                          std::cout << index << " "
+                                    << line->vertex_index(0) << " "
+                                    << line->vertex_index(1)
+                                    << std::endl;
+
+                                                               index = line_indices[face_lines[i][1]];
+                           line = triangulation.begin_raw_line();
+                           std::advance(line, index);
+
+                          std::cout << index << " "
+                                    << line->vertex_index(0) << " "
+                                    << line->vertex_index(1)
+                                    << std::endl;
+
+                                                               index = line_indices[face_lines[i][2]];
+                           line = triangulation.begin_raw_line();
+                           std::advance(line, index);
+
+                          std::cout << index << " "
+                                    << line->vertex_index(0) << " "
+                                    << line->vertex_index(1)
+                                    << std::endl;
+
+                          //           std::cout<<index<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0)<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0) <<std::endl;
+                          //  index = line_indices[face_lines[i][1]];
+                          //  std::cout<<index<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0)<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0) <<std::endl;
+                          //  index = line_indices[face_lines[i][2]];
+                          //  std::cout<<index<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0)<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0) <<std::endl;
+                          }
+                          break;
 
                       case ReferenceCells::Quadrilateral:
                         new_face->set_bounding_object_indices(
@@ -7193,6 +7244,10 @@ namespace internal
 
                   [[maybe_unused]] std::set<unsigned int> s;
 
+                  std::cout <<"face needs ordered vertices "<<std::endl;
+                  std::cout <<vertex_indices[tri_line_vertices_tri[i][0][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][0][1]]<<std::endl;
+                  std::cout <<vertex_indices[tri_line_vertices_tri[i][1][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][1][1]]<<std::endl;
+                  std::cout <<vertex_indices[tri_line_vertices_tri[i][2][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][2][1]]<<std::endl;
                   // 5.b.I) Fix orientation of lines of face
                   // For triangles an expensive algorithm is used,
                   // quadrilaterals are treated a few lines below by a cheaper
@@ -7208,6 +7263,17 @@ namespace internal
                           const std::array<unsigned int, 2> vertices_1 = {
                             {vertex_indices[tri_line_vertices_tri[i][f][0]],
                              vertex_indices[tri_line_vertices_tri[i][f][1]]}};
+
+                            std::cout<<"vertices_0:";
+                            for(const auto &vertex:vertices_0){
+                              std::cout<<vertex<<" ";
+                            }
+                            std::cout<<std::endl;
+                            std::cout<<"vertices_1:";
+                            for(const auto &vertex:vertices_1){
+                              std::cout<<vertex<<" ";
+                            }
+                            std::cout<<std::endl;
 
                           const auto orientation =
                             ReferenceCells::Line.get_combined_orientation(
@@ -8497,16 +8563,6 @@ namespace internal
                               {vertex_indices[new_face_lines_vert[q][l][0]],
                                vertex_indices[new_face_lines_vert[q][l][1]]}};
 
-                            std::cout<<"vertices_0:";
-                            for(const auto &vertex:vertices_0){
-                              std::cout<<vertex<<" ";
-                            }
-                            std::cout<<std::endl;
-                            std::cout<<"vertices_1:";
-                            for(const auto &vertex:vertices_1){
-                              std::cout<<vertex<<" ";
-                            }
-                            std::cout<<std::endl;
                             const auto orientation =
                               ReferenceCells::Line.get_combined_orientation(
                                 make_array_view(vertices_0),
