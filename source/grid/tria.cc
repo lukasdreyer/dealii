@@ -7171,7 +7171,7 @@ namespace internal
                      vertex_indices[line_vertices[j][1]]});
                   std::cout<<"added new internal line "<<new_line->index()<<" with vertices "<<
                   vertex_indices[line_vertices[j][0]] <<" "<< vertex_indices[line_vertices[j][1]]<<std::endl;
-                  new_line->set_used_flag();
+//                  new_line->set_used_flag();
                   new_line->clear_user_flag();
                   new_line->clear_user_data();
                   new_line->clear_children();
@@ -7405,8 +7405,8 @@ namespace internal
                       triangulation.faces->lines
                         .template next_free_single_object<1>(triangulation);
 
-                    // AssertIsNotUsed(new_lines[i]);
-                    // new_lines[i]->set_used_flag();
+                    AssertIsNotUsed(new_lines[i]);
+                    new_lines[i]->set_used_flag();
                     new_lines[i]->clear_user_flag();
                     new_lines[i]->clear_user_data();
                     new_lines[i]->clear_children();
