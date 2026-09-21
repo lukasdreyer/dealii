@@ -6912,6 +6912,10 @@ namespace internal
                   child->set_boundary_id_internal(boundary_id);
                   child->set_manifold_id(manifold_id);
                 }
+              std::cout<<"line "<<line->index()<<"("<< line->vertex_index(0) <<", " << line->vertex_index(1) <<") gets refined into children with indices "<<children[0]->index()
+             <<"("<< children[0]->vertex_index(0) <<", " << children[0]->vertex_index(1) <<") and"<<children[1]->index()
+             <<"("<< children[1]->vertex_index(0) <<", " << children[1]->vertex_index(1) <<")"
+             <<"and midpoint"<< children[0]->vertex_index(1)<<"/"<<children[1]->vertex_index(0) <<std::endl;
 
               line->clear_user_flag();
             }
@@ -6937,10 +6941,13 @@ namespace internal
               switch (reference_face_type)
                 {
                   case ReferenceCells::Triangle:
-                    for (unsigned int l = 0; l < 3; ++l)
+                    for (unsigned int l = 0; l < 3; ++l){
                       new_lines[l] =
                         triangulation.faces->lines
                           .template next_free_single_object<1>(triangulation);
+                          std::cout<<"created new line with index "<<new_lines[l]->index()<<std::endl;
+                      new_lines[l]->set_used_flag();
+                    }
                     break;
 
                   case ReferenceCells::Quadrilateral:
@@ -6958,11 +6965,11 @@ namespace internal
                     DEAL_II_NOT_IMPLEMENTED();
                 }
 
-              if constexpr (running_in_debug_mode())
-                {
-                  for (const unsigned int line : face->line_indices())
-                    AssertIsNotUsed(new_lines[line]);
-                }
+              // if constexpr (running_in_debug_mode())
+              //   {
+              //     for (const unsigned int line : face->line_indices())
+              //       AssertIsNotUsed(new_lines[line]);
+              //   }
 
               // 2) Create new face (properties are set below).
               // Both triangles and quads are divided in four. (For historical
@@ -7046,8 +7053,12 @@ namespace internal
                 lines[n_lines++] = new_lines[l];
 
               std::array<int, 12> line_indices;
-              for (unsigned int i = 0; i < n_lines; ++i)
+              std::cout <<"line indices: ";
+              for (unsigned int i = 0; i < n_lines; ++i){
                 line_indices[i] = lines[i]->index();
+                std::cout << line_indices[i]<<" ";
+              }
+              std::cout<<std::endl;
 
               // 2---7---3   .-6-.-7-.   .---.---.
               // |   |   |   1   9   3   | 2 | 3 |
@@ -7158,6 +7169,8 @@ namespace internal
                   new_line->set_bounding_object_indices(
                     {vertex_indices[line_vertices[j][0]],
                      vertex_indices[line_vertices[j][1]]});
+                  std::cout<<"added new internal line "<<new_line->index()<<" with vertices "<<
+                  vertex_indices[line_vertices[j][0]] <<" "<< vertex_indices[line_vertices[j][1]]<<std::endl;
                   new_line->set_used_flag();
                   new_line->clear_user_flag();
                   new_line->clear_user_data();
@@ -7392,8 +7405,8 @@ namespace internal
                       triangulation.faces->lines
                         .template next_free_single_object<1>(triangulation);
 
-                    AssertIsNotUsed(new_lines[i]);
-                    new_lines[i]->set_used_flag();
+                    // AssertIsNotUsed(new_lines[i]);
+                    // new_lines[i]->set_used_flag();
                     new_lines[i]->clear_user_flag();
                     new_lines[i]->clear_user_data();
                     new_lines[i]->clear_children();

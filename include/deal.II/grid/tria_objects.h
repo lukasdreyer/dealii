@@ -18,6 +18,7 @@
 #include <deal.II/base/array_view.h>
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/geometry_info.h>
+#include <iostream>
 
 #include <vector>
 
@@ -618,7 +619,14 @@ namespace internal
 
       AssertDimension(structdim_, this->structdim);
 
+      
       int pos = next_free_single, last = used.size() - 1;
+      std::cout<<"into next_free_single<"<<dim<< "> with "<<pos<<", reverse_order:"<< reverse_order_next_free_single << "and used: ";
+      for (const auto &el: used){
+        std::cout<<(int)el<<" ";
+      }
+      std::cout<<std::endl;
+
       if (!reverse_order_next_free_single)
         {
           // first sweep forward, only use really single slots, do not use
@@ -633,6 +641,7 @@ namespace internal
                 }
           if (pos >= last)
             {
+              std::cout<<"search from back in next iteration"<<std::endl;
               reverse_order_next_free_single = true;
               next_free_single               = used.size() - 1;
               pos                            = used.size() - 1;
@@ -672,6 +681,12 @@ namespace internal
       AssertDimension(structdim_, this->structdim);
 
       int pos = next_free_pair, last = used.size() - 1;
+      std::cout<<"into next_free_pair<"<<structdim_<< "> with "<<pos<<"and used: ";
+      for (const auto &el: used){
+        std::cout<<(int)el<<" ";
+      }
+      std::cout<<std::endl;
+
       for (; pos < last; ++pos)
         if (!used[pos])
           if (!used[++pos])
