@@ -6912,10 +6912,10 @@ namespace internal
                   child->set_boundary_id_internal(boundary_id);
                   child->set_manifold_id(manifold_id);
                 }
-              std::cout<<"line "<<line->index()<<"("<< line->vertex_index(0) <<", " << line->vertex_index(1) <<") gets refined into children with indices "<<children[0]->index()
-             <<"("<< children[0]->vertex_index(0) <<", " << children[0]->vertex_index(1) <<") and"<<children[1]->index()
-             <<"("<< children[1]->vertex_index(0) <<", " << children[1]->vertex_index(1) <<")"
-             <<"and midpoint"<< children[0]->vertex_index(1)<<"/"<<children[1]->vertex_index(0) <<std::endl;
+              // std::cout<<"line "<<line->index()<<"("<< line->vertex_index(0) <<", " << line->vertex_index(1) <<") gets refined into children with indices "<<children[0]->index()
+            //  <<"("<< children[0]->vertex_index(0) <<", " << children[0]->vertex_index(1) <<") and"<<children[1]->index()
+            //  <<"("<< children[1]->vertex_index(0) <<", " << children[1]->vertex_index(1) <<")"
+            //  <<"and midpoint"<< children[0]->vertex_index(1)<<"/"<<children[1]->vertex_index(0) <<std::endl;
 
               line->clear_user_flag();
             }
@@ -6945,7 +6945,7 @@ namespace internal
                       new_lines[l] =
                         triangulation.faces->lines
                           .template next_free_single_object<1>(triangulation);
-                          std::cout<<"created new line with index "<<new_lines[l]->index()<<std::endl;
+//                          std::cout<<"created new line with index "<<new_lines[l]->index()<<std::endl;
                       new_lines[l]->set_used_flag();
                     }
                     break;
@@ -6988,19 +6988,19 @@ namespace internal
 
                   face->set_children(2 * f, new_faces[2 * f]->index());
                 }
-              std::cout<<"face "<<face->index()<<" has children faces "<<
-                new_faces[0]<<" "<<
-                new_faces[1]<<" "<<
-                new_faces[2]<<" "<<
-                new_faces[3]<<" "<<std::endl;
-              std::cout<<"and vertices "<<
-                face->vertex_index(0)<<" "<<
-                face->vertex_index(1)<<" "<<
-                face->vertex_index(2)<<std::endl;
-              std::cout<<"and new vertices "<<
-                face->line(0)->child(0)->vertex_index(1)<<" "<<
-                face->line(1)->child(0)->vertex_index(1)<<" "<<
-                face->line(2)->child(0)->vertex_index(1)<<std::endl;
+              // std::cout<<"face "<<face->index()<<" has children faces "<<
+              //   new_faces[0]<<" "<<
+              //   new_faces[1]<<" "<<
+              //   new_faces[2]<<" "<<
+              //   new_faces[3]<<" "<<std::endl;
+              // std::cout<<"and vertices "<<
+              //   face->vertex_index(0)<<" "<<
+              //   face->vertex_index(1)<<" "<<
+              //   face->vertex_index(2)<<std::endl;
+              // std::cout<<"and new vertices "<<
+              //   face->line(0)->child(0)->vertex_index(1)<<" "<<
+              //   face->line(1)->child(0)->vertex_index(1)<<" "<<
+              //   face->line(2)->child(0)->vertex_index(1)<<std::endl;
                 
               // Tell the original face that is has been isotropically refined.
               face->set_refinement_case(RefinementCase<2>::cut_xy);
@@ -7227,12 +7227,6 @@ namespace internal
                                     << line->vertex_index(0) << " "
                                     << line->vertex_index(1)
                                     << std::endl;
-
-                          //           std::cout<<index<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0)<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0) <<std::endl;
-                          //  index = line_indices[face_lines[i][1]];
-                          //  std::cout<<index<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0)<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0) <<std::endl;
-                          //  index = line_indices[face_lines[i][2]];
-                          //  std::cout<<index<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0)<<" "<< (triangulation.begin_raw_line() + index)->vertex_index(0) <<std::endl;
                           }
                           break;
 
@@ -7257,10 +7251,10 @@ namespace internal
 
                   [[maybe_unused]] std::set<unsigned int> s;
 
-                  std::cout <<"face needs ordered vertices "<<std::endl;
-                  std::cout <<vertex_indices[tri_line_vertices_tri[i][0][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][0][1]]<<std::endl;
-                  std::cout <<vertex_indices[tri_line_vertices_tri[i][1][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][1][1]]<<std::endl;
-                  std::cout <<vertex_indices[tri_line_vertices_tri[i][2][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][2][1]]<<std::endl;
+                  // std::cout <<"face needs ordered vertices "<<std::endl;
+                  // std::cout <<vertex_indices[tri_line_vertices_tri[i][0][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][0][1]]<<std::endl;
+                  // std::cout <<vertex_indices[tri_line_vertices_tri[i][1][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][1][1]]<<std::endl;
+                  // std::cout <<vertex_indices[tri_line_vertices_tri[i][2][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][2][1]]<<std::endl;
                   // 5.b.I) Fix orientation of lines of face
                   // For triangles an expensive algorithm is used,
                   // quadrilaterals are treated a few lines below by a cheaper
@@ -7356,7 +7350,7 @@ namespace internal
                     RefinementCase<dim>::no_refinement)
                   continue;
 
-                // std::cout<<"create children cells of cell "<<cell->id()<<std::endl;
+                std::cout<<"create children cells of cell "<<cell->id()<<std::endl;
                 // Copy the requested refinement case to the cell's actual
                 // refinement flag, informing the cell how it has been refined.
                 const RefinementCase<dim> ref_case = cell->refine_flag_set();
@@ -13960,7 +13954,15 @@ namespace internal
                         for (unsigned int c = 0; c < 2; ++c)
                           {
                             if(line->child(c)->has_children()){
-                              std::cout<<"line "<<line->index()<<"from cell "<<cell->id()<<" is not balanced"<<std::endl;
+                              std::cout<<"line "<<line->index()<<" from cell "<<cell->id()<<" is not balanced!"<<std::endl;
+                              std::cout<<"because child "<< c<<" line "<<line->child(c)<<" has children "<< line->child(c)->child(0)<<" and "<<line->child(c)->child(1)<<std::endl;
+                              std::cout<<"vertices:"<<std::endl;
+                              std::cout<<cell->vertex(0)<<std::endl;
+                              std::cout<<cell->vertex(1)<<std::endl;
+                              std::cout<<cell->vertex(2)<<std::endl;
+                              std::cout<<cell->vertex(3)<<std::endl;
+                              std::cout<<"internal structures"<<std::endl;
+                              triangulation.print_internal_structures();
                             }
                             Assert(line->child(c)->has_children() == false,
                                    ExcInternalError());
@@ -19788,6 +19790,25 @@ void Triangulation<dim, spacedim>::print_internal_structures()
 {
   
   std::cout<<"Internal structures:"<<std::endl;
+  std::cout<<"global cells"<<std::endl;
+  for (auto &cell: active_cell_iterators()){
+    std::cout<<"cell "<<cell->id()<<" with faces: "<<std::endl;
+    for (auto face: cell->face_indices()){
+      std::cout<<cell->face(face)->index()<<" ";
+    }
+    std::cout<<" and lines: "<<std::endl;
+    for (auto line: cell->line_indices()){
+      std::cout<<cell->line(line)->index()<<" ";
+    }
+    std::cout<<" and vertices: "<<std::endl;
+    for (auto vertex: cell->vertex_indices()){
+      std::cout<<cell->vertex(vertex)<<std::endl;
+    }
+    std::cout<<std::endl;
+  }
+
+
+
   std::cout<<"global vertices"<<std::endl;
   int counter;
 
