@@ -6962,6 +6962,10 @@ namespace internal
                             .template next_free_pair_object<1>(triangulation);
                         new_lines[2 * l]     = next_unused_line;
                         new_lines[2 * l + 1] = ++next_unused_line;
+                        // mark them as used right away, as for triangles,
+                        // so that the next search does not return them again
+                        new_lines[2 * l]->set_used_flag();
+                        new_lines[2 * l + 1]->set_used_flag();
                       }
                     break;
 
