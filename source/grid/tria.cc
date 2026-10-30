@@ -13869,6 +13869,29 @@ namespace internal
         using raw_line_iterator =
           typename Triangulation<dim, spacedim>::raw_line_iterator;
 
+        // Whether line l of a cell will be refined by its refine flag, and
+        // whether it is refined because the cell has children. For
+        // hexahedra, this depends on the (anisotropic) refinement case. All
+        // other cells are refined isotropically, which refines all of their
+        // lines; for them, refinement_case() stores the choice of the
+        // interior diagonal (e.g. IsotropicRefinementChoice::cut_tet_68),
+        // which must not be interpreted as cut directions of a hexahedron.
+        const auto line_will_be_refined = [](const auto        &cell,
+                                             const unsigned int l) {
+          if (cell->reference_cell() != ReferenceCells::Hexahedron)
+            return cell->refine_flag_set() !=
+                   RefinementCase<dim>::no_refinement;
+          return GeometryInfo<dim>::line_refinement_case(
+                   cell->refine_flag_set(), l) == RefinementCase<1>::cut_x;
+        };
+        const auto line_is_refined = [](const auto        &cell,
+                                        const unsigned int l) {
+          if (cell->reference_cell() != ReferenceCells::Hexahedron)
+            return cell->has_children();
+          return GeometryInfo<dim>::line_refinement_case(
+                   cell->refinement_case(), l) == RefinementCase<1>::cut_x;
+        };
+
         // variable to store whether the mesh was changed in the
         // present loop and in the whole process
         bool mesh_changed = false;
@@ -13895,9 +13918,7 @@ namespace internal
                     TriaAccessorImplementation::Implementation::
                       get_line_indices_of_cell(*cell);
                   for (unsigned int l = 0; l < cell->n_lines(); ++l)
-                    if (GeometryInfo<dim>::line_refinement_case(
-                          cell->refine_flag_set(), l) ==
-                        RefinementCase<1>::cut_x)
+                    if (line_will_be_refined(cell, l))
                       {
                         raw_line_iterator line(&triangulation,
                                                0,
@@ -13913,9 +13934,7 @@ namespace internal
                     TriaAccessorImplementation::Implementation::
                       get_line_indices_of_cell(*cell);
                   for (unsigned int l = 0; l < cell->n_lines(); ++l)
-                    if (GeometryInfo<dim>::line_refinement_case(
-                          cell->refinement_case(), l) ==
-                        RefinementCase<1>::cut_x)
+                    if (line_is_refined(cell, l))
                       {
                         raw_line_iterator line(&triangulation,
                                                0,
@@ -13972,9 +13991,7 @@ namespace internal
                                    ExcInternalError());
 
                             if (line->child(c)->user_flag_set() &&
-                                (GeometryInfo<dim>::line_refinement_case(
-                                   cell->refine_flag_set(), l) ==
-                                 RefinementCase<1>::no_refinement))
+                                !line_will_be_refined(cell, l))
                               {
                                 // tag this cell for refinement
                                 cell->clear_coarsen_flag();
@@ -13991,9 +14008,7 @@ namespace internal
 
                                 for (unsigned int k = 0; k < cell->n_lines();
                                      ++k)
-                                  if (GeometryInfo<dim>::line_refinement_case(
-                                        cell->refine_flag_set(), l) ==
-                                      RefinementCase<1>::cut_x)
+                                  if (line_will_be_refined(cell, l))
                                     // flag a line, that will be refined
                                     raw_line_iterator(&triangulation,
                                                       0,
@@ -14015,10 +14030,7 @@ namespace internal
                                                         0,
                                                         line_indices[k]);
                                     if (!line->has_children() &&
-                                        (GeometryInfo<dim>::
-                                           line_refinement_case(
-                                             cell->refine_flag_set(), k) !=
-                                         RefinementCase<1>::no_refinement))
+                                        line_will_be_refined(cell, k))
                                       line->set_user_flag();
                                   }
 
@@ -14068,9 +14080,7 @@ namespace internal
                             cell->child(c)->clear_coarsen_flag();
                           cell->clear_user_flag();
                           for (unsigned int k = 0; k < cell->n_lines(); ++k)
-                            if (GeometryInfo<dim>::line_refinement_case(
-                                  cell->refinement_case(), k) ==
-                                RefinementCase<1>::cut_x)
+                            if (line_is_refined(cell, k))
                               // flag a line, that is refined and will
                               // stay so
                               raw_line_iterator(&triangulation,
