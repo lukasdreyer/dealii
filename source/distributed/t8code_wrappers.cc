@@ -16,6 +16,8 @@
 #include "deal.II/base/exception_macros.h"
 #include "deal.II/base/types.h"
 
+#include <deal.II/base/mpi.h>
+
 #include <deal.II/distributed/t8code_wrappers.h>
 #include <deal.II/distributed/tria.h>
 
@@ -37,6 +39,10 @@
 
 #  include <t8_forest/t8_forest_ghost.h>
 #  include <t8_forest/t8_forest_types.h>
+
+// From the uninstalled t8_forest/t8_forest_balance.h, used for a debug check
+extern "C" int
+t8_forest_is_balanced(t8_forest_t forest);
 #  include <t8_schemes/t8_scheme.hxx>
 // #  include <t8_cmesh/t8_cmesh.h>
 #  include <t8_cmesh/t8_cmesh.hxx>
@@ -445,6 +451,24 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       t8_forest_set_ghost(new_forest, 1, T8_GHOST_VERTICES);
       t8_forest_set_user_data(new_forest, t8_forest_get_user_data(forest));
       t8_forest_commit(new_forest);
+      if constexpr (running_in_debug_mode())
+        {
+          // The forest must be balanced across faces, edges and vertices (see
+          // balance_full), which t8code checks with the vertex ghost layer.
+          const t8_ghost_type_t balance_type = new_forest->balance_type;
+          new_forest->balance_type           = T8_GHOST_VERTICES;
+          const int locally_balanced = t8_forest_is_balanced(new_forest);
+          new_forest->balance_type   = balance_type;
+          const int balanced =
+            Utilities::MPI::min(locally_balanced,
+                                t8_forest_get_mpicomm(new_forest));
+          AssertThrow(balanced,
+                      ExcMessage("The t8code forest is not balanced across "
+                                 "vertices after partitioning (on " +
+                                 std::string(locally_balanced ? "another" :
+                                                                "this") +
+                                 " process)."));
+        }
       return new_forest;
     }
 
