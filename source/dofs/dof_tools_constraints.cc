@@ -44,6 +44,10 @@
 #include <memory>
 #include <numeric>
 
+// Debug output of the t8code coupling, discarded by a stream without buffer.
+// Replace debug_out by std::cout to print it again.
+static std::ostream debug_out(nullptr);
+
 DEAL_II_NAMESPACE_OPEN
 
 
@@ -2475,9 +2479,9 @@ namespace DoFTools
                             {
                               const auto child = cell->face(face)->child(c);
                               const auto neighbor_child = cell->neighbor_child_on_subface(face, c);
-                              std::cout << "child: " << child->index() << " neighbor child: " << neighbor_child->index() << std::endl;
+                              debug_out << "child: " << child->index() << " neighbor child: " << neighbor_child->index() << std::endl;
                               if(dim == 3)
-                                std::cout << "child: " << child->vertex(0) << ", " << child->vertex(1) << ", " << child->vertex(2) << ", neighbor child " << " " << neighbor_child->vertex(0) << ", " << neighbor_child->vertex(1) << ", " << neighbor_child->vertex(2) << std::endl;
+                                debug_out << "child: " << child->vertex(0) << ", " << child->vertex(1) << ", " << child->vertex(2) << ", neighbor child " << " " << neighbor_child->vertex(0) << ", " << neighbor_child->vertex(1) << ", " << neighbor_child->vertex(2) << std::endl;
                             }
 
                             if (cell->neighbor_child_on_subface(face, c)
@@ -2531,11 +2535,11 @@ namespace DoFTools
                                 if(dependent_dof ==
                                  numbers::invalid_dof_index)
                                 {
-                                  std::cout << "face, child, subface index, fe, n_dofs_per_face: " << face << " " << c << " " << subface_fe_index << " " << subface->get_fe(subface_fe_index).get_name() << " " << subface->get_fe(subface_fe_index).n_dofs_per_face(face, c)<< " with dofs " << std::endl;
+                                  debug_out << "face, child, subface index, fe, n_dofs_per_face: " << face << " " << c << " " << subface_fe_index << " " << subface->get_fe(subface_fe_index).get_name() << " " << subface->get_fe(subface_fe_index).n_dofs_per_face(face, c)<< " with dofs " << std::endl;
                                   for (const types::global_dof_index dependent_dof_l :
                                  dependent_dofs)
-                                    std::cout << dependent_dof_l << " ";
-                                    std::cout << std::endl; 
+                                    debug_out << dependent_dof_l << " ";
+                                    debug_out << std::endl; 
                                   //std::cout << "dof does not pass: " << dependent_dof << " as it is " << numbers::invalid_dof_index << std::endl;
                                 }
                                 Assert(dependent_dof !=

@@ -43,6 +43,10 @@
 #  include <t8_cmesh/t8_cmesh_internal/t8_cmesh_types.h>
 
 
+// Debug output of the t8code coupling, discarded by a stream without buffer.
+// Replace debug_out by std::cout to print it again.
+static std::ostream debug_out(nullptr);
+
 DEAL_II_NAMESPACE_OPEN
 
 namespace internal
@@ -208,7 +212,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
               const auto &vertex = cell->vertex(ivertex);
               for (unsigned int idim = 0; idim < dim; idim++)
                 {
-                  std::cout << "vertex[idim]" << vertex[idim] << std::endl;
+                  debug_out << "vertex[idim]" << vertex[idim] << std::endl;
                   coords[3 * ivertex + idim] = vertex[idim];
                 }
             }
@@ -284,7 +288,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                ivertex++)
             {
               vertex_list[ivertex] = cell->vertex_index(ivertex);
-              std::cout << "local vertex " << ivertex
+              debug_out << "local vertex " << ivertex
                         << " connected to global vertex "
                         << cell->vertex_index(ivertex);
             }
@@ -381,7 +385,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
           typename ::dealii::parallel::distributed::Triangulation<dim, spacedim>
             *triangulation)
     {
-      std::cout << "adapt forest with refcount " << parallel_forest->rc.refcount
+      debug_out << "adapt forest with refcount " << parallel_forest->rc.refcount
                 << std::endl;
       // count how many cells will be refined and coarsened, and allocate that
       // much memory
@@ -393,7 +397,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       Assert(forest_get_user_pointer<dim>(parallel_forest) == triangulation,
              ExcInternalError());
       forest_set_user_pointer<dim>(parallel_forest, &adapt_list);
-      std::cout << "set pointer to adapt list " << &adapt_list << std::endl;
+      debug_out << "set pointer to adapt list " << &adapt_list << std::endl;
 
 
 
@@ -425,7 +429,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       t8_forest_commit(new_forest);
       //      std::cout<<"old forest with refcount
       //      "<<parallel_forest->rc.refcount<<std::endl;
-      std::cout << "new forest with refcount " << new_forest->rc.refcount
+      debug_out << "new forest with refcount " << new_forest->rc.refcount
                 << std::endl;
 
 
