@@ -19602,7 +19602,9 @@ namespace
     // count all neighbors that will be refined along the face of our
     // cell after the next step
     unsigned int count = 0;
-    for (const unsigned int n : GeometryInfo<dim>::face_indices())
+    // use the faces of the cell, not of a hypercube, so that this also works
+    // for simplices
+    for (const unsigned int n : cell->face_indices())
       {
         const typename Triangulation<dim, spacedim>::cell_iterator neighbor =
           cell->neighbor(n);
@@ -19618,12 +19620,12 @@ namespace
     // of the domain
     if (count == n_neighbors ||
         (count >= n_neighbors - 1 &&
-         n_neighbors == GeometryInfo<dim>::faces_per_cell))
+         n_neighbors == cell->n_faces()))
       {
         for (unsigned int c = 0; c < cell->n_children(); ++c)
           cell->child(c)->clear_coarsen_flag();
 
-        for (const unsigned int face : GeometryInfo<dim>::face_indices())
+        for (const unsigned int face : cell->face_indices())
           if (!cell->at_boundary(face) &&
               (!cell->neighbor(face)->is_active()) &&
               (cell_will_be_coarsened(cell->neighbor(face))))
