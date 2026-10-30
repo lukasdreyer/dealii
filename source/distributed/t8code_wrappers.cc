@@ -40,6 +40,7 @@
 #  include <t8_schemes/t8_scheme.hxx>
 // #  include <t8_cmesh/t8_cmesh.h>
 #  include <t8_cmesh/t8_cmesh.hxx>
+#  include <t8_cmesh/t8_cmesh_helpers.h>
 #  include <t8_cmesh/t8_cmesh_internal/t8_cmesh_types.h>
 
 
@@ -161,7 +162,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       {0, 1, 2, 3},             // quad is oriented the same
       {2, 0, 1},                // tri is rotated by one
       {0, 1, 2, 3, 4, 5, 6, 7}, // hex
-      {},                       // tet
+      {3, 2, 1, 0},             // tet, face i is opposite to vertex 3 - i
       {},                       // prism
       {}                        // pyramid
     };
@@ -242,44 +243,35 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                   int t8_ineighface =
                     dealii_to_t8_faces[neigh_eclass][ineighface];
 
-                  bool orientation =
-                    (cell->face_orientation(iface) !=
-                     cell->neighbor(iface)->face_orientation(
-                       ineighface)); // cell->combined_face_orientation(iface);
-                  if (eclass == T8_ECLASS_TRIANGLE && iface == 2)
-                    {
-                      //                std::cout<<"switched orientation because
-                      //                own cell is triangle and on face
-                      //                2"<<std::endl;
-                      orientation = !orientation;
-                    }
-                  if (neigh_eclass == T8_ECLASS_TRIANGLE && ineighface == 2)
-                    {
-                      //                std::cout<<"switched orientation because
-                      //                neighbor cell is triangle and on face
-                      //                2"<<std::endl;
-                      orientation = !orientation;
-                    }
+                  // The vertices of the trees are the deal.II vertices in
+                  // deal.II order, so the t8code orientation follows from the
+                  // global vertex indices of both cells.
+                  const auto neighbor = cell->neighbor(iface);
+                  std::vector<t8_gloidx_t> vertex_ids(cell->n_vertices());
+                  for (unsigned int ivertex = 0; ivertex < cell->n_vertices();
+                       ivertex++)
+                    vertex_ids[ivertex] = cell->vertex_index(ivertex);
+                  std::vector<t8_gloidx_t> neigh_vertex_ids(
+                    neighbor->n_vertices());
+                  for (unsigned int ivertex = 0;
+                       ivertex < neighbor->n_vertices();
+                       ivertex++)
+                    neigh_vertex_ids[ivertex] = neighbor->vertex_index(ivertex);
+                  const int orientation =
+                    t8_cmesh_face_orientation_by_vertex_ids(
+                      eclass,
+                      t8_iface,
+                      vertex_ids.data(),
+                      neigh_eclass,
+                      t8_ineighface,
+                      neigh_vertex_ids.data());
 
-                  //              std::cout<<"added face join from cell
-                  //              "<<t8_index<<" face "<<t8_iface<<" to cell
-                  //              "<<t8_neighbor_index<<" face " <<
-                  //              t8_ineighface <<" with orientation
-                  //              "<<orientation <<std::endl;
-                  std::cout
-                    << cell->face_orientation(iface) << " "
-                    << cell->neighbor(iface)->face_orientation(ineighface)
-                    << std::endl;
-                  //              std::cout<<"t8_cmesh_set_join(cmesh,"<<
-                  //              t8_index<<", "<<t8_neighbor_index<<", "<<
-                  //              t8_iface <<", "<< t8_ineighface<<",
-                  //              "<<orientation <<")"<<std::endl;
                   t8_cmesh_set_join(cmesh,
                                     t8_index,
                                     t8_neighbor_index,
                                     t8_iface,
                                     t8_ineighface,
-                                    (int)orientation);
+                                    orientation);
                 }
             }
 
