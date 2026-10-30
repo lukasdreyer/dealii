@@ -435,6 +435,9 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       t8_forest_t new_forest;
       t8_forest_init(&new_forest);
       t8_forest_set_balance(new_forest, forest, 1);
+      // Balance across faces, edges and vertices, like p4est's
+      // P4EST_CONNECT_FULL
+      t8_forest_set_balance_type(new_forest, T8_GHOST_VERTICES);
       t8_forest_set_user_data(new_forest, t8_forest_get_user_data(forest));
       t8_forest_commit(new_forest);
       return new_forest;
