@@ -296,17 +296,6 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                                                t8_index,
                                                vertex_list.data(),
                                                cell->n_vertices());
-          std::vector<t8_gloidx_t> edge_list(cell->n_lines());
-          for (unsigned int iedge = 0; iedge < cell->n_lines(); iedge++)
-            {
-              edge_list[iedge] = cell->line_index(iedge);
-              // std::cout << "local edge "<<iedge<<" connected to global edge "
-              // << cell->line_index(iedge);
-            }
-          t8_cmesh_set_global_edges_of_tree(cmesh,
-                                            t8_index,
-                                            edge_list.data(),
-                                            cell->n_lines());
         }
       t8_cmesh_commit(cmesh, tria->get_mpi_communicator());
       return cmesh;
