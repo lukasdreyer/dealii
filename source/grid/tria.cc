@@ -14818,6 +14818,13 @@ namespace internal
                 (*quad)->clear_children();
                 (*quad)->clear_refinement_case();
                 (*quad)->clear_user_flag();
+                // the refinement of faces only sets the orientations of
+                // some lines of the new faces and relies on the default
+                // orientation of the others, so reset them for the reuse
+                // of this face
+                for (const unsigned int l : (*quad)->line_indices())
+                  (*quad)->set_line_orientation(
+                    l, numbers::default_geometric_orientation);
                 (*quad)->clear_used_flag();
               }
           }
