@@ -25,15 +25,15 @@ DEAL:2d:quads and triangles::cells 23, errors 0, hash 5c5c168c538840ce
 DEAL:2d:quads and triangles::coarsening: errors 0
 DEAL:3d:tetrahedra::cells 40, errors 0, hash a3a6f8a60ece9b57
 DEAL:3d:tetrahedra::cells 75, errors 0, hash 9709f08ad57611
-DEAL:3d:tetrahedra::cells 306, errors 0, hash 6157b0d979953ada
-DEAL:3d:tetrahedra::cells 334, errors 0, hash 68791ca941f2723b
-DEAL:3d:tetrahedra::cells 348, errors 0, hash f6ec4901e7d8b15d
+DEAL:3d:tetrahedra::cells 306, errors 0, hash 9f640d35c5569766
+DEAL:3d:tetrahedra::cells 334, errors 0, hash 8852e74f92834227
+DEAL:3d:tetrahedra::cells 348, errors 0, hash 9689faad23e286db
 DEAL:3d:tetrahedra::coarsening: errors 0
 DEAL:3d:tetrahedra from rotated hexahedra::cells 48, errors 0, hash 6ba04273fcbdd347
 DEAL:3d:tetrahedra from rotated hexahedra::cells 139, errors 0, hash 6204a7125e111755
-DEAL:3d:tetrahedra from rotated hexahedra::cells 412, errors 0, hash 233b0de75f796cae
-DEAL:3d:tetrahedra from rotated hexahedra::cells 503, errors 0, hash 3274e5b80653b8f2
-DEAL:3d:tetrahedra from rotated hexahedra::cells 531, errors 0, hash 50ae14e3d4af8768
+DEAL:3d:tetrahedra from rotated hexahedra::cells 412, errors 0, hash 38d670d39e68acfc
+DEAL:3d:tetrahedra from rotated hexahedra::cells 503, errors 0, hash 1cd63c44a79e4776
+DEAL:3d:tetrahedra from rotated hexahedra::cells 531, errors 0, hash 41f750597c895224
 DEAL:3d:tetrahedra from rotated hexahedra::coarsening: errors 0
 DEAL:3d:rotated hexahedra::cells 2, errors 0, hash 5cc22dc245c2a28b
 DEAL:3d:rotated hexahedra::cells 9, errors 0, hash b31c77cdd3bc1751
@@ -43,9 +43,9 @@ DEAL:3d:rotated hexahedra::cells 37, errors 0, hash 4d1f71e36c44cdca
 DEAL:3d:rotated hexahedra::coarsening: errors 0
 DEAL:3d:rotated wedges::cells 16, errors 0, hash bbd945e9152694c9
 DEAL:3d:rotated wedges::cells 30, errors 0, hash c306b0405197be
-DEAL:3d:rotated wedges::cells 128, errors 0, hash 4b90bfd291609fd3
-DEAL:3d:rotated wedges::cells 156, errors 0, hash 1bb571fd7d1bfeda
-DEAL:3d:rotated wedges::cells 163, errors 0, hash c1d80eba9ada3c68
+DEAL:3d:rotated wedges::cells 128, errors 0, hash c69c2050359a6613
+DEAL:3d:rotated wedges::cells 156, errors 0, hash 4867f0b3a1d86a96
+DEAL:3d:rotated wedges::cells 163, errors 0, hash 8d8b0822d809de74
 DEAL:3d:rotated wedges::coarsening: errors 0
 DEAL:3d:rotated hexahedra and wedges::cells 12, errors 0, hash bb4b38e908121d5f
 DEAL:3d:rotated hexahedra and wedges::cells 19, errors 0, hash a148bd6c4e127fa5
