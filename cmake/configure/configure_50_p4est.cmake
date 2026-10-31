@@ -77,4 +77,22 @@ macro(feature_p4est_configure_external)
 endmacro()
 
 
+#
+# p4est and t8code both implement parallel::distributed::Triangulation,
+# so only one of them can be enabled. An explicitly requested t8code
+# disables the autodetection of p4est:
+#
+if(DEAL_II_WITH_T8CODE)
+  if(DEAL_II_WITH_P4EST)
+    message(FATAL_ERROR "\n"
+      "DEAL_II_WITH_P4EST and DEAL_II_WITH_T8CODE cannot both be set to "
+      "\"ON\", since both implement parallel::distributed::Triangulation.\n\n"
+      )
+  elseif(NOT DEFINED DEAL_II_WITH_P4EST)
+    message(STATUS "DEAL_II_WITH_T8CODE is set, disabling p4est.")
+    set_cached_option(P4EST OFF)
+  endif()
+endif()
+
+
 configure_feature(P4EST)
