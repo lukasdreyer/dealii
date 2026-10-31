@@ -857,7 +857,7 @@ FE_Q_Base<dim, spacedim>::hp_line_dof_identities(
       // ordering of the line support points in the first direction (i.e.,
       // x-direction), which we access between index 1 and p-1 (index 0 and p
       // are vertex dofs). For FE_SimplexP, they are currently hard-coded and we
-      // iterate over points on the first line which begin after the 3 vertex
+      // iterate over points on the first line which begin after the vertex
       // points in the complete list of unit support points
 
       Assert(fe_p_other->degree <= 2, ExcNotImplemented());
@@ -871,7 +871,8 @@ FE_Q_Base<dim, spacedim>::hp_line_dof_identities(
         for (unsigned int j = 0; j < fe_p_other->degree - 1; ++j)
           if (std::fabs(
                 this->unit_support_points[index_map_inverse_q[i + 1]][0] -
-                fe_p_other->get_unit_support_points()[j + 3][0]) < 1e-14)
+                fe_p_other->get_unit_support_points()
+                  [j + fe_p_other->reference_cell().n_vertices()][0]) < 1e-14)
             identities.emplace_back(i, j);
 
       return identities;

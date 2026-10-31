@@ -918,8 +918,6 @@ FE_SimplexP<dim, spacedim>::hp_vertex_dof_identities(
       (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) != nullptr))
     return {{0U, 0U}};
 
-  AssertDimension(dim, 2);
-
   if (dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other) != nullptr)
     {
       // there should be exactly one single DoF of each FE at a vertex, and
@@ -977,7 +975,9 @@ FE_SimplexP<dim, spacedim>::hp_line_dof_identities(
         return {};
     }
 
-  AssertDimension(dim, 2);
+  // the DoFs on the first line (along the x-axis) begin after the vertex
+  // DoFs, in 2d and 3d
+  const unsigned int n_vertices = this->reference_cell().n_vertices();
 
   if (const FE_SimplexP<dim, spacedim> *fe_p_other =
         dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other))
@@ -987,14 +987,15 @@ FE_SimplexP<dim, spacedim>::hp_line_dof_identities(
       // Therefore, read the points in unit_support_points for the
       // first coordinate direction. For FE_SimplexP, they are currently
       // hard-coded and we iterate over points on the first line which begin
-      // after the 3 vertex points in the complete list of unit support points
+      // after the vertex points in the complete list of unit support points
 
       std::vector<std::pair<unsigned int, unsigned int>> identities;
 
       for (unsigned int i = 0; i < this->degree - 1; ++i)
         for (unsigned int j = 0; j < fe_p_other->degree - 1; ++j)
-          if (std::fabs(this->unit_support_points[i + 3][0] -
-                        fe_p_other->unit_support_points[i + 3][0]) < 1e-14)
+          if (std::fabs(this->unit_support_points[i + n_vertices][0] -
+                        fe_p_other->unit_support_points[j + n_vertices][0]) <
+              1e-14)
             identities.emplace_back(i, j);
           else
             {
@@ -1020,7 +1021,7 @@ FE_SimplexP<dim, spacedim>::hp_line_dof_identities(
       // ordering of the line support points in the first direction (i.e.,
       // x-direction), which we access between index 1 and p-1 (index 0 and p
       // are vertex dofs). For FE_SimplexP, they are currently hard-coded and we
-      // iterate over points on the first line which begin after the 3 vertex
+      // iterate over points on the first line which begin after the vertex
       // points in the complete list of unit support points
 
       const std::vector<unsigned int> &index_map_inverse_q_other =
@@ -1030,7 +1031,7 @@ FE_SimplexP<dim, spacedim>::hp_line_dof_identities(
 
       for (unsigned int i = 0; i < this->degree - 1; ++i)
         for (unsigned int j = 0; j < fe_q_other->degree - 1; ++j)
-          if (std::fabs(this->unit_support_points[i + 3][0] -
+          if (std::fabs(this->unit_support_points[i + n_vertices][0] -
                         fe_q_other->get_unit_support_points()
                           [index_map_inverse_q_other[j + 1]][0]) < 1e-14)
             identities.emplace_back(i, j);
