@@ -19,6 +19,7 @@
 
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/fe_nothing.h>
+#include <deal.II/fe/fe_pyramid_p.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_simplex_p.h>
 #include <deal.II/fe/fe_tools.h>
@@ -603,6 +604,8 @@ FE_SimplexPoly<dim, spacedim>::get_face_interpolation_matrix(
        nullptr) ||
       (dynamic_cast<const FE_Q_Base<dim, spacedim> *>(&source_fe) != nullptr) ||
       (dynamic_cast<const FE_WedgePoly<dim, spacedim> *>(&source_fe) !=
+       nullptr) ||
+      (dynamic_cast<const FE_PyramidPoly<dim, spacedim> *>(&source_fe) !=
        nullptr))
     {
       const Quadrature<dim - 1> quad_face_support(
@@ -693,6 +696,8 @@ FE_SimplexPoly<dim, spacedim>::get_subface_interpolation_matrix(
        nullptr) ||
       (dynamic_cast<const FE_Q_Base<dim, spacedim> *>(&source_fe) != nullptr) ||
       (dynamic_cast<const FE_WedgePoly<dim, spacedim> *>(&source_fe) !=
+       nullptr) ||
+      (dynamic_cast<const FE_PyramidPoly<dim, spacedim> *>(&source_fe) !=
        nullptr))
     {
       const Quadrature<dim - 1> quad_face_support(
@@ -872,9 +877,12 @@ FE_SimplexP<dim, spacedim>::compare_for_domination(
       else
         return FiniteElementDomination::other_element_dominates;
     }
-  else if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
-             dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+  else if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) !=
+            nullptr) ||
+           (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) !=
+            nullptr))
     {
+      const auto *fe_wp_other = &fe_other;
       if (this->degree < fe_wp_other->degree)
         return FiniteElementDomination::this_element_dominates;
       else if (this->degree == fe_wp_other->degree)
@@ -905,8 +913,9 @@ std::vector<std::pair<unsigned int, unsigned int>>
 FE_SimplexP<dim, spacedim>::hp_vertex_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other) const
 {
-  // tetrahedra next to wedges
-  if (dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) != nullptr)
+  // tetrahedra next to wedges and pyramids
+  if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) != nullptr) ||
+      (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) != nullptr))
     return {{0U, 0U}};
 
   AssertDimension(dim, 2);
@@ -954,11 +963,12 @@ std::vector<std::pair<unsigned int, unsigned int>>
 FE_SimplexP<dim, spacedim>::hp_line_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other) const
 {
-  // tetrahedra next to wedges: both elements have at most one DoF on a line,
-  // at its midpoint (degree 2)
-  if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
-        dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+  // tetrahedra next to wedges and pyramids: both elements have at most one
+  // DoF on a line, at its midpoint (degree 2)
+  if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) != nullptr) ||
+      (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) != nullptr))
     {
+      const auto *fe_wp_other = &fe_other;
       Assert(this->degree <= 2 && fe_wp_other->degree <= 2,
              ExcNotImplemented());
       if (this->degree == 2 && fe_wp_other->degree == 2)
@@ -1072,12 +1082,12 @@ FE_SimplexP<dim, spacedim>::hp_quad_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other,
   const unsigned int) const
 {
-  // tetrahedra next to wedges: the wedge elements (degree <= 2) have no DoFs
-  // inside triangles
-  if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
-        dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+  // tetrahedra next to wedges and pyramids: these elements (degree <= 2)
+  // have no DoFs inside triangles
+  if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) != nullptr) ||
+      (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) != nullptr))
     {
-      Assert(fe_wp_other->degree <= 2, ExcNotImplemented());
+      Assert(fe_other.degree <= 2, ExcNotImplemented());
       return {};
     }
   else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)

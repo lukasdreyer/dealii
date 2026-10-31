@@ -49,6 +49,39 @@ public:
   convert_generalized_support_point_values_to_dof_values(
     const std::vector<Vector<double>> &support_point_values,
     std::vector<double>               &nodal_values) const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::get_face_interpolation_matrix()
+   */
+  virtual void
+  get_face_interpolation_matrix(const FiniteElement<dim, spacedim> &source_fe,
+                                FullMatrix<double> &interpolation_matrix,
+                                const unsigned int  face_no) const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::get_subface_interpolation_matrix()
+   */
+  virtual void
+  get_subface_interpolation_matrix(
+    const FiniteElement<dim, spacedim> &source_fe,
+    const unsigned int                  subface,
+    FullMatrix<double>                 &interpolation_matrix,
+    const unsigned int                  face_no) const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::hp_constraints_are_implemented()
+   */
+  virtual bool
+  hp_constraints_are_implemented() const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::face_to_cell_index()
+   */
+  virtual unsigned int
+  face_to_cell_index(const unsigned int                 face_dof_index,
+                     const unsigned int                 face,
+                     const types::geometric_orientation combined_orientation =
+                       numbers::default_geometric_orientation) const override;
 };
 
 /**

@@ -763,8 +763,10 @@ FE_Q_Base<dim, spacedim>::hp_vertex_dof_identities(
       // should have identical value
       return {{0U, 0U}};
     }
-  else if (dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) !=
-           nullptr)
+  else if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) !=
+            nullptr) ||
+           (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) !=
+            nullptr))
     {
       // there should be exactly one single DoF of each FE at a vertex, and they
       // should have identical value
@@ -874,10 +876,14 @@ FE_Q_Base<dim, spacedim>::hp_line_dof_identities(
 
       return identities;
     }
-  else if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
-             dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+  else if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) !=
+            nullptr) ||
+           (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) !=
+            nullptr))
     {
-      // FE_WedgeP has at most one DoF on a line, at its midpoint (degree 2)
+      // FE_WedgeP and FE_PyramidP have at most one DoF on a line, at its
+      // midpoint (degree 2)
+      const auto *fe_wp_other = &fe_other;
       Assert(fe_wp_other->degree <= 2, ExcNotImplemented());
 
       const std::vector<unsigned int> &index_map_inverse_q =
@@ -964,11 +970,14 @@ FE_Q_Base<dim, spacedim>::hp_quad_dof_identities(
 
       return identities;
     }
-  else if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
-             dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+  else if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) !=
+            nullptr) ||
+           (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) !=
+            nullptr))
     {
-      // FE_WedgeP has at most one DoF on a quadrilateral, at its center
-      // (degree 2)
+      // FE_WedgeP and FE_PyramidP have at most one DoF on a quadrilateral, at
+      // its center (degree 2)
+      const auto *fe_wp_other = &fe_other;
       Assert(fe_wp_other->degree <= 2, ExcNotImplemented());
 
       const unsigned int               p = this->degree;

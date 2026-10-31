@@ -371,6 +371,176 @@ FE_PyramidPoly<dim, spacedim>::
 
 
 
+namespace
+{
+  // As in fe_wedge_p.cc: the face of the reference cell of fe that has the same shape as face
+  // face_no of reference_cell: face_no itself if possible, otherwise the
+  // first such face. The face support points of the elements here do not
+  // depend on the face but only on its shape.
+  template <int dim, int spacedim>
+  unsigned int
+  equivalent_face(const FiniteElement<dim, spacedim> &fe,
+                  const ReferenceCell                &reference_cell,
+                  const unsigned int                  face_no)
+  {
+    const ReferenceCell face_reference_cell =
+      reference_cell.face_reference_cell(face_no);
+    if (face_no < fe.reference_cell().n_faces() &&
+        fe.reference_cell().face_reference_cell(face_no) ==
+          face_reference_cell)
+      return face_no;
+    for (const unsigned int f : fe.reference_cell().face_indices())
+      if (fe.reference_cell().face_reference_cell(f) == face_reference_cell)
+        return f;
+    DEAL_II_ASSERT_UNREACHABLE();
+    return numbers::invalid_unsigned_int;
+  }
+
+
+
+  // Evaluate the shape functions of fe on face face_no at the given points
+  // on the cell of fe, which are the face support points of another element.
+  template <int dim, int spacedim>
+  void
+  interpolate_at_face_points(const FiniteElement<dim, spacedim> &fe,
+                             const unsigned int                  face_no,
+                             const std::vector<Point<dim>>      &points,
+                             FullMatrix<double> &interpolation_matrix)
+  {
+    AssertDimension(interpolation_matrix.m(), points.size());
+    AssertDimension(interpolation_matrix.n(), fe.n_dofs_per_face(face_no));
+
+    const double eps = 2e-13 * fe.degree * (dim - 1);
+
+    for (unsigned int i = 0; i < points.size(); ++i)
+      for (unsigned int j = 0; j < fe.n_dofs_per_face(face_no); ++j)
+        {
+          double matrix_entry =
+            fe.shape_value(fe.face_to_cell_index(j, face_no), points[i]);
+
+          // Correct the interpolated value. I.e. if it is close to 1 or
+          // 0, make it exactly 1 or 0. Unfortunately, this is required to
+          // avoid problems with higher order elements.
+          if (std::fabs(matrix_entry - 1.0) < eps)
+            matrix_entry = 1.0;
+          if (std::fabs(matrix_entry) < eps)
+            matrix_entry = 0.0;
+
+          interpolation_matrix(i, j) = matrix_entry;
+        }
+
+    if constexpr (running_in_debug_mode())
+      {
+        for (unsigned int i = 0; i < points.size(); ++i)
+          {
+            double sum = 0.;
+            for (unsigned int j = 0; j < fe.n_dofs_per_face(face_no); ++j)
+              sum += interpolation_matrix(i, j);
+
+            Assert(std::fabs(sum - 1) < eps, ExcInternalError());
+          }
+      }
+  }
+} // namespace
+
+
+
+template <int dim, int spacedim>
+void
+FE_PyramidPoly<dim, spacedim>::get_face_interpolation_matrix(
+  const FiniteElement<dim, spacedim> &source_fe,
+  FullMatrix<double>                 &interpolation_matrix,
+  const unsigned int                  face_no) const
+{
+  if (dynamic_cast<const FE_Nothing<dim> *>(&source_fe) != nullptr)
+    // nothing to do here, the FE_Nothing has no degrees of freedom anyway
+    return;
+
+  const unsigned int source_face_no =
+    equivalent_face(source_fe, this->reference_cell(), face_no);
+  AssertThrow(
+    source_fe.has_face_support_points(source_face_no),
+    (typename FiniteElement<dim, spacedim>::ExcInterpolationNotImplemented()));
+  AssertDimension(interpolation_matrix.m(),
+                  source_fe.n_dofs_per_face(source_face_no));
+
+  const Quadrature<dim - 1> quad_face_support(
+    source_fe.get_unit_face_support_points(source_face_no));
+  interpolate_at_face_points(
+    *this,
+    face_no,
+    QProjector<dim>::project_to_face(this->reference_cell(),
+                                     quad_face_support,
+                                     face_no,
+                                     numbers::default_geometric_orientation)
+      .get_points(),
+    interpolation_matrix);
+}
+
+
+
+template <int dim, int spacedim>
+void
+FE_PyramidPoly<dim, spacedim>::get_subface_interpolation_matrix(
+  const FiniteElement<dim, spacedim> &source_fe,
+  const unsigned int                  subface,
+  FullMatrix<double>                 &interpolation_matrix,
+  const unsigned int                  face_no) const
+{
+  if (dynamic_cast<const FE_Nothing<dim> *>(&source_fe) != nullptr)
+    // nothing to do here, the FE_Nothing has no degrees of freedom anyway
+    return;
+
+  const unsigned int source_face_no =
+    equivalent_face(source_fe, this->reference_cell(), face_no);
+  AssertThrow(
+    source_fe.has_face_support_points(source_face_no),
+    (typename FiniteElement<dim, spacedim>::ExcInterpolationNotImplemented()));
+  AssertDimension(interpolation_matrix.m(),
+                  source_fe.n_dofs_per_face(source_face_no));
+
+  const Quadrature<dim - 1> quad_face_support(
+    source_fe.get_unit_face_support_points(source_face_no));
+  interpolate_at_face_points(
+    *this,
+    face_no,
+    QProjector<dim>::project_to_subface(
+      this->reference_cell(),
+      quad_face_support,
+      face_no,
+      subface,
+      numbers::default_geometric_orientation,
+      RefinementCase<dim - 1>::isotropic_refinement)
+      .get_points(),
+    interpolation_matrix);
+}
+
+
+
+template <int dim, int spacedim>
+bool
+FE_PyramidPoly<dim, spacedim>::hp_constraints_are_implemented() const
+{
+  return true;
+}
+
+
+
+template <int dim, int spacedim>
+unsigned int
+FE_PyramidPoly<dim, spacedim>::face_to_cell_index(
+  const unsigned int                 face_dof_index,
+  const unsigned int                 face,
+  const types::geometric_orientation combined_orientation) const
+{
+  return FETools::face_to_cell_index(*this,
+                                     face_dof_index,
+                                     face,
+                                     combined_orientation);
+}
+
+
+
 template <int dim, int spacedim>
 FE_PyramidP<dim, spacedim>::FE_PyramidP(const unsigned int degree)
   : FE_PyramidPoly<dim, spacedim>(degree,
