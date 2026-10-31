@@ -3023,6 +3023,16 @@ namespace parallel
                                        cell.coarsen_flag_set();
                               });
 
+                // t8code refines tetrahedra along the inner line (6,8) of the
+                // deal.II numbering (see the child tables in
+                // t8code_wrappers.cc), so do not let deal.II choose the
+                // shortest line
+                for (const auto &cell : this->active_cell_iterators())
+                  if (cell->refine_flag_set() &&
+                      cell->reference_cell() == ReferenceCells::Tetrahedron)
+                    cell->set_refine_choice(static_cast<std::uint8_t>(
+                      IsotropicRefinementChoice::cut_tet_68));
+
                 // actually do the refinement to change the local mesh by
                 // calling the base class refinement function directly
                 try
