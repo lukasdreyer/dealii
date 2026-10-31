@@ -571,6 +571,29 @@ namespace Step40Hybrid
           if (cell->is_locally_owned())
             cell->set_refine_flag();
         }
+    else if (polynomial_degree > 0)
+      {
+        // the errors are round-off for the polynomial solution: refine
+        // around the peak instead, independently of the number of processes
+        for (const auto &cell : triangulation.active_cell_iterators())
+          if (cell->is_locally_owned())
+            {
+              // an irregular pattern from the cell centers (with
+              // HYBRID_IRREGULAR) or the cells around the peak
+              const Point<dim> c = cell->center();
+              const bool       irregular =
+                std::getenv("HYBRID_IRREGULAR") != nullptr;
+              const unsigned int hash =
+                static_cast<unsigned int>(std::abs(
+                  std::sin(12.9898 * c[0] + 78.233 * c[1] + 37.719 * c[2]) *
+                  43758.5453 * 1000)) %
+                5;
+              if ((irregular && hash == 0) ||
+                  (!irregular &&
+                   c.distance(peak) < 0.4 / (1 + cell->level())))
+                cell->set_refine_flag();
+            }
+      }
     else
       parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(
         triangulation, cell_errors, 0.2, 0.03);
