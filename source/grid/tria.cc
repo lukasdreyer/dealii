@@ -14575,61 +14575,16 @@ namespace internal
                   break;
 
                 case ReferenceCells::Tetrahedron:
-                  {
-                    // we want to delete all inner faces, which are faces 0-7 in
-                    // the refined tet
-                    const auto new_isotropic_child_cell_faces =
-                      ReferenceCells::Tetrahedron
-                        .new_isotropic_child_cell_faces(
-                          cell->refinement_case() - 1);
-                    std::array<std::pair<unsigned int, unsigned int>, 8>
-                      child_and_face_index_quad;
-
-
-                    //TODO: this is suboptimal,  could be replaced by a list of child_index/face_index combinations
-                    // std::cout<<"remove inner faces of tet "<<cell->id()<<std::endl;
-                    for (unsigned int i = 0; i < 8; ++i)
-                      for (unsigned int child_index = 4; child_index < 8;
-                           ++child_index)
-                        for (unsigned int face_index = 0; face_index < 4;
-                             ++face_index)
-                          if (new_isotropic_child_cell_faces[child_index]
-                                                            [face_index] == i){
-//                              std::cout<<"child "<<child_index<<"on face"<<face_index<<"is on inner face "<<i<<std::endl;
-                                                              child_and_face_index_quad[i] =
-                                                              std::pair<unsigned int, unsigned int>{child_index,
-                                                                face_index};
-                                                              }
-
-                    for (const auto &p : child_and_face_index_quad){
-
-                      quads_to_delete.push_back(
-                        cell->child(p.first)->face(p.second));
-//                           std::cout<<"added quad "<<quads_to_delete.back()->index()<<" to deleted list as child of inner face"<<std::endl;
-                      }
-
-                    // line 12 should be deleted, which is the shortest line
-                    // between nodes 6->8, 5->7 and 4->9
-                    // it is different in each refinement case
-                    if (cell->refinement_case() == 1)
-                      lines_to_delete.push_back(cell->child(4)->line(4));
-                    else if (cell->refinement_case() == 2)
-                      lines_to_delete.push_back(cell->child(6)->line(5));
-                    else if (cell->refinement_case() == 3)
-                      lines_to_delete.push_back(cell->child(7)->line(5));
-                    else
-                      DEAL_II_ASSERT_UNREACHABLE();
-                  }
-                  break;
-
                 case ReferenceCells::Wedge:
                   {
                     // the inner faces and lines are the ones of the children
                     // that are not children of the faces of the cell or lines
-                    // of these: the 3+3 quadrilaterals between the corner
-                    // children and the middle child of each layer, the 4
-                    // triangles between the layers and the 3 inner lines of
-                    // these triangles. there is no inner vertex.
+                    // of these. tetrahedra: the 8 faces of the inner
+                    // octahedron's tetrahedra and the cut line. wedges: the
+                    // 3+3 quadrilaterals between the corner children and the
+                    // middle child of each layer, the 4 triangles between the
+                    // layers and the 3 inner lines of these triangles. there
+                    // is no inner vertex.
                     std::set<unsigned int> outer_quads, outer_lines;
                     for (const unsigned int f : cell->face_indices())
                       for (unsigned int c = 0; c < cell->face(f)->n_children();
@@ -14655,8 +14610,14 @@ namespace internal
                               inner_lines.insert(child->line_index(l)).second)
                             lines_to_delete.push_back(child->line(l));
                       }
-                    AssertDimension(quads_to_delete.size(), 10);
-                    AssertDimension(lines_to_delete.size(), 3);
+                    AssertDimension(quads_to_delete.size(),
+                                    ref_cell == ReferenceCells::Tetrahedron ?
+                                      8 :
+                                      10);
+                    AssertDimension(lines_to_delete.size(),
+                                    ref_cell == ReferenceCells::Tetrahedron ?
+                                      1 :
+                                      3);
                   }
                   break;
 
