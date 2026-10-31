@@ -97,11 +97,32 @@ Tensor<2, dim>
 ScalarLagrangePolynomialWedge<dim>::compute_grad_grad(const unsigned int i,
                                                       const Point<dim> &p) const
 {
-  (void)i;
-  (void)p;
+  const auto pair = this->degree() == 1 ? internal::wedge_table_1[i] :
+                                          internal::wedge_table_2[i];
 
-  DEAL_II_NOT_IMPLEMENTED();
-  return Tensor<2, dim>();
+  const Point<2> p_tri(p[0], p[1]);
+  const auto     v_tri  = poly_tri.compute_value(pair[0], p_tri);
+  const auto     g_tri  = poly_tri.compute_grad(pair[0], p_tri);
+  const auto     gg_tri = poly_tri.compute_grad_grad(pair[0], p_tri);
+
+  const Point<1> p_line(p[2]);
+  const auto     v_line  = poly_line.compute_value(pair[1], p_line);
+  const auto     g_line  = poly_line.compute_grad(pair[1], p_line);
+  const auto     gg_line = poly_line.compute_grad_grad(pair[1], p_line);
+
+  // the product rule for the triangle polynomial in x_0, x_1 times the line
+  // polynomial in x_2
+  Tensor<2, dim> grad_grad;
+  for (unsigned int a = 0; a < 2; ++a)
+    {
+      for (unsigned int b = 0; b < 2; ++b)
+        grad_grad[a][b] = gg_tri[a][b] * v_line;
+      grad_grad[a][2] = g_tri[a] * g_line[0];
+      grad_grad[2][a] = g_tri[a] * g_line[0];
+    }
+  grad_grad[2][2] = v_tri * gg_line[0][0];
+
+  return grad_grad;
 }
 
 
@@ -116,8 +137,6 @@ ScalarLagrangePolynomialWedge<dim>::evaluate(
   std::vector<Tensor<3, dim>> &third_derivatives,
   std::vector<Tensor<4, dim>> &fourth_derivatives) const
 {
-  (void)grads;
-  (void)grad_grads;
   (void)third_derivatives;
   (void)fourth_derivatives;
 
@@ -128,6 +147,10 @@ ScalarLagrangePolynomialWedge<dim>::evaluate(
   if (grads.size() == this->n())
     for (unsigned int i = 0; i < this->n(); ++i)
       grads[i] = compute_grad(i, unit_point);
+
+  if (grad_grads.size() == this->n())
+    for (unsigned int i = 0; i < this->n(); ++i)
+      grad_grads[i] = compute_grad_grad(i, unit_point);
 }
 
 
@@ -149,12 +172,7 @@ ScalarLagrangePolynomialWedge<dim>::compute_2nd_derivative(
   const unsigned int i,
   const Point<dim>  &p) const
 {
-  (void)i;
-  (void)p;
-
-  DEAL_II_NOT_IMPLEMENTED();
-
-  return {};
+  return compute_grad_grad(i, p);
 }
 
 
