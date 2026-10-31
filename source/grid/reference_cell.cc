@@ -168,7 +168,9 @@ namespace
                     {{V0, 0.5 * V(0), 0.5 * V(1)}},
                     {{0.5 * V(0), V(0), 0.5 * (V(0) + V(1))}},
                     {{0.5 * V(1), 0.5 * V(0) + 0.5 * V(1), V(1)}},
-                    {{0.5 * V(0), 0.5 * V(0) + 0.5 * V(1), 0.5 * V(1)}},
+                    // the middle child is rotated, as in the refinement of
+                    // triangular faces in tria.cc (use_rotated_tri_child)
+                    {{0.5 * V(0) + 0.5 * V(1), 0.5 * V(1), 0.5 * V(0)}},
                   }};
                 return isotropic_child_vertices[child_no][vertex_no];
               }

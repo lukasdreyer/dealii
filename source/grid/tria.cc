@@ -6926,7 +6926,7 @@ namespace internal
             }
         }
 
-        constexpr bool use_rotated_tri_child = false;
+        constexpr bool use_rotated_tri_child = true;
         { // FACES
           // (i.e., quads or triangles, or both)
           typename Triangulation<dim, spacedim>::face_iterator
@@ -7931,7 +7931,9 @@ namespace internal
                     // retrieved below, by providing the appropriate indices
                     // into `relevant_lines`.
                     const auto new_isotropic_child_face_lines =
-                      [&cell_reference_cell, chosen_line_tetrahedron]() {
+                      [&cell_reference_cell,
+                       chosen_line_tetrahedron,
+                       use_rotated_tri_child]() {
                         const unsigned int X = numbers::invalid_unsigned_int;
                         switch (cell_reference_cell)
                           {
@@ -7962,7 +7964,30 @@ namespace internal
                                                {{X, X, X, X}},
                                                {{X, X, X, X}},
                                                {{X, X, X, X}}}};
-                                        return new_quad_lines_tet_68;
+                                        // with the rotated middle child of
+                                        // the triangles, the inner faces 4-6
+                                        // start with another line such that
+                                        // one of their two children sees
+                                        // them in standard orientation
+                                        constexpr dealii::
+                                          ndarray<unsigned int, 13, 4>
+                                            new_quad_lines_tet_68_rotated = {
+                                              {{{2, 3, 8, X}},
+                                               {{0, 9, 5, X}},
+                                               {{1, 6, 11, X}},
+                                               {{4, 10, 7, X}},
+                                               {{2, 12, 5, X}},
+                                               {{12, 9, 1, X}},
+                                               {{4, 8, 12, X}},
+                                               {{10, 6, 12, X}},
+                                               {{X, X, X, X}},
+                                               {{X, X, X, X}},
+                                               {{X, X, X, X}},
+                                               {{X, X, X, X}},
+                                               {{X, X, X, X}}}};
+                                        return use_rotated_tri_child ?
+                                                 new_quad_lines_tet_68_rotated :
+                                                 new_quad_lines_tet_68;
                                       }
                                     case 1:
                                       {
@@ -8038,7 +8063,7 @@ namespace internal
                                     {{{2, 20, 11, X}}, // mid tri
                                      {{3, 6, 18, X}},
                                      {{19, 7, 10, X}},
-                                     {{20, 18, 19, X}},
+                                     {{19, 20, 18, X}},
                                      {{4, 0, 14, 18}}, // lower
                                      {{0, 8, 12, 20}},
                                      {{8, 4, 13, 19}},
@@ -8100,7 +8125,9 @@ namespace internal
                     // This is very similar to the refinement of triangles in 2d
                     // where the same problem occurred.
                     const auto new_isotropic_child_face_line_vertices =
-                      [&cell_reference_cell, chosen_line_tetrahedron]() {
+                      [&cell_reference_cell,
+                       chosen_line_tetrahedron,
+                       use_rotated_tri_child]() {
                         {
                           const unsigned int X = numbers::invalid_unsigned_int;
 
@@ -8168,7 +8195,57 @@ namespace internal
                                                    {{X, X}},
                                                    {{X, X}},
                                                    {{X, X}}}}}};
-                                          return quad_lines_vertices_tet_68;
+                                          // inner faces 4-6 start with another line, see
+                                          // new_quad_lines_tet_68_rotated
+                                          constexpr dealii::
+                                            ndarray<unsigned int, 13, 4, 2>
+                                              quad_lines_vertices_tet_68_rotated = {
+                                                {{{{{6, 4}},
+                                                   {{4, 7}},
+                                                   {{7, 6}},
+                                                   {{X, X}}}},
+                                                 {{{{4, 5}},
+                                                   {{5, 8}},
+                                                   {{8, 4}},
+                                                   {{X, X}}}},
+                                                 {{{{5, 6}},
+                                                   {{6, 9}},
+                                                   {{9, 5}},
+                                                   {{X, X}}}},
+                                                 {{{{7, 8}},
+                                                   {{8, 9}},
+                                                   {{9, 7}},
+                                                   {{X, X}}}},
+                                                 {{{{4, 6}}, {{6, 8}}, {{8, 4}}, {{X, X}}}},
+                                                 {{{{6, 8}}, {{8, 5}}, {{5, 6}}, {{X, X}}}},
+                                                 {{{{8, 7}}, {{7, 6}}, {{6, 8}}, {{X, X}}}},
+                                                 {{{{8, 9}},
+                                                   {{9, 6}},
+                                                   {{6, 8}},
+                                                   {{X, X}}}},
+                                                 {{{{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}}}},
+                                                 {{{{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}}}},
+                                                 {{{{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}}}},
+                                                 {{{{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}}}},
+                                                 {{{{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}},
+                                                   {{X, X}}}}}};
+                                          return use_rotated_tri_child ?
+                                                   quad_lines_vertices_tet_68_rotated :
+                                                   quad_lines_vertices_tet_68;
                                         }
                                       case 1:
                                         {
@@ -8379,9 +8456,9 @@ namespace internal
                                            {{16, 14}},
                                            {{14, 17}},
                                            {{X, X}}}},
-                                         {{{{17, 15}},
+                                         {{{{16, 17}},
+                                           {{17, 15}},
                                            {{15, 16}},
-                                           {{16, 17}},
                                            {{X, X}}}},
                                          // lower
                                          {{{{7, 16}},
@@ -8849,11 +8926,11 @@ namespace internal
                                                                // children
                                       {{22, 1, 11, 14, 4, X}}, //
                                       {{24, 2, 6, 15, 18, X}}, //
-                                      {{25, 3, 5, 4, 6, X}},   //
+                                      {{25, 3, 6, 5, 4, X}},   //
                                       {{0, 26, 12, 8, 21, X}}, // top children
                                       {{1, 27, 13, 16, 7, X}}, //
                                       {{2, 28, 9, 17, 20, X}}, //
-                                      {{3, 29, 7, 9, 8, X}},   //
+                                      {{3, 29, 9, 8, 7, X}},   //
                                       {{X, X, X, X, X, X}},
                                       {{X, X, X, X, X, X}},
                                     }};
@@ -9130,11 +9207,7 @@ namespace internal
                                                                      // children
                                       {{6, 1, 7, 15, 13, 16, X, X}}, //
                                       {{8, 7, 2, 17, 16, 14, X, X}}, //
-                                      // the middle children are rotated
-                                      // such that they see the middle
-                                      // child of the refined triangle in
-                                      // standard orientation
-                                      {{8, 6, 7, 17, 15, 16, X, X}}, //
+                                      {{7, 8, 6, 16, 17, 15, X, X}}, //
                                       {{12,
                                         15,
                                         17,
@@ -9145,7 +9218,7 @@ namespace internal
                                         X}}, // top children
                                       {{15, 13, 16, 9, 4, 10, X, X}},  //
                                       {{17, 16, 14, 11, 10, 5, X, X}}, //
-                                      {{15, 16, 17, 9, 10, 11, X, X}}, //
+                                      {{16, 17, 15, 10, 11, 9, X, X}}, //
                                       {{X, X, X, X, X, X, X, X}},
                                       {{X, X, X, X, X, X, X, X}},
                                     }};
