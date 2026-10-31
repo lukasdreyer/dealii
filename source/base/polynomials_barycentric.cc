@@ -52,6 +52,114 @@ namespace internal
 } // namespace internal
 
 
+namespace internal
+{
+  namespace
+  {
+    // the points of the degree-degree lattice inside the d-simplex with the
+    // given vertices, see simplex_lattice_points()
+    template <int d, int dim>
+    std::vector<Point<dim>>
+    interior_lattice_points(const unsigned int             degree,
+                            const std::vector<Point<dim>> &vertices)
+    {
+      if (degree < d + 1)
+        return {};
+      const unsigned int inner_degree = degree - d - 1;
+
+      Point<dim> sum;
+      for (const Point<dim> &v : vertices)
+        sum += v;
+      std::vector<Point<dim>> inner_vertices;
+      for (const Point<dim> &v : vertices)
+        inner_vertices.push_back((sum + double(inner_degree) * v) / degree);
+
+      if (inner_degree == 0)
+        return {inner_vertices[0]};
+
+      // map the lattice points of the reference d-simplex by their
+      // barycentric coordinates
+      std::vector<Point<dim>> points;
+      for (const Point<d> &x : simplex_lattice_points<d>(inner_degree))
+        {
+          double     lambda_0 = 1.;
+          Point<dim> y;
+          for (unsigned int i = 0; i < d; ++i)
+            {
+              lambda_0 -= x[i];
+              y += x[i] * inner_vertices[i + 1];
+            }
+          y += lambda_0 * inner_vertices[0];
+          points.push_back(y);
+        }
+      return points;
+    }
+  } // namespace
+
+
+
+  template <int dim>
+  std::vector<Point<dim>>
+  simplex_lattice_points(const unsigned int degree)
+  {
+    Assert(degree > 0, ExcInternalError());
+    const auto              reference_cell = ReferenceCells::get_simplex<dim>();
+    std::vector<Point<dim>> points;
+
+    // vertices
+    for (const unsigned int v : reference_cell.vertex_indices())
+      points.push_back(reference_cell.template vertex<dim>(v));
+
+    // lines
+    if (dim > 0)
+      for (const unsigned int l : reference_cell.line_indices())
+        {
+          const Point<dim> p0 =
+            points[reference_cell.line_to_cell_vertices(l, 0)];
+          const Point<dim> p1 =
+            points[reference_cell.line_to_cell_vertices(l, 1)];
+          for (unsigned int i = 1; i < degree; ++i)
+            points.push_back(p0 + (double(i) / degree) * (p1 - p0));
+        }
+
+    // triangles: the cell in 2d, the faces in 3d
+    if constexpr (dim == 2)
+      {
+        const std::vector<Point<dim>> vertices(points.begin(),
+                                               points.begin() + 3);
+        for (const Point<dim> &p : interior_lattice_points<2>(degree, vertices))
+          points.push_back(p);
+      }
+    else if constexpr (dim == 3)
+      {
+        for (const unsigned int f : reference_cell.face_indices())
+          {
+            std::vector<Point<dim>> vertices;
+            for (unsigned int v = 0; v < 3; ++v)
+              vertices.push_back(points[reference_cell.face_to_cell_vertices(
+                f, v, numbers::default_geometric_orientation)]);
+            for (const Point<dim> &p :
+                 interior_lattice_points<2>(degree, vertices))
+              points.push_back(p);
+          }
+        const std::vector<Point<dim>> vertices(points.begin(),
+                                               points.begin() + 4);
+        for (const Point<dim> &p : interior_lattice_points<3>(degree, vertices))
+          points.push_back(p);
+      }
+
+    return points;
+  }
+
+  template std::vector<Point<1>>
+  simplex_lattice_points<1>(const unsigned int);
+  template std::vector<Point<2>>
+  simplex_lattice_points<2>(const unsigned int);
+  template std::vector<Point<3>>
+  simplex_lattice_points<3>(const unsigned int);
+} // namespace internal
+
+
 template <int dim>
 BarycentricPolynomials<dim>
 BarycentricPolynomials<dim>::get_fe_p_basis(const unsigned int degree)
@@ -141,7 +249,31 @@ BarycentricPolynomials<dim>::get_fe_p_basis(const unsigned int degree)
           break;
         }
       default:
-        DEAL_II_NOT_IMPLEMENTED();
+        {
+          // the Lagrange basis of the lattice points: for the point with
+          // barycentric coordinates a / degree, the product of
+          // (degree lambda_i - m) / (m + 1) over m < a_i and all i
+          for (const Point<dim> &x : internal::simplex_lattice_points<dim>(degree))
+            {
+              std::array<double, dim + 1> lambda;
+              lambda[0] = 1.;
+              for (unsigned int d = 0; d < dim; ++d)
+                {
+                  lambda[d + 1] = x[d];
+                  lambda[0] -= x[d];
+                }
+              PolyType phi(TableIndices<dim + 1>(), 1.);
+              for (unsigned int i = 0; i <= dim; ++i)
+                {
+                  const unsigned int a = std::lround(degree * lambda[i]);
+                  for (unsigned int m = 0; m < a; ++m)
+                    phi = phi * ((double(degree) * PolyType::monomial(i) -
+                                  double(m)) /
+                                 double(m + 1));
+                }
+              polys.push_back(phi);
+            }
+        }
     }
 
   return BarycentricPolynomials<dim>(polys);

@@ -17,12 +17,33 @@
 #include <deal.II/base/config.h>
 
 #include <deal.II/base/exceptions.h>
+#include <deal.II/base/point.h>
 #include <deal.II/base/scalar_polynomials_base.h>
 #include <deal.II/base/table.h>
 
 #include <limits>
+#include <vector>
 
 DEAL_II_NAMESPACE_OPEN
+
+namespace internal
+{
+  /**
+   * The equidistant lattice points of the given (positive) @p degree on the
+   * reference simplex of dimension @p dim, ordered by vertices, lines (from
+   * their first to their second vertex), faces and the interior: the
+   * support points of FE_SimplexP and the points at which the basis of
+   * BarycentricPolynomials::get_fe_p_basis() is nodal. The points inside a
+   * d-simplex of the lattice are the ones of degree degree-d-1 on the simplex
+   * of the lattice points next to its vertices, recursively, so that the
+   * points inside each face of a tetrahedron have the order of the points
+   * inside a triangle (with the face's vertices in their standard order).
+   */
+  template <int dim>
+  std::vector<Point<dim>>
+  simplex_lattice_points(const unsigned int degree);
+} // namespace internal
+
 
 /**
  * Polynomial implemented in barycentric coordinates.

@@ -18,6 +18,7 @@
 #include <deal.II/base/types.h>
 
 #include <deal.II/fe/fe_dgq.h>
+#include <deal.II/fe/fe_face_dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_pyramid_p.h>
 #include <deal.II/fe/fe_q.h>
@@ -63,48 +64,19 @@ namespace
   std::vector<unsigned int>
   get_dpo_vector_fe_p(const unsigned int dim, const unsigned int degree)
   {
-    switch (dim)
+    Assert(dim >= 1 && dim <= 3, ExcNotImplemented());
+    Assert(degree >= 1, ExcNotImplemented());
+    // the number of points of the degree-p lattice inside a d-simplex,
+    // (p-1 choose d)
+    std::vector<unsigned int> dpo(dim + 1);
+    for (unsigned int d = 0; d <= dim; ++d)
       {
-        case 1:
-          switch (degree)
-            {
-              case 1:
-                return {1, 0};
-              case 2:
-                return {1, 1};
-              case 3:
-                return {1, 2};
-              default:
-                DEAL_II_NOT_IMPLEMENTED();
-            }
-        case 2:
-          switch (degree)
-            {
-              case 1:
-                return {1, 0, 0};
-              case 2:
-                return {1, 1, 0};
-              case 3:
-                return {1, 2, 1};
-              default:
-                DEAL_II_NOT_IMPLEMENTED();
-            }
-        case 3:
-          switch (degree)
-            {
-              case 1:
-                return {1, 0, 0, 0};
-              case 2:
-                return {1, 1, 0, 0};
-              case 3:
-                return {1, 2, 1, 0};
-              default:
-                DEAL_II_NOT_IMPLEMENTED();
-            }
+        unsigned int n = 1;
+        for (unsigned int i = 0; i < d; ++i)
+          n = n * (degree - 1 - i) / (i + 1);
+        dpo[d] = (degree - 1 < d) ? 0 : n;
       }
-
-    DEAL_II_NOT_IMPLEMENTED();
-    return {};
+    return dpo;
   }
 
 
@@ -113,53 +85,23 @@ namespace
    * Set up a vector that contains the unit (reference) cell support points
    * for FE_SimplexPoly and sufficiently similar elements.
    */
+  /**
+   * Set up a vector that contains the unit (reference) cell support points
+   * for FE_SimplexPoly and sufficiently similar elements: the equidistant
+   * lattice points of internal::simplex_lattice_points().
+   */
   template <int dim>
   std::vector<Point<dim>>
   unit_support_points_fe_p(const unsigned int degree)
   {
     Assert(dim != 0, ExcInternalError());
-    Assert(degree <= 3, ExcNotImplemented());
-    std::vector<Point<dim>> unit_points;
-    const auto              reference_cell = ReferenceCells::get_simplex<dim>();
 
     // Piecewise constants are a special case: use a support point at the
     // centroid and only the centroid
     if (degree == 0)
-      {
-        unit_points.emplace_back(reference_cell.template barycenter<dim>());
-        return unit_points;
-      }
+      return {ReferenceCells::get_simplex<dim>().template barycenter<dim>()};
 
-    // otherwise write everything as linear combinations of vertices
-    const auto dpo = get_dpo_vector_fe_p(dim, degree);
-    Assert(dpo.size() == dim + 1, ExcInternalError());
-    Assert(dpo[0] == 1, ExcNotImplemented());
-    // vertices:
-    for (const unsigned int d : reference_cell.vertex_indices())
-      unit_points.push_back(reference_cell.template vertex<dim>(d));
-    // lines:
-    for (const unsigned int l : reference_cell.line_indices())
-      {
-        const Point<dim> p0 =
-          unit_points[reference_cell.line_to_cell_vertices(l, 0)];
-        const Point<dim> p1 =
-          unit_points[reference_cell.line_to_cell_vertices(l, 1)];
-        for (unsigned int p = 0; p < dpo[1]; ++p)
-          unit_points.push_back((double(dpo[1] - p) / (dpo[1] + 1)) * p0 +
-                                (double(p + 1) / (dpo[1] + 1)) * p1);
-      }
-    // quads:
-    if (dim > 1 && dpo[2] > 0)
-      {
-        Assert(dpo[2] == 1, ExcNotImplemented());
-        if (dim == 2)
-          unit_points.push_back(reference_cell.template barycenter<dim>());
-        if (dim == 3)
-          for (const unsigned int f : reference_cell.face_indices())
-            unit_points.push_back(face_midpoint<dim>(f));
-      }
-
-    return unit_points;
+    return internal::simplex_lattice_points<dim>(degree);
   }
 
   template <>
@@ -803,12 +745,24 @@ FE_SimplexP<dim, spacedim>::FE_SimplexP(const unsigned int degree)
       unit_face_support_points_fe_p<dim>(degree, FiniteElementData<dim>::H1),
       constraints_fe_p<dim>(degree))
 {
-  if (degree > 2)
-    for (unsigned int i = 0; i < this->n_dofs_per_line(); ++i)
-      this->adjust_line_dof_index_for_line_orientation_table[i] =
-        this->n_dofs_per_line() - 1 - i - i;
-  // We do not support multiple DoFs per quad yet
-  Assert(degree <= 3, ExcNotImplemented());
+  internal::FEFaceDofTools::fill_line_dof_orientation_table(
+    this->adjust_line_dof_index_for_line_orientation_table,
+    this->n_dofs_per_line());
+
+  // the DoFs inside the triangles (from degree 4) are permuted with the
+  // orientation of the face
+  if constexpr (dim == 3)
+    if (this->n_dofs_per_quad(0) > 1)
+      {
+        const std::vector<Point<2>> triangle_points =
+          unit_support_points_fe_p<2>(degree);
+        const std::vector<Point<2>> interior_points(
+          triangle_points.begin() + 3 + 3 * this->n_dofs_per_line(),
+          triangle_points.end());
+        for (auto &table : this->adjust_quad_dof_index_for_face_orientation_table)
+          internal::FEFaceDofTools::fill_face_dof_orientation_table(
+            table, ReferenceCells::Triangle, interior_points);
+      }
 }
 
 
@@ -961,118 +915,16 @@ std::vector<std::pair<unsigned int, unsigned int>>
 FE_SimplexP<dim, spacedim>::hp_line_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other) const
 {
-  // tetrahedra next to wedges and pyramids: both elements have at most one
-  // DoF on a line, at its midpoint (degree 2)
-  if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) != nullptr) ||
-      (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) != nullptr))
-    {
-      const auto *fe_wp_other = &fe_other;
-      Assert(this->degree <= 2 && fe_wp_other->degree <= 2,
-             ExcNotImplemented());
-      if (this->degree == 2 && fe_wp_other->degree == 2)
-        return {{0U, 0U}};
-      else
-        return {};
-    }
+  if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
+    // the FE_Nothing has no degrees of freedom, so there are no
+    // equivalencies to be recorded
+    return {};
 
-  // the DoFs on the first line (along the x-axis) begin after the vertex
-  // DoFs, in 2d and 3d
-  const unsigned int n_vertices = this->reference_cell().n_vertices();
-
-  if (const FE_SimplexP<dim, spacedim> *fe_p_other =
-        dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other))
-    {
-      // dofs are located along lines, so two dofs are identical if they are
-      // located at identical positions.
-      // Therefore, read the points in unit_support_points for the
-      // first coordinate direction. For FE_SimplexP, they are currently
-      // hard-coded and we iterate over points on the first line which begin
-      // after the vertex points in the complete list of unit support points
-
-      std::vector<std::pair<unsigned int, unsigned int>> identities;
-
-      for (unsigned int i = 0; i < this->degree - 1; ++i)
-        for (unsigned int j = 0; j < fe_p_other->degree - 1; ++j)
-          if (std::fabs(this->unit_support_points[i + n_vertices][0] -
-                        fe_p_other->unit_support_points[j + n_vertices][0]) <
-              1e-14)
-            identities.emplace_back(i, j);
-          else
-            {
-              // If nodes are not located in the same place, we have to
-              // interpolate. This is then not handled through the
-              // current function, but via interpolation matrices that
-              // result in constraints, rather than identities. Since
-              // that happens in a different function, there is nothing
-              // for us to do here.
-            }
-
-      return identities;
-    }
-  else if (const FE_Q<dim, spacedim> *fe_q_other =
-             dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other))
-    {
-      // dofs are located along lines, so two dofs are identical if they are
-      // located at identical positions. if we had only equidistant points, we
-      // could simply check for similarity like (i+1)*q == (j+1)*p, but we
-      // might have other support points (e.g. Gauss-Lobatto
-      // points). Therefore, read the points in unit_support_points for the
-      // first coordinate direction. For FE_Q, we take the lexicographic
-      // ordering of the line support points in the first direction (i.e.,
-      // x-direction), which we access between index 1 and p-1 (index 0 and p
-      // are vertex dofs). For FE_SimplexP, they are currently hard-coded and we
-      // iterate over points on the first line which begin after the vertex
-      // points in the complete list of unit support points
-
-      const std::vector<unsigned int> &index_map_inverse_q_other =
-        fe_q_other->get_poly_space_numbering_inverse();
-
-      std::vector<std::pair<unsigned int, unsigned int>> identities;
-
-      for (unsigned int i = 0; i < this->degree - 1; ++i)
-        for (unsigned int j = 0; j < fe_q_other->degree - 1; ++j)
-          if (std::fabs(this->unit_support_points[i + n_vertices][0] -
-                        fe_q_other->get_unit_support_points()
-                          [index_map_inverse_q_other[j + 1]][0]) < 1e-14)
-            identities.emplace_back(i, j);
-          else
-            {
-              // If nodes are not located in the same place, we have to
-              // interpolate. This will then also
-              // capture the case where the FE_Q has a different polynomial
-              // degree than the current element. In either case, the resulting
-              // constraints are computed elsewhere, rather than via the
-              // identities this function returns: Since
-              // that happens in a different function, there is nothing
-              // for us to do here.
-            }
-
-      return identities;
-    }
-  else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
-    {
-      // The FE_Nothing has no degrees of freedom, so there are no
-      // equivalencies to be recorded. (If the FE_Nothing is dominating,
-      // then this will also leads to constraints, but we are not concerned
-      // with this here.)
-      return {};
-    }
-  else if (fe_other.n_unique_faces() == 1 && fe_other.n_dofs_per_face(0) == 0)
-    {
-      // if the other element has no elements on faces at all,
-      // then it would be impossible to enforce any kind of
-      // continuity even if we knew exactly what kind of element
-      // we have -- simply because the other element declares
-      // that it is discontinuous because it has no DoFs on
-      // its faces. in that case, just state that we have no
-      // constraints to declare
-      return {};
-    }
-  else
-    {
-      DEAL_II_NOT_IMPLEMENTED();
-      return {};
-    }
+  // dofs are located along lines, so two dofs are identical if they are
+  // located at identical positions (with FE_Q, FE_SimplexP, FE_WedgeP and
+  // FE_PyramidP); if they are not, the constraints are computed by
+  // interpolation elsewhere
+  return internal::FEFaceDofTools::line_dof_identities(*this, fe_other);
 }
 
 
@@ -1081,21 +933,15 @@ template <int dim, int spacedim>
 std::vector<std::pair<unsigned int, unsigned int>>
 FE_SimplexP<dim, spacedim>::hp_quad_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other,
-  const unsigned int) const
+  const unsigned int                  face_no) const
 {
-  // tetrahedra next to wedges and pyramids: these elements (degree <= 2)
-  // have no DoFs inside triangles
-  if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) != nullptr) ||
-      (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) != nullptr))
-    {
-      Assert(fe_other.degree <= 2, ExcNotImplemented());
-      return {};
-    }
-  else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
+  if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
     return {};
 
-  DEAL_II_NOT_IMPLEMENTED();
-  return {};
+  // the DoFs at identical positions inside the triangle
+  return internal::FEFaceDofTools::face_dof_identities(*this,
+                                                       fe_other,
+                                                       face_no);
 }
 
 
