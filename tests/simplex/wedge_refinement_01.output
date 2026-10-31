@@ -1,0 +1,19 @@
+
+DEAL:wedges::cells 58, levels 2, volume 8.00000, dofs 473, constraints 192, exact
+DEAL:wedges::cells 240, levels 3, volume 8.00000, dofs 1673, constraints 660, exact
+DEAL:wedges::cells 1185, levels 4, volume 8.00000, dofs 7068, constraints 2463, exact
+DEAL:wedges::cells 240, levels 3, volume 8.00000, dofs 1673, constraints 660, exact
+DEAL:wedges::cells 58, levels 2, volume 8.00000, dofs 473, constraints 192, exact
+DEAL:wedges::cells 16, levels 1, volume 8.00000, dofs 125, constraints 0, exact
+DEAL:hexahedra and wedges::cells 40, levels 2, volume 8.00000, dofs 396, constraints 72, exact
+DEAL:hexahedra and wedges::cells 173, levels 3, volume 8.00000, dofs 1654, constraints 582, exact
+DEAL:hexahedra and wedges::cells 775, levels 4, volume 8.00000, dofs 6830, constraints 2766, exact
+DEAL:hexahedra and wedges::cells 173, levels 3, volume 8.00000, dofs 1654, constraints 582, exact
+DEAL:hexahedra and wedges::cells 40, levels 2, volume 8.00000, dofs 396, constraints 72, exact
+DEAL:hexahedra and wedges::cells 12, levels 1, volume 8.00000, dofs 125, constraints 0, exact
+DEAL:wedges below tetrahedra::cells 109, levels 2, volume 8.00000, dofs 463, constraints 198, exact
+DEAL:wedges below tetrahedra::cells 466, levels 3, volume 8.00000, dofs 1730, constraints 747, exact
+DEAL:wedges below tetrahedra::cells 2356, levels 4, volume 8.00000, dofs 7231, constraints 2871, exact
+DEAL:wedges below tetrahedra::cells 466, levels 3, volume 8.00000, dofs 1730, constraints 747, exact
+DEAL:wedges below tetrahedra::cells 109, levels 2, volume 8.00000, dofs 463, constraints 198, exact
+DEAL:wedges below tetrahedra::cells 32, levels 1, volume 8.00000, dofs 125, constraints 0, exact
