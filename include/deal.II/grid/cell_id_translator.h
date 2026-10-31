@@ -140,7 +140,7 @@ namespace internal
 
     for (unsigned int i = 0; i < n_global_levels; ++i)
       max_cell_index +=
-        Utilities::pow<std::uint64_t>(GeometryInfo<dim>::max_children_per_cell,
+        Utilities::pow<std::uint64_t>(ReferenceCells::max_n_children<dim>(),
                                       i) *
         n_coarse_cells;
 
@@ -166,7 +166,7 @@ namespace internal
     for (unsigned int i = 0; i < n_global_levels; ++i)
       tree_sizes.push_back(tree_sizes.back() +
                            Utilities::pow<types::global_cell_index>(
-                             GeometryInfo<dim>::max_children_per_cell, i) *
+                             ReferenceCells::max_n_children<dim>(), i) *
                              n_coarse_cells);
   }
 
@@ -178,7 +178,7 @@ namespace internal
   {
     return n_coarse_cells *
            (Utilities::pow<types::global_cell_index>(
-              GeometryInfo<dim>::max_children_per_cell, n_global_levels) -
+              ReferenceCells::max_n_children<dim>(), n_global_levels) -
             1);
   }
 
@@ -226,7 +226,7 @@ namespace internal
                   "The information can only be queried for cells.");
 
     return (translate(cell) - tree_sizes[cell->level()]) *
-             GeometryInfo<dim>::max_children_per_cell +
+             ReferenceCells::max_n_children<dim>() +
            i + tree_sizes[cell->level() + 1];
   }
 
@@ -252,8 +252,8 @@ namespace internal
     for (types::global_cell_index l = 0; l < level; ++l)
       {
         child_indices.push_back(id_temp %
-                                GeometryInfo<dim>::max_children_per_cell);
-        id_temp /= GeometryInfo<dim>::max_children_per_cell;
+                                ReferenceCells::max_n_children<dim>());
+        id_temp /= ReferenceCells::max_n_children<dim>();
       }
 
     std::reverse(child_indices.begin(), child_indices.end());
@@ -275,12 +275,15 @@ namespace internal
     const unsigned int coarse_cell_id  = binary_representation[0];
     const unsigned int n_child_indices = binary_representation[1] >> 2;
 
+    // 4 bits per child in 3d, see CellId::to_binary()
+    const unsigned int bits_per_child = (dim == 3 ? 4 : dim);
     const unsigned int children_per_value =
-      sizeof(CellId::binary_type::value_type) * 8 / dim;
+      sizeof(CellId::binary_type::value_type) * 8 / bits_per_child;
     unsigned int child_level  = 0;
     unsigned int binary_entry = 2;
 
-    // compute new coarse-grid id: c_{i+1} = c_{i}*2^dim + q on path to cell
+    // compute new coarse-grid id: c_{i+1} = c_{i}*n + q on path to cell,
+    // with n the maximal number of children
     types::global_cell_index level_coarse_cell_id = coarse_cell_id;
     while (child_level < n_child_indices)
       {
@@ -289,10 +292,11 @@ namespace internal
         for (unsigned int j = 0; j < children_per_value; ++j)
           {
             unsigned int cell_index =
-              (((binary_representation[binary_entry] >> (j * dim))) &
-               (GeometryInfo<dim>::max_children_per_cell - 1));
+              (((binary_representation[binary_entry] >>
+                 (j * bits_per_child))) &
+               ((1u << bits_per_child) - 1));
             level_coarse_cell_id =
-              level_coarse_cell_id * GeometryInfo<dim>::max_children_per_cell +
+              level_coarse_cell_id * ReferenceCells::max_n_children<dim>() +
               cell_index;
             ++child_level;
             if (child_level == n_child_indices)

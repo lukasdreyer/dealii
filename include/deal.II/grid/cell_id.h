@@ -69,11 +69,12 @@ public:
   /**
    * A type that is used to encode the CellId data in a compact and fast way
    * (e.g. for MPI transfer to other processes). Note that it limits the
-   * number of children that can be transferred to 20 in 3d and 30 in 2d
-   * (using 2 times 32 bit for storage), a limitation that is identical to
-   * the one used by p4est.
+   * number of children that can be transferred to 24 in 3d and 45 in 2d
+   * (using 3 times 32 bit for storage, with 4 bits per child in 3d since
+   * refined pyramids have 10 children), which is more than the limit of 20
+   * levels in 3d and 30 in 2d used by p4est.
    */
-  using binary_type = std::array<unsigned int, 4>;
+  using binary_type = std::array<unsigned int, 5>;
 
   /**
    * Construct a CellId object with a given @p coarse_cell_id and vector of
