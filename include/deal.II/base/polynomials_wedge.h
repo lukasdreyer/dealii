@@ -20,6 +20,9 @@
 #include <deal.II/base/polynomials_barycentric.h>
 #include <deal.II/base/scalar_polynomials_base.h>
 
+#include <array>
+#include <vector>
+
 DEAL_II_NAMESPACE_OPEN
 
 
@@ -68,6 +71,25 @@ namespace internal
  * BarycentricPolynomials<1>::get_fe_p_basis(degree), however, are
  * re-numerated to better match the definition of FiniteElement.
  */
+namespace internal
+{
+  /**
+   * Decompose the shape-function index of a wedge of the given degree into
+   * the index of the triangle shape function (of
+   * BarycentricPolynomials<2>::get_fe_p_basis()) and of the line shape
+   * function (of BarycentricPolynomials<1>::get_fe_p_basis()) whose product
+   * it is. The shape functions of the wedge are ordered by the objects their
+   * support points lie on (vertices, lines, faces in the order of their
+   * support points as faces of FE_SimplexP and of FE_Q with equidistant
+   * points, the interior); for degrees 1 and 2 this is the order of
+   * wedge_table_1 and wedge_table_2.
+   */
+  std::vector<std::array<unsigned int, 2>>
+  wedge_dof_pairs(const unsigned int degree);
+} // namespace internal
+
+
+
 template <int dim>
 class ScalarLagrangePolynomialWedge : public ScalarPolynomialsBase<dim>
 {
@@ -173,6 +195,12 @@ private:
    * Scalar polynomials defined on a line.
    */
   const BarycentricPolynomials<1> poly_line;
+
+  /**
+   * The triangle and line shape functions of each shape function, see
+   * internal::wedge_dof_pairs().
+   */
+  const std::vector<std::array<unsigned int, 2>> dof_pairs;
 };
 
 

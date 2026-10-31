@@ -14,8 +14,10 @@
 
 #include <deal.II/base/polynomials_barycentric.h>
 #include <deal.II/base/qprojector.h>
+#include <deal.II/base/quadrature_lib.h>
 
 #include <deal.II/fe/fe_dgq.h>
+#include <deal.II/fe/fe_face_dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_pyramid_p.h>
 #include <deal.II/fe/fe_q.h>
@@ -39,27 +41,42 @@ namespace
   internal::GenericDoFsPerObject
   get_dpo_vector_fe_wedge_p(const unsigned int degree)
   {
+    Assert(degree > 0, ExcNotImplemented());
+    // the numbers of DoFs inside a line, triangle, quadrilateral and the cell
+    const unsigned int n_line     = degree - 1;
+    const unsigned int n_triangle = (degree - 1) * (degree - 2) / 2;
+    const unsigned int n_quad     = n_line * n_line;
+    const unsigned int n_cell     = n_triangle * n_line;
+
+    const unsigned int first_face = 6 + 9 * n_line;
+
     internal::GenericDoFsPerObject dpo;
-
-    if (degree == 1)
-      {
-        dpo.dofs_per_object_exclusive  = {{1}, {0}, {0, 0, 0, 0, 0}, {0}};
-        dpo.dofs_per_object_inclusive  = {{1}, {2}, {3, 3, 4, 4, 4}, {6}};
-        dpo.object_index               = {{}, {6}, {6}, {6}};
-        dpo.first_object_index_on_face = {{}, {3, 3, 4, 4, 4}, {3, 3, 4, 4, 4}};
-      }
-    else if (degree == 2)
-      {
-        dpo.dofs_per_object_exclusive  = {{1}, {1}, {0, 0, 1, 1, 1}, {0}};
-        dpo.dofs_per_object_inclusive  = {{1}, {3}, {6, 6, 9, 9, 9}, {18}};
-        dpo.object_index               = {{}, {6}, {15, 15, 15, 16, 17}, {18}};
-        dpo.first_object_index_on_face = {{}, {3, 3, 4, 4, 4}, {6, 6, 8, 8, 8}};
-      }
-    else
-      {
-        DEAL_II_NOT_IMPLEMENTED();
-      }
-
+    dpo.dofs_per_object_exclusive = {
+      {1}, {n_line}, {n_triangle, n_triangle, n_quad, n_quad, n_quad}, {n_cell}};
+    dpo.dofs_per_object_inclusive = {{1},
+                                     {degree + 1},
+                                     {(degree + 1) * (degree + 2) / 2,
+                                      (degree + 1) * (degree + 2) / 2,
+                                      (degree + 1) * (degree + 1),
+                                      (degree + 1) * (degree + 1),
+                                      (degree + 1) * (degree + 1)},
+                                     {(degree + 1) * (degree + 1) *
+                                      (degree + 2) / 2}};
+    dpo.object_index               = {{},
+                                      {6},
+                                      {first_face,
+                                       first_face + n_triangle,
+                                       first_face + 2 * n_triangle,
+                                       first_face + 2 * n_triangle + n_quad,
+                                       first_face + 2 * n_triangle + 2 * n_quad},
+                                      {first_face + 2 * n_triangle + 3 * n_quad}};
+    dpo.first_object_index_on_face = {{},
+                                      {3, 3, 4, 4, 4},
+                                      {3 + 3 * n_line,
+                                       3 + 3 * n_line,
+                                       4 + 4 * n_line,
+                                       4 + 4 * n_line,
+                                       4 + 4 * n_line}};
     return dpo;
   }
 
@@ -69,15 +86,7 @@ namespace
   internal::GenericDoFsPerObject
   get_dpo_vector_fe_wedge_dgp(const unsigned int degree)
   {
-    unsigned int n_dofs = 0;
-
-    if (degree == 1)
-      n_dofs = 6;
-    else if (degree == 2)
-      n_dofs = 18;
-    else
-      DEAL_II_NOT_IMPLEMENTED();
-
+    const unsigned int n_dofs = (degree + 1) * (degree + 1) * (degree + 2) / 2;
     return internal::expand(3, {{0, 0, 0, n_dofs}}, ReferenceCells::Wedge);
   }
 } // namespace
@@ -108,22 +117,20 @@ FE_WedgePoly<dim, spacedim>::FE_WedgePoly(
 {
   AssertDimension(dim, 3);
 
-  Assert(1 <= degree && degree <= 2, ExcNotImplemented());
+  Assert(degree >= 1, ExcNotImplemented());
 
-  FE_SimplexP<2> fe_triangle(degree);
-  FE_Q<1>        fe_line(degree);
-  FE_Q<2>        fe_quad(degree);
+  // the equidistant support points of the triangle and the line, whose
+  // products are the support points of the wedge
+  const FE_SimplexP<2>        fe_triangle(degree);
+  const std::vector<Point<1>> line_points =
+    internal::simplex_lattice_points<1>(degree);
+  const FE_Q<2> fe_quad(QIterated<1>(QTrapezoid<1>(), degree));
 
-  for (unsigned int i = 0; i < this->n_dofs_per_cell(); ++i)
-    {
-      const auto pair = this->degree == 1 ? internal::wedge_table_1[i] :
-                                            internal::wedge_table_2[i];
-
-      this->unit_support_points.emplace_back(
-        fe_triangle.get_unit_support_points()[pair[0]][0],
-        fe_triangle.get_unit_support_points()[pair[0]][1],
-        fe_line.get_unit_support_points()[pair[1]][0]);
-    }
+  for (const auto &pair : internal::wedge_dof_pairs(degree))
+    this->unit_support_points.emplace_back(
+      fe_triangle.get_unit_support_points()[pair[0]][0],
+      fe_triangle.get_unit_support_points()[pair[0]][1],
+      line_points[pair[1]][0]);
 
   this->unit_face_support_points.resize(this->reference_cell().n_faces());
 
@@ -138,6 +145,35 @@ FE_WedgePoly<dim, spacedim>::FE_WedgePoly(
         this->unit_face_support_points[f].emplace_back(p[0], p[1]);
     else
       DEAL_II_ASSERT_UNREACHABLE();
+
+  // the DoFs inside lines and faces are permuted with their orientation, like
+  // the ones of FE_SimplexP on the triangles and of FE_Q on the
+  // quadrilaterals
+  if (conformity == FiniteElementData<dim>::H1)
+    {
+      internal::FEFaceDofTools::fill_line_dof_orientation_table(
+        this->adjust_line_dof_index_for_line_orientation_table,
+        this->n_dofs_per_line());
+      if (degree > 2)
+        for (const unsigned int f : this->reference_cell().face_indices())
+          {
+            const ReferenceCell face =
+              this->reference_cell().face_reference_cell(f);
+            const FiniteElement<2> &fe_face =
+              face == ReferenceCells::Quadrilateral ?
+                static_cast<const FiniteElement<2> &>(fe_quad) :
+                static_cast<const FiniteElement<2> &>(fe_triangle);
+            const unsigned int first =
+              face.n_vertices() * (1 + fe_face.n_dofs_per_line());
+            const std::vector<Point<2>> interior_points(
+              fe_face.get_unit_support_points().begin() + first,
+              fe_face.get_unit_support_points().end());
+            internal::FEFaceDofTools::fill_face_dof_orientation_table(
+              this->adjust_quad_dof_index_for_face_orientation_table[f],
+              face,
+              interior_points);
+          }
+    }
 }
 
 
@@ -601,20 +637,9 @@ std::vector<std::pair<unsigned int, unsigned int>>
 FE_WedgeP<dim, spacedim>::hp_line_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other) const
 {
-  (void)fe_other;
-
-  Assert((dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other)) ||
-           (dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)) ||
-           (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other)),
-         ExcNotImplemented());
-
-  std::vector<std::pair<unsigned int, unsigned int>> result;
-
-  result.reserve(this->degree - 1);
-  for (unsigned int i = 0; i < this->degree - 1; ++i)
-    result.emplace_back(i, i);
-
-  return result;
+  // the DoFs at the same positions on the line (the elements next to this
+  // one, FE_Q, FE_SimplexP, FE_WedgeP and FE_PyramidP, are Lagrange elements)
+  return internal::FEFaceDofTools::line_dof_identities(*this, fe_other);
 }
 
 
@@ -625,32 +650,10 @@ FE_WedgeP<dim, spacedim>::hp_quad_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other,
   const unsigned int                  face_no) const
 {
-  (void)fe_other;
-
-  AssertIndexRange(face_no, 5);
-
-  // the triangles next to tetrahedra or pyramids, the quadrilaterals next to
-  // hexahedra or pyramids (at most one DoF inside a face for degree <= 2)
-  if (face_no < 2)
-    {
-      Assert((dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other)) ||
-               (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other)),
-             ExcNotImplemented());
-    }
-  else
-    {
-      Assert((dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)) ||
-               (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other)),
-             ExcNotImplemented());
-    }
-
-  std::vector<std::pair<unsigned int, unsigned int>> result;
-
-  result.reserve(this->n_dofs_per_quad(face_no));
-  for (unsigned int i = 0; i < this->n_dofs_per_quad(face_no); ++i)
-    result.emplace_back(i, i);
-
-  return result;
+  // the DoFs at the same positions inside the face
+  return internal::FEFaceDofTools::face_dof_identities(*this,
+                                                       fe_other,
+                                                       face_no);
 }
 
 
