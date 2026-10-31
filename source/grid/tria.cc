@@ -52,6 +52,7 @@
 #include <map>
 #include <memory>
 #include <numeric>
+#include <set>
 #include <vector>
 
 
@@ -14502,7 +14503,8 @@ namespace internal
             std::vector<typename Triangulation<dim, spacedim>::quad_iterator>
               quads_to_delete(0);
 
-            Assert(ref_cell.is_simplex() || ref_cell.is_hyper_cube(),
+            Assert(ref_cell.is_simplex() || ref_cell.is_hyper_cube() ||
+                     ref_cell == ReferenceCells::Wedge,
                    ExcNotImplemented());
 
             // n_lines*n_children_of_lines(=2)+
@@ -14615,6 +14617,45 @@ namespace internal
                       DEAL_II_ASSERT_UNREACHABLE();
                   }
                   break;
+
+                case ReferenceCells::Wedge:
+                  {
+                    // the inner faces and lines are the ones of the children
+                    // that are not children of the faces of the cell or lines
+                    // of these: the 3+3 quadrilaterals between the corner
+                    // children and the middle child of each layer, the 4
+                    // triangles between the layers and the 3 inner lines of
+                    // these triangles. there is no inner vertex.
+                    std::set<unsigned int> outer_quads, outer_lines;
+                    for (const unsigned int f : cell->face_indices())
+                      for (unsigned int c = 0; c < cell->face(f)->n_children();
+                           ++c)
+                        {
+                          const auto face_child = cell->face(f)->child(c);
+                          outer_quads.insert(face_child->index());
+                          for (const unsigned int l :
+                               face_child->line_indices())
+                            outer_lines.insert(face_child->line_index(l));
+                        }
+
+                    std::set<unsigned int> inner_quads, inner_lines;
+                    for (unsigned int c = 0; c < cell->n_children(); ++c)
+                      {
+                        const auto child = cell->child(c);
+                        for (const unsigned int f : child->face_indices())
+                          if (outer_quads.count(child->quad_index(f)) == 0 &&
+                              inner_quads.insert(child->quad_index(f)).second)
+                            quads_to_delete.push_back(child->face(f));
+                        for (const unsigned int l : child->line_indices())
+                          if (outer_lines.count(child->line_index(l)) == 0 &&
+                              inner_lines.insert(child->line_index(l)).second)
+                            lines_to_delete.push_back(child->line(l));
+                      }
+                    AssertDimension(quads_to_delete.size(), 10);
+                    AssertDimension(lines_to_delete.size(), 3);
+                  }
+                  break;
+
                 default:
                   DEAL_II_ASSERT_UNREACHABLE();
                   break;
