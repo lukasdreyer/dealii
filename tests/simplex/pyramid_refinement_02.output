@@ -1,0 +1,55 @@
+
+DEAL:pyramids, degree 1, linear::cells 192, levels 2, volume 8.00000, dofs 139, constraints 94, wrong elements 0, exact
+DEAL:pyramids, degree 1, linear::cells 869, levels 3, volume 8.00000, dofs 530, constraints 328, wrong elements 0, exact
+DEAL:pyramids, degree 1, linear::cells 4763, levels 4, volume 8.00000, dofs 2138, constraints 1113, wrong elements 0, exact
+DEAL:pyramids, degree 1, linear::cells 869, levels 3, volume 8.00000, dofs 530, constraints 328, wrong elements 0, exact
+DEAL:pyramids, degree 1, linear::cells 192, levels 2, volume 8.00000, dofs 139, constraints 94, wrong elements 0, exact
+DEAL:pyramids, degree 1, linear::cells 48, levels 1, volume 8.00000, dofs 35, constraints 0, wrong elements 0, exact
+DEAL:pyramids, degree 2, linear::cells 192, levels 2, volume 8.00000, dofs 835, constraints 474, wrong elements 0, exact
+DEAL:pyramids, degree 2, linear::cells 869, levels 3, volume 8.00000, dofs 3208, constraints 1656, wrong elements 0, exact
+DEAL:pyramids, degree 2, linear::cells 4763, levels 4, volume 8.00000, dofs 14119, constraints 5565, wrong elements 0, exact
+DEAL:pyramids, degree 2, linear::cells 869, levels 3, volume 8.00000, dofs 3208, constraints 1656, wrong elements 0, exact
+DEAL:pyramids, degree 2, linear::cells 192, levels 2, volume 8.00000, dofs 835, constraints 474, wrong elements 0, exact
+DEAL:pyramids, degree 2, linear::cells 48, levels 1, volume 8.00000, dofs 189, constraints 0, wrong elements 0, exact
+DEAL:pyramids, degree 2, quadratic::cells 192, levels 2, volume 8.00000, dofs 835, constraints 474, wrong elements 0, exact
+DEAL:pyramids, degree 2, quadratic::cells 869, levels 3, volume 8.00000, dofs 3208, constraints 1656, wrong elements 0, exact
+DEAL:pyramids, degree 2, quadratic::cells 4763, levels 4, volume 8.00000, dofs 14119, constraints 5565, wrong elements 0, exact
+DEAL:pyramids, degree 2, quadratic::cells 869, levels 3, volume 8.00000, dofs 3208, constraints 1656, wrong elements 0, exact
+DEAL:pyramids, degree 2, quadratic::cells 192, levels 2, volume 8.00000, dofs 835, constraints 474, wrong elements 0, exact
+DEAL:pyramids, degree 2, quadratic::cells 48, levels 1, volume 8.00000, dofs 189, constraints 0, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 1, linear::cells 114, levels 2, volume 8.00000, dofs 108, constraints 58, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 1, linear::cells 504, levels 3, volume 8.00000, dofs 418, constraints 240, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 1, linear::cells 2670, levels 4, volume 8.00000, dofs 1693, constraints 871, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 1, linear::cells 504, levels 3, volume 8.00000, dofs 418, constraints 240, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 1, linear::cells 114, levels 2, volume 8.00000, dofs 108, constraints 58, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 1, linear::cells 28, levels 1, volume 8.00000, dofs 31, constraints 0, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, linear::cells 114, levels 2, volume 8.00000, dofs 643, constraints 282, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, linear::cells 504, levels 3, volume 8.00000, dofs 2568, constraints 1218, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, linear::cells 2670, levels 4, volume 8.00000, dofs 11121, constraints 4363, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, linear::cells 504, levels 3, volume 8.00000, dofs 2568, constraints 1218, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, linear::cells 114, levels 2, volume 8.00000, dofs 643, constraints 282, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, linear::cells 28, levels 1, volume 8.00000, dofs 157, constraints 0, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, quadratic::cells 114, levels 2, volume 8.00000, dofs 643, constraints 282, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, quadratic::cells 504, levels 3, volume 8.00000, dofs 2568, constraints 1218, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, quadratic::cells 2670, levels 4, volume 8.00000, dofs 11121, constraints 4363, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, quadratic::cells 504, levels 3, volume 8.00000, dofs 2568, constraints 1218, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, quadratic::cells 114, levels 2, volume 8.00000, dofs 643, constraints 282, wrong elements 0, exact
+DEAL:pyramids and hexahedra, degree 2, quadratic::cells 28, levels 1, volume 8.00000, dofs 157, constraints 0, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 1, linear::cells 192, levels 2, volume 8.00000, dofs 119, constraints 78, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 1, linear::cells 820, levels 3, volume 8.00000, dofs 424, constraints 258, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 1, linear::cells 4431, levels 4, volume 8.00000, dofs 1685, constraints 860, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 1, linear::cells 820, levels 3, volume 8.00000, dofs 424, constraints 258, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 1, linear::cells 192, levels 2, volume 8.00000, dofs 119, constraints 78, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 1, linear::cells 52, levels 1, volume 8.00000, dofs 31, constraints 0, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, linear::cells 192, levels 2, volume 8.00000, dofs 679, constraints 372, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, linear::cells 820, levels 3, volume 8.00000, dofs 2509, constraints 1293, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, linear::cells 4431, levels 4, volume 8.00000, dofs 10905, constraints 4326, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, linear::cells 820, levels 3, volume 8.00000, dofs 2509, constraints 1293, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, linear::cells 192, levels 2, volume 8.00000, dofs 679, constraints 372, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, linear::cells 52, levels 1, volume 8.00000, dofs 157, constraints 0, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, quadratic::cells 192, levels 2, volume 8.00000, dofs 679, constraints 372, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, quadratic::cells 820, levels 3, volume 8.00000, dofs 2509, constraints 1293, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, quadratic::cells 4431, levels 4, volume 8.00000, dofs 10905, constraints 4326, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, quadratic::cells 820, levels 3, volume 8.00000, dofs 2509, constraints 1293, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, quadratic::cells 192, levels 2, volume 8.00000, dofs 679, constraints 372, wrong elements 0, exact
+DEAL:pyramids below tetrahedra, degree 2, quadratic::cells 52, levels 1, volume 8.00000, dofs 157, constraints 0, wrong elements 0, exact
