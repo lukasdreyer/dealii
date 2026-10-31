@@ -3094,7 +3094,12 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
 
       case 3:
         {
-          if (this->reference_cell() == ReferenceCells::Hexahedron)
+          // the hexahedron code below uses the (possibly anisotropic)
+          // refinement case of the neighbor, so it needs a hexahedron
+          // on both sides
+          if (this->reference_cell() == ReferenceCells::Hexahedron &&
+              this->neighbor(face)->reference_cell() ==
+                ReferenceCells::Hexahedron)
             {
               // this function returns the neighbor's
               // child on a given face and
@@ -3440,26 +3445,28 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
             } 
             else 
             {
-              Assert(this->reference_cell() == ReferenceCells::Tetrahedron, ExcInternalError());
-
               const auto neighbor = this->neighbor(face);
+              // only isotropic refinement is implemented for cells that
+              // are not hexahedra, and hexahedra next to them
+              Assert(neighbor->reference_cell() != ReferenceCells::Hexahedron ||
+                       neighbor->refinement_case() ==
+                         RefinementCase<dim>::isotropic_refinement,
+                     ExcNotImplemented());
               const unsigned int neighbor_face = this->neighbor_of_neighbor(face);
               Assert(*(this->neighbor(face)->neighbor(neighbor_face)) == *this, ExcInternalError());
 
-              //unsigned int subface_index = subface;
-              if(this->combined_face_orientation(face) != numbers::default_geometric_orientation)
-              {
-                // if(neighbor->combined_face_orientation(neighbor_face) != numbers::default_geometric_orientation)
-                //  std::cout << "face " << this->face(face)->index() << " in non standard orientations " << int(this->combined_face_orientation(face)) << " and " << int(neighbor->combined_face_orientation(neighbor_face)) << std::endl;
-                Assert(neighbor->combined_face_orientation(neighbor_face) == numbers::default_geometric_orientation, ExcInternalError());
-                //adjust subface index for orientation but only if subface is not the middle child
-                // if(subface != 3)
-                // {
-                //   subface_index = this->reference_cell().standard_to_real_face_vertex(subface, 0, this->combined_face_orientation(face));
-                // }
-              }
-              //subface_index = subface;
-              const unsigned int  child_index = 
+              // at most one of the two cells sees the face in non-standard
+              // orientation (the refinement tables of the cells ensure this
+              // for all faces)
+              Assert(this->combined_face_orientation(face) ==
+                         numbers::default_geometric_orientation ||
+                       neighbor->combined_face_orientation(neighbor_face) ==
+                         numbers::default_geometric_orientation,
+                     ExcInternalError());
+
+              // the subface is numbered as a child of the face, so only the
+              // orientation of the face in the neighbor matters
+              const unsigned int  child_index =
                 neighbor->reference_cell().child_cell_on_face(
                       neighbor_face, 
                       subface, //subface_index,
@@ -3478,11 +3485,11 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
                 if constexpr(dim == 3)
                 {
                   bool found_all_points = true;
-                  for(unsigned int i = 0; i < 3; ++i)
+                  for(unsigned int i = 0; i < this->face(face)->child(subface)->n_vertices(); ++i)
                   {
                     const auto v = this->face(face)->child(subface)->vertex(i);
                     bool found_point = false;
-                    for(unsigned int j = 0; j < 4; ++j)
+                    for(unsigned int j = 0; j < neighbor_child_here->n_vertices(); ++j)
                     if(v.distance(neighbor_child_here->vertex(j)) < 1e-12)
                       found_point = true;
 
