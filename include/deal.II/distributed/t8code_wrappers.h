@@ -103,13 +103,13 @@ namespace internal
         return -1;
       };
 
+      /**
+       * An Adler-32 checksum of the leaves of the forest that does not
+       * depend on the partition (like p4est_checksum, but with other
+       * values). Collective, returns the same value on all processes.
+       */
       static unsigned int
-      checksum(const types<dim>::forest *forest)
-      {
-        (void)forest;
-        DEAL_II_NOT_IMPLEMENTED();
-        return numbers::invalid_unsigned_int;
-      };
+      checksum(const types<dim>::forest *forest);
 
       static void
       element_destroy(const types<dim>::forest *forest,

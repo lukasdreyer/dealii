@@ -49,6 +49,8 @@ t8_forest_is_balanced(t8_forest_t forest);
 #  include <t8_cmesh/t8_cmesh_helpers.h>
 #  include <t8_cmesh/t8_cmesh_internal/t8_cmesh_types.h>
 
+#  include <zlib.h>
+
 
 // Debug output of the t8code coupling, discarded by a stream without buffer.
 // Replace debug_out by std::cout to print it again.
@@ -723,6 +725,55 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                     const ::dealii::types::subdomain_id)
     {
       DEAL_II_NOT_IMPLEMENTED();
+    }
+
+
+
+    template <int dim>
+    unsigned int
+    functions<dim>::checksum(const typename types<dim>::forest *forest)
+    {
+      // Like p4est_checksum: each process computes the Adler-32 checksum of
+      // its leaves in the order of the space-filling curve (global tree id,
+      // level and linear id of each leaf), and the checksums are combined in
+      // the order of the processes, which gives the checksum of all leaves
+      // independent of the partition.
+      const t8_forest_t f      = const_cast<t8_forest_t>(forest);
+      const t8_scheme  *scheme = t8_forest_get_scheme(f);
+
+      std::vector<std::uint64_t> leaves;
+      for (t8_locidx_t itree = 0; itree < t8_forest_get_num_local_trees(f);
+           ++itree)
+        {
+          const t8_eclass_t eclass = t8_forest_get_tree_class(f, itree);
+          const t8_gloidx_t gtree  = t8_forest_global_tree_id(f, itree);
+          for (t8_locidx_t ielement = 0;
+               ielement < t8_forest_get_tree_num_leaf_elements(f, itree);
+               ++ielement)
+            {
+              const t8_element_t *element =
+                t8_forest_get_leaf_element_in_tree(f, itree, ielement);
+              const int level = scheme->element_get_level(eclass, element);
+              leaves.push_back(gtree);
+              leaves.push_back(level);
+              leaves.push_back(
+                scheme->element_get_linear_id(eclass, element, level));
+            }
+        }
+
+      const std::size_t n_bytes  = leaves.size() * sizeof(std::uint64_t);
+      const uLong       checksum = adler32(adler32(0L, Z_NULL, 0),
+                                     reinterpret_cast<const Bytef *>(
+                                       leaves.data()),
+                                     n_bytes);
+      const std::vector<std::pair<unsigned long, std::size_t>> checksums =
+        Utilities::MPI::all_gather(t8_forest_get_mpicomm(f),
+                                   std::make_pair(checksum, n_bytes));
+
+      uLong combined = adler32(0L, Z_NULL, 0);
+      for (const auto &[process_checksum, process_bytes] : checksums)
+        combined = adler32_combine(combined, process_checksum, process_bytes);
+      return combined;
     }
 
   } // namespace t8code

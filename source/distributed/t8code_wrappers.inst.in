@@ -21,6 +21,10 @@ for (deal_II_dimension : DIMENSIONS)
       \{
 #  if deal_II_dimension > 1
 
+        template unsigned int
+        functions<deal_II_dimension>::checksum(
+          const types<deal_II_dimension>::forest *forest);
+
         template bool
         element_is_equal<deal_II_dimension>(
           const types<deal_II_dimension>::forest  *forest,
