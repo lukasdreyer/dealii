@@ -419,13 +419,8 @@ FE_SimplexPoly<dim, spacedim>::get_prolongation_matrix(
               FullMatrix<double>(this->n_dofs_per_cell(),
                                  this->n_dofs_per_cell())));
           FETools::compute_embedding_matrices(*this, matrices, true);
-          for (unsigned int refinement_direction = static_cast<unsigned int>(
-                 IsotropicRefinementChoice::cut_tet_68);
-               refinement_direction <=
-               static_cast<unsigned int>(IsotropicRefinementChoice::cut_tet_49);
-               refinement_direction++)
-            this_nonconst.prolongation[refinement_direction - 1] =
-              std::move(matrices[refinement_direction - 1]);
+          this_nonconst.prolongation[refinement_case - 1] =
+            std::move(matrices[refinement_case - 1]);
         }
       else
         DEAL_II_ASSERT_UNREACHABLE();
@@ -1180,6 +1175,13 @@ FE_SimplexDGP<dim, spacedim>::get_restriction_matrix(
         }
       else if (dim == 3)
         {
+          // TODO: only the line (6,8), see
+          // FE_SimplexPoly::get_prolongation_matrix()
+          AssertThrow(
+            refinement_case ==
+              static_cast<unsigned int>(IsotropicRefinementChoice::cut_tet_68),
+            ExcMessage("Only the refinement of tetrahedra along the line "
+                       "(6,8) is implemented."));
           std::vector<std::vector<FullMatrix<double>>> matrices(
             static_cast<unsigned int>(IsotropicRefinementChoice::cut_tet_49),
             std::vector<FullMatrix<double>>(
@@ -1188,13 +1190,8 @@ FE_SimplexDGP<dim, spacedim>::get_restriction_matrix(
               FullMatrix<double>(this->n_dofs_per_cell(),
                                  this->n_dofs_per_cell())));
           FETools::compute_projection_matrices(*this, matrices, true);
-          for (unsigned int refinement_direction = static_cast<unsigned int>(
-                 IsotropicRefinementChoice::cut_tet_68);
-               refinement_direction <=
-               static_cast<unsigned int>(IsotropicRefinementChoice::cut_tet_49);
-               refinement_direction++)
-            this_nonconst.restriction[refinement_direction - 1] =
-              std::move(matrices[refinement_direction - 1]);
+          this_nonconst.restriction[refinement_case - 1] =
+            std::move(matrices[refinement_case - 1]);
         }
       else
         DEAL_II_ASSERT_UNREACHABLE();
