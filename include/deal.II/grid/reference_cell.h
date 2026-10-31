@@ -3354,10 +3354,35 @@ ReferenceCell::child_cell_on_face(
 
         }
       case ReferenceCells::Pyramid:
-      case ReferenceCells::Wedge:
         {
           DEAL_II_NOT_IMPLEMENTED();
           break;
+        }
+      case ReferenceCells::Wedge:
+        {
+          // the children of a face in standard orientation, see the child
+          // vertices of the wedge in tria.cc. Children 0-2 of a triangle and
+          // all children of a quadrilateral lie at the face vertex with the
+          // same index, the last child of a triangle is the middle one.
+          static constexpr ndarray<unsigned int, 5, 4> child_table = {
+            {/* face 0 */ {{1, 0, 2, 3}},
+             /* face 1 */ {{4, 5, 6, 7}},
+             /* face 2 */ {{0, 1, 4, 5}},
+             /* face 3 */ {{1, 2, 5, 6}},
+             /* face 4 */ {{2, 0, 6, 4}}}};
+
+          const ReferenceCell face_reference_cell =
+            this->face_reference_cell(face);
+          if (face_reference_cell == ReferenceCells::Triangle && subface == 3)
+            return child_table[face][subface];
+
+          // the subface is given in the numbering of the face, so map it
+          // back to the face in standard orientation
+          return child_table[face][standard_to_real_face_vertex(
+            subface,
+            face,
+            face_reference_cell.get_inverse_combined_orientation(
+              combined_orientation))];
         }
       case ReferenceCells::Hexahedron:
         {
