@@ -4086,7 +4086,8 @@ namespace ReferenceCells
   inline constexpr unsigned int
   max_n_children()
   {
-    return GeometryInfo<structdim>::max_children_per_cell;
+    // refined pyramids have 10 children
+    return structdim == 3 ? 10 : GeometryInfo<structdim>::max_children_per_cell;
   }
 } // namespace ReferenceCells
 

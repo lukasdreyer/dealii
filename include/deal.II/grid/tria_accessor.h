@@ -5838,8 +5838,12 @@ TriaAccessor<structdim, dim, spacedim>::n_children() const
          TriaAccessorExceptions::ExcDereferenceInvalidObject<TriaAccessor>(
            *this));
   if (reference_cell() == ReferenceCells::Tetrahedron)
-    return GeometryInfo<structdim>::n_children(
-      RefinementCase<structdim>::isotropic_refinement);
+    // tetrahedra inside pyramids are split into 4 tetrahedra and 2 pyramids,
+    // which is stored as refinement case cut_z (see
+    // ReferenceCell::child_cell_on_face())
+    return static_cast<std::uint8_t>(refinement_case()) == 4 ? 6 : 8;
+  else if (reference_cell() == ReferenceCells::Pyramid)
+    return reference_cell().n_isotropic_children();
   else
     return GeometryInfo<structdim>::n_children(refinement_case());
 }

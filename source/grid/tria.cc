@@ -7435,16 +7435,24 @@ namespace internal
                     new_face->set_boundary_id_internal(
                       numbers::internal_face_boundary_id);
                     new_face->set_manifold_id(cell->manifold_id());
+                    // the inner faces of hexahedra are quadrilaterals; set
+                    // the type already here since the face may have been a
+                    // triangle before (e.g., an inner face of a coarsened
+                    // pyramid) and the line orientations of hexahedra are
+                    // copied to faces which are set up later
+                    if (cell_reference_cell == ReferenceCells::Hexahedron)
+                      triangulation.faces->set_quad_type(
+                        new_face->index(), ReferenceCells::Quadrilateral);
                     for (const auto j : new_faces[i]->line_indices())
                       new_face->set_line_orientation(
                         j, numbers::default_geometric_orientation);
                   }
 
-                // We always get 8 children per refined cell, whether from
-                // refinement of a hex or a tet:
+                // 8 children per refined cell, 10 for pyramids and 6 for
+                // tetrahedra inside pyramids
                 std::array<
                   typename Triangulation<dim, spacedim>::raw_cell_iterator,
-                  8>
+                  10>
                   new_cells;
                 { // SETUP_CELLS
                   for (unsigned int i = 0; i < n_new_cells; ++i)
@@ -14580,18 +14588,13 @@ namespace internal
             std::vector<typename Triangulation<dim, spacedim>::quad_iterator>
               quads_to_delete(0);
 
-            Assert(ref_cell.is_simplex() || ref_cell.is_hyper_cube() ||
-                     ref_cell == ReferenceCells::Wedge,
-                   ExcNotImplemented());
-
             // n_lines*n_children_of_lines(=2)+
             // n_faces*n_lines_in_face(quad=4,tri=3) + new_lines_for_refinement
-            lines_to_delete.reserve(ref_cell.is_hyper_cube() ?
-                                      12 * 2 + 6 * 4 + 6 :
-                                      6 * 2 + 4 * 3 + 1);
+            // (at most the numbers of hexahedra)
+            lines_to_delete.reserve(12 * 2 + 6 * 4 + 6);
             // n_faces * n_children_per_face + new_inner_faces_for_refinement
-            quads_to_delete.reserve(ref_cell.is_hyper_cube() ? 6 * 4 + 12 :
-                                                               4 * 4 + 8);
+            // (at most 13 inner faces for pyramids)
+            quads_to_delete.reserve(6 * 4 + 13);
 
             // now we decrease the counters for lines and
             // quads contained in the child cells
@@ -14603,7 +14606,8 @@ namespace internal
                 const auto line_indices = TriaAccessorImplementation::
                   Implementation::get_line_indices_of_cell(*child);
 
-                for (const unsigned int l : cell->line_indices())
+                // the children of pyramids have other types than the parent
+                for (const unsigned int l : child->line_indices())
                   --line_cell_count[line_indices[l]];
 
                 for (const auto f : child->face_indices())
@@ -14705,7 +14709,7 @@ namespace internal
                 cell->child(child)->clear_user_data();
                 cell->child(child)->clear_user_flag();
 
-                for (const auto f : cell->face_indices())
+                for (const auto f : cell->child(child)->face_indices())
                   // set flags denoting deviations from standard orientation of
                   // faces back to initialization values
                   cell->child(child)->set_combined_face_orientation(
@@ -14913,8 +14917,9 @@ namespace internal
           {
             const typename Triangulation<dim, spacedim>::cell_iterator
               child_cell = cell->child(c);
-            // Loop over faces
-            for (unsigned int n = 0; n < cell->n_faces(); n++)
+            // Loop over faces (of the child, whose type differs from the
+            // parent's for pyramids)
+            for (unsigned int n = 0; n < child_cell->n_faces(); n++)
               {
                 if (child_cell->at_boundary(n))
                   continue;
