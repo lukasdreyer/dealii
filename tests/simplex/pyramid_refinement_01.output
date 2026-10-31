@@ -1,0 +1,39 @@
+
+DEAL::pyramids: 48 cells
+DEAL::  orientation: 0 of 108 faces with both sides non-standard
+DEAL::  after 2 global refinements: 4032 cells
+DEAL::  child_cell_on_face Pyramid Quad: 0 errors of 1344
+DEAL::  child_cell_on_face Pyramid Tri: 0 errors of 5376
+DEAL::  child_cell_on_face Tet(in pyramid) Tri: 0 errors of 3072
+DEAL::  orientation: 0 of 10092 faces with both sides non-standard
+DEAL::  volumes: 0 non-positive cells, 0 parents with wrong child volume sum
+DEAL::  coarsened: 48 cells (coarse 48)
+DEAL::  adaptive: 6247 cells
+DEAL::  neighbor_child_on_subface: 0 errors of 1336
+DEAL::  orientation: 0 of 15223 faces with both sides non-standard
+DEAL::pyramids and hexahedra: 28 cells
+DEAL::  orientation: 0 of 60 faces with both sides non-standard
+DEAL::  after 2 global refinements: 2272 cells
+DEAL::  child_cell_on_face Hex Quad: 0 errors of 864
+DEAL::  child_cell_on_face Pyramid Quad: 0 errors of 672
+DEAL::  child_cell_on_face Pyramid Tri: 0 errors of 2688
+DEAL::  child_cell_on_face Tet(in pyramid) Tri: 0 errors of 1536
+DEAL::  orientation: 0 of 5796 faces with both sides non-standard
+DEAL::  volumes: 0 non-positive cells, 0 parents with wrong child volume sum
+DEAL::  coarsened: 28 cells (coarse 28)
+DEAL::  adaptive: 2789 cells
+DEAL::  neighbor_child_on_subface: 0 errors of 1052
+DEAL::  orientation: 0 of 6922 faces with both sides non-standard
+DEAL::pyramids below tetrahedra: 52 cells
+DEAL::  orientation: 0 of 96 faces with both sides non-standard
+DEAL::  after 2 global refinements: 3728 cells
+DEAL::  child_cell_on_face Pyramid Quad: 0 errors of 560
+DEAL::  child_cell_on_face Pyramid Tri: 0 errors of 2240
+DEAL::  child_cell_on_face Tet Tri: 0 errors of 4608
+DEAL::  child_cell_on_face Tet(in pyramid) Tri: 0 errors of 1280
+DEAL::  orientation: 0 of 8604 faces with both sides non-standard
+DEAL::  volumes: 0 non-positive cells, 0 parents with wrong child volume sum
+DEAL::  coarsened: 52 cells (coarse 52)
+DEAL::  adaptive: 6381 cells
+DEAL::  neighbor_child_on_subface: 0 errors of 1168
+DEAL::  orientation: 0 of 15192 faces with both sides non-standard
