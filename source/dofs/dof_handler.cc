@@ -1598,6 +1598,10 @@ namespace internal
         adjust_fe_indices_to_reference_cells(
           DoFHandler<dim, spacedim> &dof_handler)
         {
+          // nothing to do before the DoFHandler has elements
+          if (dof_handler.fe_collection.size() == 0)
+            return;
+
           for (const auto &cell : dof_handler.active_cell_iterators())
             if (cell->is_locally_owned() &&
                 dof_handler.get_fe(cell->active_fe_index()).reference_cell() !=
