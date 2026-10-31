@@ -441,12 +441,18 @@ SolutionTransfer<dim, VectorType, spacedim>::unpack_callback(
               // and its children have inherited its FE index. However, to
               // unpack the data on the old cell, we need to recover its FE
               // index from one of the children. Just to be sure, we also
-              // check if all children have the same FE index.
-              fe_index = cell->child(0)->active_fe_index();
+              // check if all children have the same FE index. Children of
+              // other reference cells (of pyramids and of the tetrahedra
+              // inside them) have the corresponding element instead.
+              const auto &fe_collection = dof_handler->get_fe_collection();
+              fe_index = fe_collection.equivalent_fe_index_on_reference_cell(
+                cell->child(0)->active_fe_index(), cell->reference_cell());
               for (unsigned int child_index = 1;
                    child_index < cell->n_children();
                    ++child_index)
-                Assert(cell->child(child_index)->active_fe_index() == fe_index,
+                Assert(fe_collection.equivalent_fe_index_on_reference_cell(
+                         cell->child(child_index)->active_fe_index(),
+                         cell->reference_cell()) == fe_index,
                        ExcInternalError());
               break;
             }

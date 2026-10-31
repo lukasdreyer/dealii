@@ -1580,6 +1580,32 @@ namespace internal
                   cell->set_active_fe_index(coarsen.second);
                 }
             }
+
+          adjust_fe_indices_to_reference_cells(dof_handler);
+        }
+
+
+
+        /**
+         * The children of pyramids and of the tetrahedra inside them have
+         * other reference cells than their parents. Give every locally owned
+         * active cell whose active FE index refers to an element on another
+         * reference cell the corresponding element on its own reference cell
+         * (see hp::FECollection::equivalent_fe_index_on_reference_cell()).
+         */
+        template <int dim, int spacedim>
+        static void
+        adjust_fe_indices_to_reference_cells(
+          DoFHandler<dim, spacedim> &dof_handler)
+        {
+          for (const auto &cell : dof_handler.active_cell_iterators())
+            if (cell->is_locally_owned() &&
+                dof_handler.get_fe(cell->active_fe_index()).reference_cell() !=
+                  cell->reference_cell())
+              cell->set_active_fe_index(
+                dof_handler.get_fe_collection()
+                  .equivalent_fe_index_on_reference_cell(
+                    cell->active_fe_index(), cell->reference_cell()));
         }
 
 
@@ -1673,7 +1699,11 @@ namespace internal
           Assert(future_fe_index != numbers::invalid_fe_index,
                  ExcNoDominatedFiniteElementOnChildren());
 
-          return future_fe_index;
+          // the children of pyramids and of the tetrahedra inside them have
+          // other reference cells than the parent
+          return dof_handler.fe_collection
+            .equivalent_fe_index_on_reference_cell(future_fe_index,
+                                                   parent->reference_cell());
         }
       };
 
@@ -3004,6 +3034,11 @@ void DoFHandler<dim, spacedim>::post_distributed_transfer_action()
   // Update all locally owned active FE indices.
   this->set_active_fe_indices(
     this->active_fe_index_transfer->active_fe_indices);
+
+  // The children of pyramids and of the tetrahedra inside them got the index
+  // of their parent, which refers to another reference cell.
+  dealii::internal::hp::DoFHandlerImplementation::Implementation::
+    adjust_fe_indices_to_reference_cells(*this);
 
   // Update active FE indices on ghost cells.
   dealii::internal::hp::DoFHandlerImplementation::Implementation::

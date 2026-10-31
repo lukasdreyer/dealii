@@ -13,12 +13,20 @@
 
 #include <deal.II/base/memory_consumption.h>
 
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/tria.h>
+#include <deal.II/grid/tria_accessor.h>
+#include <deal.II/grid/tria_iterator.h>
+
 #include <deal.II/hp/fe_collection.h>
 #include <deal.II/hp/mapping_collection.h>
 
 #include <deque>
 #include <limits>
+#include <map>
+#include <mutex>
 #include <set>
+#include <tuple>
 
 
 
@@ -845,6 +853,316 @@ namespace hp
                         "the appropriate mask should be."));
 
     return mask;
+  }
+
+
+
+
+  template <int dim, int spacedim>
+  struct FECollection<dim, spacedim>::ChildTransferMatrices
+  {
+    std::mutex mutex;
+    // (parent FE index, child FE index, child, refinement case, restriction)
+    std::map<std::tuple<unsigned int, unsigned int, unsigned int, std::uint8_t, bool>,
+             FullMatrix<double>>
+      matrices;
+  };
+
+
+
+  namespace
+  {
+    // The affine map from the reference cell of a child to the reference
+    // cell of the parent, x = vertices[0] + A (y - y_0), determined by the
+    // vertices 0, ..., dim-1 and the last vertex of the child.
+    template <int dim>
+    struct ChildMap
+    {
+      ReferenceCell  reference_cell;
+      Point<dim>     origin, reference_origin;
+      Tensor<2, dim> A, A_inverse;
+
+      Point<dim>
+      to_parent(const Point<dim> &y) const
+      {
+        return origin + A * (y - reference_origin);
+      }
+
+      Point<dim>
+      to_child(const Point<dim> &x) const
+      {
+        return reference_origin + A_inverse * (x - origin);
+      }
+    };
+
+    template <int dim>
+    ChildMap<dim>
+    make_child_map(const ReferenceCell            &reference_cell,
+                   const std::vector<Point<dim>> &vertices)
+    {
+      ChildMap<dim> map;
+      map.reference_cell = reference_cell;
+      std::array<unsigned int, dim + 1> v;
+      for (unsigned int d = 0; d < dim; ++d)
+        v[d] = d;
+      v[dim] = reference_cell.n_vertices() - 1;
+
+      Tensor<2, dim> Y, X;
+      map.reference_origin = reference_cell.template vertex<dim>(v[0]);
+      map.origin           = vertices[v[0]];
+      for (unsigned int d = 0; d < dim; ++d)
+        for (unsigned int e = 0; e < dim; ++e)
+          {
+            Y[e][d] = reference_cell.template vertex<dim>(v[d + 1])[e] -
+                      map.reference_origin[e];
+            X[e][d] = vertices[v[d + 1]][e] - map.origin[e];
+          }
+      map.A         = X * invert(Y);
+      map.A_inverse = invert(map.A);
+
+      for (unsigned int i = 0; i < reference_cell.n_vertices(); ++i)
+        Assert(map.to_parent(reference_cell.template vertex<dim>(i))
+                   .distance(vertices[i]) < 1e-12,
+               ExcMessage("The children must be affine images of their "
+                          "reference cells."));
+      return map;
+    }
+
+    // The children of the reference cell @p reference_cell refined with
+    // @p refinement_case, as affine maps from their reference cells. The
+    // tetrahedra inside pyramids (refinement case cut_z) are refined as a
+    // child of a refined pyramid.
+    template <int dim>
+    std::vector<ChildMap<dim>>
+    compute_children(const ReferenceCell &reference_cell,
+                     const std::uint8_t   refinement_case)
+    {
+      const bool inside_pyramid =
+        reference_cell == ReferenceCells::Tetrahedron &&
+        refinement_case == RefinementPossibilities<3>::cut_z;
+
+      Triangulation<dim> tria;
+      GridGenerator::reference_cell(tria,
+                                    inside_pyramid ? ReferenceCells::Pyramid :
+                                                     reference_cell);
+      auto cell = tria.begin_active();
+      if (inside_pyramid)
+        {
+          cell->set_refine_flag();
+          tria.execute_coarsening_and_refinement();
+          cell = tria.begin(0)->child(4);
+          Assert(cell->reference_cell() == ReferenceCells::Tetrahedron,
+                 ExcInternalError());
+        }
+      cell->set_refine_flag();
+      if (reference_cell == ReferenceCells::Tetrahedron && !inside_pyramid)
+        cell->set_refine_choice(refinement_case);
+      tria.execute_coarsening_and_refinement();
+      AssertDimension(static_cast<unsigned int>(cell->refinement_case()),
+                      refinement_case);
+
+      // map the children of the tetrahedron inside a pyramid back to the
+      // reference tetrahedron
+      std::vector<Point<dim>> cell_vertices;
+      for (const unsigned int v : cell->vertex_indices())
+        cell_vertices.push_back(cell->vertex(v));
+      const ChildMap<dim> cell_map =
+        make_child_map(reference_cell, cell_vertices);
+
+      std::vector<ChildMap<dim>> children;
+      for (unsigned int c = 0; c < cell->n_children(); ++c)
+        {
+          std::vector<Point<dim>> vertices;
+          for (const unsigned int v : cell->child(c)->vertex_indices())
+            vertices.push_back(cell_map.to_child(cell->child(c)->vertex(v)));
+          children.push_back(
+            make_child_map(cell->child(c)->reference_cell(), vertices));
+        }
+      return children;
+    }
+  } // namespace
+
+
+
+  template <int dim, int spacedim>
+  unsigned int
+  FECollection<dim, spacedim>::equivalent_fe_index_on_reference_cell(
+    const unsigned int   fe_index,
+    const ReferenceCell &reference_cell) const
+  {
+    AssertIndexRange(fe_index, this->size());
+    const FiniteElement<dim, spacedim> &fe = (*this)[fe_index];
+    if (fe.reference_cell() == reference_cell)
+      return fe_index;
+
+    for (unsigned int i = 0; i < this->size(); ++i)
+      {
+        const FiniteElement<dim, spacedim> &other = (*this)[i];
+        if (other.reference_cell() == reference_cell &&
+            other.degree == fe.degree &&
+            other.n_components() == fe.n_components() &&
+            other.conforming_space == fe.conforming_space)
+          return i;
+      }
+
+    AssertThrow(false,
+                ExcMessage("The collection contains no element on " +
+                           reference_cell.to_string() +
+                           " that corresponds to element " +
+                           std::to_string(fe_index) + " (" + fe.get_name() +
+                           "), i.e., with the same degree, number of "
+                           "components and conformity."));
+    return numbers::invalid_unsigned_int;
+  }
+
+
+
+  namespace
+  {
+    template <int dim, int spacedim>
+    FullMatrix<double>
+    compute_child_transfer_matrix(const FiniteElement<dim, spacedim> &parent_fe,
+                                  const FiniteElement<dim, spacedim> &child_fe,
+                                  const ChildMap<dim>                &child_map,
+                                  const bool                          restriction)
+    {
+      AssertThrow(parent_fe.has_support_points() &&
+                    child_fe.has_support_points(),
+                  ExcMessage("The transfer between cells and children of "
+                             "other types is only implemented for elements "
+                             "with support points."));
+      AssertThrow(!parent_fe.restriction_is_additive(0),
+                  ExcMessage("The transfer between cells and children of "
+                             "other types is only implemented for continuous "
+                             "elements."));
+      Assert(child_fe.reference_cell() == child_map.reference_cell,
+             ExcInternalError());
+
+      if (!restriction)
+        {
+          // evaluate the parent's shape functions at the child's support
+          // points
+          FullMatrix<double> matrix(child_fe.n_dofs_per_cell(),
+                                    parent_fe.n_dofs_per_cell());
+          for (unsigned int j = 0; j < child_fe.n_dofs_per_cell(); ++j)
+            {
+              const Point<dim> x =
+                child_map.to_parent(child_fe.get_unit_support_points()[j]);
+              const unsigned int component =
+                child_fe.system_to_component_index(j).first;
+              for (unsigned int i = 0; i < parent_fe.n_dofs_per_cell(); ++i)
+                matrix(j, i) =
+                  parent_fe.shape_value_component(i, x, component);
+            }
+          return matrix;
+        }
+      else
+        {
+          // evaluate the child's shape functions at the parent's support
+          // points in the child
+          FullMatrix<double> matrix(parent_fe.n_dofs_per_cell(),
+                                    child_fe.n_dofs_per_cell());
+          for (unsigned int i = 0; i < parent_fe.n_dofs_per_cell(); ++i)
+            {
+              const Point<dim> y =
+                child_map.to_child(parent_fe.get_unit_support_points()[i]);
+              if (!child_map.reference_cell.contains_point(y, 1e-10))
+                continue;
+              const unsigned int component =
+                parent_fe.system_to_component_index(i).first;
+              for (unsigned int j = 0; j < child_fe.n_dofs_per_cell(); ++j)
+                {
+                  double value = child_fe.shape_value_component(j, y, component);
+                  // remove round-off, as FE_Q does, so that rows of support
+                  // points outside the child stay exactly zero
+                  if (std::fabs(value) < 1e-13)
+                    value = 0;
+                  else if (std::fabs(value - 1) < 1e-13)
+                    value = 1;
+                  matrix(i, j) = value;
+                }
+            }
+          return matrix;
+        }
+    }
+  } // namespace
+
+
+
+  template <int dim, int spacedim>
+  const FullMatrix<double> &
+  FECollection<dim, spacedim>::get_child_prolongation_matrix(
+    const unsigned int parent_fe_index,
+    const unsigned int child_fe_index,
+    const unsigned int child,
+    const std::uint8_t refinement_case) const
+  {
+    static std::mutex creation_mutex;
+    {
+      std::lock_guard<std::mutex> lock(creation_mutex);
+      if (child_transfer_matrices == nullptr)
+        child_transfer_matrices = std::make_shared<ChildTransferMatrices>();
+    }
+
+    std::lock_guard<std::mutex> lock(child_transfer_matrices->mutex);
+    const auto key = std::make_tuple(
+      parent_fe_index, child_fe_index, child, refinement_case, false);
+    auto it = child_transfer_matrices->matrices.find(key);
+    if (it == child_transfer_matrices->matrices.end())
+      {
+        const FiniteElement<dim, spacedim> &parent_fe =
+          (*this)[parent_fe_index];
+        const std::vector<ChildMap<dim>> children =
+          compute_children<dim>(parent_fe.reference_cell(), refinement_case);
+        AssertIndexRange(child, children.size());
+        it = child_transfer_matrices->matrices
+               .emplace(key,
+                        compute_child_transfer_matrix(parent_fe,
+                                                      (*this)[child_fe_index],
+                                                      children[child],
+                                                      false))
+               .first;
+      }
+    return it->second;
+  }
+
+
+
+  template <int dim, int spacedim>
+  const FullMatrix<double> &
+  FECollection<dim, spacedim>::get_child_restriction_matrix(
+    const unsigned int parent_fe_index,
+    const unsigned int child_fe_index,
+    const unsigned int child,
+    const std::uint8_t refinement_case) const
+  {
+    static std::mutex creation_mutex;
+    {
+      std::lock_guard<std::mutex> lock(creation_mutex);
+      if (child_transfer_matrices == nullptr)
+        child_transfer_matrices = std::make_shared<ChildTransferMatrices>();
+    }
+
+    std::lock_guard<std::mutex> lock(child_transfer_matrices->mutex);
+    const auto key = std::make_tuple(
+      parent_fe_index, child_fe_index, child, refinement_case, true);
+    auto it = child_transfer_matrices->matrices.find(key);
+    if (it == child_transfer_matrices->matrices.end())
+      {
+        const FiniteElement<dim, spacedim> &parent_fe =
+          (*this)[parent_fe_index];
+        const std::vector<ChildMap<dim>> children =
+          compute_children<dim>(parent_fe.reference_cell(), refinement_case);
+        AssertIndexRange(child, children.size());
+        it = child_transfer_matrices->matrices
+               .emplace(key,
+                        compute_child_transfer_matrix(parent_fe,
+                                                      (*this)[child_fe_index],
+                                                      children[child],
+                                                      true))
+               .first;
+      }
+    return it->second;
   }
 
 

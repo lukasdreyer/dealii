@@ -240,14 +240,51 @@ namespace internal
 
         Vector<number> tmp(dofs_per_cell);
 
+        // the children of pyramids and of the tetrahedra inside them have
+        // other reference cells: interpolate to the corresponding element on
+        // each child (see
+        // hp::FECollection::equivalent_fe_index_on_reference_cell())
+        const bool children_of_other_types =
+          cell.reference_cell() == ReferenceCells::Pyramid ||
+          (cell.reference_cell() == ReferenceCells::Tetrahedron &&
+           static_cast<std::uint8_t>(cell.refinement_case()) ==
+             RefinementPossibilities<3>::cut_z);
+        Assert(!children_of_other_types ||
+                 cell.get_dof_handler().has_hp_capabilities(),
+               ExcMessage("Cells whose children have other reference cells "
+                          "need a DoFHandler with an hp::FECollection."));
+
         for (unsigned int child = 0; child < cell.n_children(); ++child)
-          {
-            if (tmp.size() > 0)
-              fe.get_prolongation_matrix(child, cell.refinement_case())
-                .vmult(tmp, local_values);
-            process_by_interpolation(
-              *cell.child(child), tmp, values, fe_index, processor);
-          }
+          if (children_of_other_types)
+            {
+              const auto &fe_collection =
+                cell.get_dof_handler().get_fe_collection();
+              const unsigned int child_fe_index =
+                fe_collection.equivalent_fe_index_on_reference_cell(
+                  fe_index, cell.child(child)->reference_cell());
+              Vector<number> child_values(
+                fe_collection[child_fe_index].n_dofs_per_cell());
+              if (child_values.size() > 0 && local_values.size() > 0)
+                fe_collection
+                  .get_child_prolongation_matrix(fe_index,
+                                                 child_fe_index,
+                                                 child,
+                                                 cell.refinement_case())
+                  .vmult(child_values, local_values);
+              process_by_interpolation(*cell.child(child),
+                                       child_values,
+                                       values,
+                                       child_fe_index,
+                                       processor);
+            }
+          else
+            {
+              if (tmp.size() > 0)
+                fe.get_prolongation_matrix(child, cell.refinement_case())
+                  .vmult(tmp, local_values);
+              process_by_interpolation(
+                *cell.child(child), tmp, values, fe_index, processor);
+            }
       }
   }
 

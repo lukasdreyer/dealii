@@ -534,6 +534,54 @@ namespace hp
                                const unsigned int            codim = 0) const;
 
     /**
+     * Return the index of the element of this collection that corresponds on
+     * cells of type @p reference_cell to the element with index @p fe_index:
+     * @p fe_index itself if that element is defined on @p reference_cell,
+     * otherwise the first element on @p reference_cell with the same degree,
+     * number of components and conformity.
+     *
+     * This is used for cells whose children have other reference cells than
+     * the cell itself (pyramids are refined into pyramids and tetrahedra, and
+     * the tetrahedra inside pyramids into tetrahedra and pyramids): the
+     * children get the element corresponding to the one of their parent, and
+     * vice versa when they are coarsened.
+     */
+    unsigned int
+    equivalent_fe_index_on_reference_cell(
+      const unsigned int   fe_index,
+      const ReferenceCell &reference_cell) const;
+
+    /**
+     * Return the matrix that interpolates the element with index
+     * @p parent_fe_index on a cell refined with @p refinement_case to the
+     * element with index @p child_fe_index on its child @p child, for
+     * children whose reference cell differs from the one of their parent (see
+     * equivalent_fe_index_on_reference_cell()). The matrix has as many rows
+     * as the child element has DoFs and evaluates the parent's shape
+     * functions at the support points of the child element, like
+     * FiniteElement::get_prolongation_matrix() does for children of the same
+     * type. The matrices are computed on first use and cached.
+     */
+    const FullMatrix<double> &
+    get_child_prolongation_matrix(const unsigned int parent_fe_index,
+                                  const unsigned int child_fe_index,
+                                  const unsigned int child,
+                                  const std::uint8_t refinement_case) const;
+
+    /**
+     * Like get_child_prolongation_matrix(), but in the other direction, like
+     * FiniteElement::get_restriction_matrix() for continuous elements: the
+     * row of a support point of the parent element that lies in the child
+     * contains the values of the child's shape functions there, all other
+     * rows are zero.
+     */
+    const FullMatrix<double> &
+    get_child_restriction_matrix(const unsigned int parent_fe_index,
+                                 const unsigned int child_fe_index,
+                                 const unsigned int child,
+                                 const std::uint8_t refinement_case) const;
+
+    /**
      * @}
      */
 
@@ -847,6 +895,13 @@ namespace hp
      */
 
   private:
+    /**
+     * The matrices of get_child_prolongation_matrix() and
+     * get_child_restriction_matrix(), created on first use.
+     */
+    struct ChildTransferMatrices;
+    mutable std::shared_ptr<ChildTransferMatrices> child_transfer_matrices;
+
     /**
      * A linear mapping collection for all reference cell types of each index
      * of this object.

@@ -177,18 +177,53 @@ DoFCellAccessor<dim, spacedim, lda>::get_interpolated_dof_values(
           // Raviart-Thomas element) which have shape functions that are
           // additive (interior ones) and others that are overwriting (face
           // degrees of freedom that need to be continuous across the face).
+          // the children of pyramids and of the tetrahedra inside them have
+          // other reference cells: interpolate from the corresponding element
+          // on each child (see
+          // hp::FECollection::equivalent_fe_index_on_reference_cell())
+          const bool children_of_other_types =
+            this->reference_cell() == ReferenceCells::Pyramid ||
+            (this->reference_cell() == ReferenceCells::Tetrahedron &&
+             static_cast<std::uint8_t>(this->refinement_case()) ==
+               RefinementPossibilities<3>::cut_z);
+          Assert(!children_of_other_types ||
+                   this->dof_handler->hp_capability_enabled,
+                 ExcMessage("Cells whose children have other reference cells "
+                            "need a DoFHandler with an hp::FECollection."));
+
           for (unsigned int child = 0; child < this->n_children(); ++child)
             {
-              // get the values from the present child, if necessary by
-              // interpolation itself either from its own children or
-              // by interpolating from the finite element on an active
-              // child to the finite element space requested here
-              this->child(child)->get_interpolated_dof_values(values,
-                                                              tmp1,
-                                                              fe_index);
-              // interpolate these to the mother cell
-              fe.get_restriction_matrix(child, this->refinement_case())
-                .vmult(tmp2, tmp1);
+              if (children_of_other_types)
+                {
+                  const auto &fe_collection =
+                    this->dof_handler->get_fe_collection();
+                  const unsigned int child_fe_index =
+                    fe_collection.equivalent_fe_index_on_reference_cell(
+                      fe_index, this->child(child)->reference_cell());
+                  Vector<Number> child_values(
+                    fe_collection[child_fe_index].n_dofs_per_cell());
+                  this->child(child)->get_interpolated_dof_values(
+                    values, child_values, child_fe_index);
+                  fe_collection
+                    .get_child_restriction_matrix(fe_index,
+                                                  child_fe_index,
+                                                  child,
+                                                  this->refinement_case())
+                    .vmult(tmp2, child_values);
+                }
+              else
+                {
+                  // get the values from the present child, if necessary by
+                  // interpolation itself either from its own children or
+                  // by interpolating from the finite element on an active
+                  // child to the finite element space requested here
+                  this->child(child)->get_interpolated_dof_values(values,
+                                                                  tmp1,
+                                                                  fe_index);
+                  // interpolate these to the mother cell
+                  fe.get_restriction_matrix(child, this->refinement_case())
+                    .vmult(tmp2, tmp1);
+                }
 
               // and add up or set them in the output vector
               for (unsigned int i = 0; i < dofs_per_cell; ++i)
