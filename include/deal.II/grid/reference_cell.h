@@ -4763,9 +4763,40 @@ ReferenceCell::face_to_cell_line_orientation(
                      numbers::reverse_line_orientation;
     }
   else
-    // TODO: This might actually be wrong for some of the other
-    // kinds of objects. We should check this
-    return numbers::default_geometric_orientation;
+    {
+      // In general (wedges, pyramids): the line of the cell starts at its
+      // vertex line_to_cell_vertices(.., 0), which is a vertex of the face in
+      // its standard numbering, and the face orientation gives the number of
+      // this vertex in the face's own numbering. The line of the face (in
+      // its own numbering, with its own vertex order given by
+      // line_orientation) runs in the direction of the cell's line if it
+      // starts at this vertex.
+      const ReferenceCell face_cell = this->face_reference_cell(face_no);
+      const unsigned int  cell_line =
+        face_to_cell_lines(face_no, face_line_no, D);
+      const unsigned int cell_vertex = line_to_cell_vertices(cell_line, 0);
+      unsigned int       standard_face_vertex = numbers::invalid_unsigned_int;
+      for (const unsigned int v : face_cell.vertex_indices())
+        if (face_to_cell_vertices(face_no, v, D) == cell_vertex)
+          standard_face_vertex = v;
+      Assert(standard_face_vertex != numbers::invalid_unsigned_int,
+             ExcInternalError());
+      const unsigned int real_face_vertex = standard_to_real_face_vertex(
+        standard_face_vertex, face_no, combined_face_orientation);
+
+      // the line of the face in its own numbering and its first vertex
+      const unsigned int real_face_line =
+        standard_to_real_face_line(face_line_no,
+                                   face_no,
+                                   combined_face_orientation);
+      const unsigned int first_line_vertex =
+        face_cell.face_to_cell_vertices(
+          real_face_line, line_orientation == D ? 0 : 1, D);
+
+      return first_line_vertex == real_face_vertex ?
+               numbers::default_geometric_orientation :
+               numbers::reverse_line_orientation;
+    }
 }
 
 inline unsigned int
