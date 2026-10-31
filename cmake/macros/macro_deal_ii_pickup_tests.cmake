@@ -315,6 +315,16 @@ macro(deal_ii_pickup_tests)
       # We support two variables: DEAL_II_WITH_<FEATURE> and DEAL_II_<FEATURE>
       #
       set(_variable "DEAL_II_WITH_${_feature}")
+
+      #
+      # t8code implements parallel::distributed::Triangulation as well, so
+      # tests requiring p4est also run with t8code. Tests that cannot work
+      # with t8code are marked with "with_t8code=false".
+      #
+      if("${_feature}" STREQUAL "P4EST" AND DEAL_II_WITH_T8CODE)
+        set(_variable "DEAL_II_WITH_T8CODE")
+      endif()
+
       if(NOT DEFINED ${_variable})
         set(_variable "DEAL_II_${_feature}")
         if(NOT DEFINED ${_variable})
