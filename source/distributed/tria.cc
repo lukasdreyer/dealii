@@ -461,16 +461,19 @@ namespace
         typename dealii::internal::amr::types<dim>::eclass eclass =
           dealii::internal::amr::get_eclass<dim>(forest, tree_index);
         typename dealii::internal::amr::types<dim>::element
-          p4est_child[GeometryInfo<dim>::max_children_per_cell];
+          p4est_child[ReferenceCells::max_n_children<dim>()];
 
 
-        dealii::internal::amr::element_children<dim>(forest, // TODO
-                                                     eclass,
-                                                     &amr_cell,
-                                                     p4est_child);
+        const unsigned int n_children =
+          dealii::internal::amr::element_children<dim>(forest, // TODO
+                                                       eclass,
+                                                       &amr_cell,
+                                                       p4est_child);
 
-        for (unsigned int c = 0; c < GeometryInfo<dim>::max_children_per_cell;
-             ++c)
+        // the t8code children in their order and the deal.II children in
+        // theirs, which are the same for hypercubes, the only cells for
+        // which levels are supported
+        for (unsigned int c = 0; c < n_children; ++c)
           {
             determine_level_subdomain_id_recursively<dim, spacedim>(
               tree,
@@ -518,17 +521,16 @@ namespace
         else
           {
             typename dealii::internal::amr::types<dim>::element
-              p4est_child[GeometryInfo<dim>::max_children_per_cell];
+              p4est_child[ReferenceCells::max_n_children<dim>()];
 
-            dealii::internal::amr::element_children<dim>(forest,
-                                                         eclass,
-                                                         &amr_cell,
-                                                         p4est_child);
+            const unsigned int n_children =
+              dealii::internal::amr::element_children<dim>(forest,
+                                                           eclass,
+                                                           &amr_cell,
+                                                           p4est_child);
+            AssertDimension(n_children, dealii_cell->n_children());
 
-            for (unsigned int t8_child = 0;
-                 t8_child <
-                 dealii_cell->reference_cell().n_isotropic_children();
-                 ++t8_child)
+            for (unsigned int t8_child = 0; t8_child < n_children; ++t8_child)
               {
                 const std::pair<unsigned int, unsigned int>
                   dealii_child_index_and_type =
@@ -1359,7 +1361,7 @@ namespace
       {
         // recurse further
         typename dealii::internal::amr::types<dim>::element
-          p4est_child[GeometryInfo<dim>::max_children_per_cell]; // TODO
+          p4est_child[ReferenceCells::max_n_children<dim>()]; // TODO
 
         dealii::internal::amr::element_children<dim>(forest,
                                                      eclass,
@@ -1400,21 +1402,20 @@ namespace
         // this element is not active
         // generate its children, and store information in those
         typename dealii::internal::amr::types<dim>::element
-          p4est_child[GeometryInfo<dim>::max_children_per_cell];
+          p4est_child[ReferenceCells::max_n_children<dim>()];
 
-        dealii::internal::amr::element_children<dim>(forest,
-                                                     eclass,
-                                                     &amr_cell,
-                                                     p4est_child);
+        const unsigned int n_children =
+          dealii::internal::amr::element_children<dim>(forest,
+                                                       eclass,
+                                                       &amr_cell,
+                                                       p4est_child);
 
         // mark first child with CellStatus::cell_will_be_refined and the
         // remaining children with CellStatus::cell_invalid, but associate them
         // all with the parent cell unpack algorithm will be called only on
         // CellStatus::cell_will_be_refined flagged element
         CellStatus cell_status;
-        for (unsigned int t8_child = 0;
-             t8_child < dealii_cell->reference_cell().n_isotropic_children();
-             ++t8_child)
+        for (unsigned int t8_child = 0; t8_child < n_children; ++t8_child)
           {
             const std::pair<unsigned int, unsigned int>
               dealii_child_index_and_type =
@@ -3163,8 +3164,7 @@ namespace parallel
                            this->cell_iterators_on_level(lvl))
                         {
                           if (cell->has_children())
-                            for (unsigned int c = 0;
-                                 c < GeometryInfo<dim>::max_children_per_cell;
+                            for (unsigned int c = 0; c < cell->n_children();
                                  ++c)
                               {
                                 if (cell->child(c)->level_subdomain_id() ==

@@ -212,8 +212,12 @@ namespace internal
                         const typename types<dim>::element *element,
                         int                                 level);
 
+    /**
+     * Write the children of @p element into @p children and return their
+     * number (which differs between the cells of t8code's pyramid scheme).
+     */
     template <int dim>
-    void
+    unsigned int
     element_children(const typename types<dim>::forest  *forest,
                      typename types<dim>::eclass         eclass,
                      const typename types<dim>::element *element,

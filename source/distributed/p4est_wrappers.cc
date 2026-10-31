@@ -1166,7 +1166,7 @@ namespace internal
     }
 
     template <int dim>
-    void
+    unsigned int
     element_children(const typename types<dim>::forest *,
                      typename types<dim>::eclass,
                      const typename types<dim>::element *element,
@@ -1188,6 +1188,7 @@ namespace internal
         p8est_quadrant_childrenv(element, children);
       else
         DEAL_II_NOT_IMPLEMENTED();
+      return GeometryInfo<dim>::max_children_per_cell;
     }
 
     template <int dim>

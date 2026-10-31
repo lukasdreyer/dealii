@@ -88,7 +88,7 @@ for (deal_II_dimension : DIMENSIONS)
           const types<deal_II_dimension>::tree tree);
 
 
-        template void
+        template unsigned int
         element_children<deal_II_dimension>(
           const types<deal_II_dimension>::forest  *forest,
           types<deal_II_dimension>::eclass         eclass,

@@ -85,7 +85,7 @@ namespace internal
 
           return std::pair<unsigned int, unsigned int>{child_index, child_type};
         }
-      else if (ref_cell == ReferenceCells::Tetrahedron)
+      else if (ref_cell == ReferenceCells::Tetrahedron && dealii_type < 24)
         {
 // State = 4 * compact_t8_type + allowed_permutation_index
 // compact t8 type 0..5 maps to sparse t8 type {0,1,2,5,6,7}
@@ -193,6 +193,80 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
             dealii_child_index,
             prism_child_types[dealii_type][dealii_child_index]};
         }
+      else if (ref_cell == ReferenceCells::Pyramid ||
+               (ref_cell == ReferenceCells::Tetrahedron && dealii_type >= 24))
+        {
+          // pyramid trees: t8code's pyramid scheme has pyramids and
+          // tetrahedra, whose children are pyramids and tetrahedra. The types
+          // of the pyramids are the states below, the ones of the tetrahedra
+          // 24 + state, which distinguishes them from the 24 states of
+          // tetrahedral trees above.
+          // generated with generate_pyramid.py, see there for the states
+          // 16 states (t8 type, deal.II vertex i on t8 vertex p[i]):
+          //   0: (0, (0, 1, 2, 3, 4))
+          //   25: (2, (2, 3, 0, 1))
+          //   26: (1, (2, 3, 1, 0))
+          //   3: (3, (3, 1, 2, 0, 4))
+          //   4: (3, (2, 3, 0, 1, 4))
+          //   5: (0, (1, 3, 0, 2, 4))
+          //   6: (3, (0, 2, 1, 3, 4))
+          //   7: (0, (3, 2, 1, 0, 4))
+          //   32: (1, (0, 1, 3, 2))
+          //   33: (2, (0, 1, 2, 3))
+          //   34: (1, (1, 0, 2, 3))
+          //   35: (2, (3, 2, 1, 0))
+          //   36: (2, (1, 0, 3, 2))
+          //   37: (1, (3, 2, 0, 1))
+          //   14: (3, (1, 0, 3, 2, 4))
+          //   15: (0, (2, 0, 3, 1, 4))
+          const ::dealii::ndarray<unsigned int, 16, 10> pyramid_perms_t8_to_dealii = {{
+            {{0, 1, 6, 2, 4, 3, 5, 7, 8, 9}},
+            {{2, 3, 5, 4, 0, 1, 0, 0, 0, 0}},
+            {{3, 2, 5, 4, 0, 1, 0, 0, 0, 0}},
+            {{9, 8, 4, 6, 0, 7, 2, 5, 1, 3}},
+            {{9, 8, 6, 5, 1, 4, 0, 7, 3, 2}},
+            {{2, 0, 4, 3, 7, 1, 6, 5, 8, 9}},
+            {{9, 8, 5, 7, 3, 6, 1, 4, 2, 0}},
+            {{3, 2, 7, 1, 5, 0, 4, 6, 8, 9}},
+            {{0, 1, 4, 5, 3, 2, 0, 0, 0, 0}},
+            {{0, 1, 4, 5, 2, 3, 0, 0, 0, 0}},
+            {{1, 0, 4, 5, 2, 3, 0, 0, 0, 0}},
+            {{3, 2, 5, 4, 1, 0, 0, 0, 0, 0}},
+            {{1, 0, 4, 5, 3, 2, 0, 0, 0, 0}},
+            {{2, 3, 5, 4, 1, 0, 0, 0, 0, 0}},
+            {{9, 8, 7, 4, 2, 5, 3, 6, 0, 1}},
+            {{1, 3, 5, 0, 6, 2, 7, 4, 8, 9}},
+          }};
+          const ::dealii::ndarray<unsigned int, 16, 10> pyramid_child_types = {{
+            {{0, 0, 0, 0, 26, 26, 25, 25, 3, 0}},
+            {{25, 25, 25, 25, 5, 4, 0, 0, 0, 0}},
+            {{26, 26, 26, 26, 7, 6, 0, 0, 0, 0}},
+            {{3, 3, 3, 3, 32, 32, 33, 33, 0, 3}},
+            {{4, 4, 4, 4, 33, 33, 34, 34, 5, 4}},
+            {{5, 5, 5, 5, 35, 35, 26, 26, 4, 5}},
+            {{6, 6, 6, 6, 34, 34, 36, 36, 7, 6}},
+            {{7, 7, 7, 7, 37, 37, 35, 35, 6, 7}},
+            {{32, 32, 32, 32, 6, 7, 0, 0, 0, 0}},
+            {{33, 33, 33, 33, 14, 15, 0, 0, 0, 0}},
+            {{34, 34, 34, 34, 3, 0, 0, 0, 0, 0}},
+            {{35, 35, 35, 35, 15, 14, 0, 0, 0, 0}},
+            {{36, 36, 36, 36, 4, 5, 0, 0, 0, 0}},
+            {{37, 37, 37, 37, 0, 3, 0, 0, 0, 0}},
+            {{14, 14, 14, 14, 36, 36, 32, 32, 15, 14}},
+            {{15, 15, 15, 15, 25, 25, 37, 37, 14, 15}},
+          }};
+
+          const unsigned int state = ref_cell == ReferenceCells::Pyramid ?
+                                       dealii_type :
+                                       dealii_type - 24;
+          AssertIndexRange(state, pyramid_perms_t8_to_dealii.size());
+          const unsigned int dealii_child_index =
+            pyramid_perms_t8_to_dealii[state][child];
+
+          return std::pair<unsigned int, unsigned int>{
+            dealii_child_index,
+            pyramid_child_types[state][dealii_child_index]};
+        }
       else
         {
           DEAL_II_NOT_IMPLEMENTED();
@@ -213,7 +287,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       {1, 2, 3, 0},             // tet, t8 face i is opposite to tree vertex i
                                 //   (tree vertices see tree_vertex_to_dealii)
       {3, 4, 2, 0, 1},          // prism, triangles are the last t8 faces
-      {}                        // pyramid
+      {4, 0, 1, 2, 3}           // pyramid, the base is the last t8 face
     };
 
     /**
@@ -248,6 +322,8 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
             return T8_ECLASS_TET;
           case ReferenceCells::Wedge:
             return T8_ECLASS_PRISM;
+          case ReferenceCells::Pyramid:
+            return T8_ECLASS_PYRAMID;
           default:
             DEAL_II_NOT_IMPLEMENTED();
             return T8_ECLASS_INVALID;
@@ -537,7 +613,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
     }
 
     template <int dim>
-    void
+    unsigned int
     element_children(const typename types<dim>::forest  *forest,
                      typename types<dim>::eclass         eclass,
                      const typename types<dim>::element *element,
@@ -554,6 +630,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                                     ichild,
                                     (t8_element_t *)(children + ichild));
         }
+      return num_children;
     }
 
     template <int dim>
