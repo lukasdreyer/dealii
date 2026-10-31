@@ -89,57 +89,59 @@ namespace internal
         {
 // State = 4 * compact_t8_type + allowed_permutation_index
 // compact t8 type 0..5 maps to sparse t8 type {0,1,2,5,6,7}
+// generated with generate_tet.py for left-handed trees (state 0: tree vertex
+// i is deal.II vertex (0,3,2,1)[i], see tree_vertex_to_dealii)
 const ::dealii::ndarray<unsigned int, 24, 8> tet_perms_t8_to_dealii = {{
-  {{0, 1, 4, 5, 2, 7, 6, 3}},
-  {{1, 0, 5, 4, 3, 6, 7, 2}},
-  {{2, 3, 6, 7, 0, 5, 4, 1}},
-  {{3, 2, 7, 6, 1, 4, 5, 0}},
-  {{0, 6, 3, 5, 2, 7, 4, 1}},
-  {{3, 5, 0, 6, 1, 4, 7, 2}},
-  {{2, 4, 1, 7, 0, 5, 6, 3}},
-  {{1, 7, 2, 4, 3, 6, 5, 0}},
-  {{0, 3, 6, 5, 7, 4, 2, 1}},
-  {{3, 0, 5, 6, 4, 7, 1, 2}},
-  {{2, 1, 4, 7, 5, 6, 0, 3}},
-  {{1, 2, 7, 4, 6, 5, 3, 0}},
-  {{0, 1, 5, 4, 6, 7, 2, 3}},
-  {{1, 0, 4, 5, 7, 6, 3, 2}},
-  {{2, 3, 7, 6, 4, 5, 0, 1}},
-  {{3, 2, 6, 7, 5, 4, 1, 0}},
-  {{0, 5, 4, 1, 6, 2, 7, 3}},
-  {{1, 4, 5, 0, 7, 3, 6, 2}},
-  {{2, 7, 6, 3, 4, 0, 5, 1}},
-  {{3, 6, 7, 2, 5, 1, 4, 0}},
-  {{0, 5, 6, 3, 4, 7, 2, 1}},
-  {{3, 6, 5, 0, 7, 4, 1, 2}},
-  {{2, 7, 4, 1, 6, 5, 0, 3}},
-  {{1, 4, 7, 2, 5, 6, 3, 0}}
+  {{0, 3, 6, 5, 2, 7, 4, 1}},
+  {{3, 0, 5, 6, 1, 4, 7, 2}},
+  {{2, 1, 4, 7, 0, 5, 6, 3}},
+  {{1, 2, 7, 4, 3, 6, 5, 0}},
+  {{0, 4, 1, 5, 2, 7, 6, 3}},
+  {{1, 5, 0, 4, 3, 6, 7, 2}},
+  {{2, 6, 3, 7, 0, 5, 4, 1}},
+  {{3, 7, 2, 6, 1, 4, 5, 0}},
+  {{0, 1, 4, 5, 7, 6, 2, 3}},
+  {{1, 0, 5, 4, 6, 7, 3, 2}},
+  {{2, 3, 6, 7, 5, 4, 0, 1}},
+  {{3, 2, 7, 6, 4, 5, 1, 0}},
+  {{0, 3, 5, 6, 4, 7, 2, 1}},
+  {{3, 0, 6, 5, 7, 4, 1, 2}},
+  {{2, 1, 7, 4, 6, 5, 0, 3}},
+  {{1, 2, 4, 7, 5, 6, 3, 0}},
+  {{0, 5, 6, 3, 4, 2, 7, 1}},
+  {{3, 6, 5, 0, 7, 1, 4, 2}},
+  {{2, 7, 4, 1, 6, 0, 5, 3}},
+  {{1, 4, 7, 2, 5, 3, 6, 0}},
+  {{0, 5, 4, 1, 6, 7, 2, 3}},
+  {{1, 4, 5, 0, 7, 6, 3, 2}},
+  {{2, 7, 6, 3, 4, 5, 0, 1}},
+  {{3, 6, 7, 2, 5, 4, 1, 0}}
 }};
 const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
-  {{0, 0, 0, 0, 4, 12, 18, 9}},
-  {{1, 1, 1, 1, 12, 4, 8, 17}},
-  {{2, 2, 2, 2, 19, 11, 7, 14}},
-  {{3, 3, 3, 3, 11, 19, 13, 6}},
-  {{4, 4, 4, 4, 21, 10, 3, 15}},
-  {{5, 5, 5, 5, 13, 2, 9, 23}},
-  {{6, 6, 6, 6, 2, 13, 22, 8}},
-  {{7, 7, 7, 7, 10, 21, 12, 0}},
-  {{8, 8, 8, 8, 5, 22, 19, 3}},
-  {{9, 9, 9, 9, 1, 18, 21, 7}},
-  {{10, 10, 10, 10, 18, 1, 6, 20}},
-  {{11, 11, 11, 11, 22, 5, 0, 16}},
-  {{12, 12, 12, 12, 20, 16, 2, 5}},
-  {{13, 13, 13, 13, 16, 20, 4, 1}},
-  {{14, 14, 14, 14, 3, 7, 23, 18}},
-  {{15, 15, 15, 15, 7, 3, 17, 22}},
-  {{16, 16, 16, 16, 8, 0, 14, 21}},
-  {{17, 17, 17, 17, 0, 8, 20, 13}},
-  {{18, 18, 18, 18, 15, 23, 11, 2}},
-  {{19, 19, 19, 19, 23, 15, 1, 10}},
-  {{20, 20, 20, 20, 9, 6, 15, 19}},
-  {{21, 21, 21, 21, 17, 14, 5, 11}},
-  {{22, 22, 22, 22, 14, 17, 10, 4}},
-  {{23, 23, 23, 23, 6, 9, 16, 12}}
+  {{0, 0, 0, 0, 17, 14, 7, 11}},
+  {{1, 1, 1, 1, 9, 6, 13, 19}},
+  {{2, 2, 2, 2, 6, 9, 18, 12}},
+  {{3, 3, 3, 3, 14, 17, 8, 4}},
+  {{4, 4, 4, 4, 0, 8, 22, 13}},
+  {{5, 5, 5, 5, 8, 0, 12, 21}},
+  {{6, 6, 6, 6, 23, 15, 3, 10}},
+  {{7, 7, 7, 7, 15, 23, 9, 2}},
+  {{8, 8, 8, 8, 16, 20, 6, 1}},
+  {{9, 9, 9, 9, 20, 16, 0, 5}},
+  {{10, 10, 10, 10, 7, 3, 19, 22}},
+  {{11, 11, 11, 11, 3, 7, 21, 18}},
+  {{12, 12, 12, 12, 1, 18, 23, 7}},
+  {{13, 13, 13, 13, 5, 22, 17, 3}},
+  {{14, 14, 14, 14, 22, 5, 2, 16}},
+  {{15, 15, 15, 15, 18, 1, 4, 20}},
+  {{16, 16, 16, 16, 13, 2, 11, 23}},
+  {{17, 17, 17, 17, 21, 10, 1, 15}},
+  {{18, 18, 18, 18, 10, 21, 14, 0}},
+  {{19, 19, 19, 19, 2, 13, 20, 8}},
+  {{20, 20, 20, 20, 12, 4, 10, 17}},
+  {{21, 21, 21, 21, 4, 12, 16, 9}},
+  {{22, 22, 22, 22, 11, 19, 15, 6}},
+  {{23, 23, 23, 23, 19, 11, 5, 14}}
 }};
 
 
@@ -208,10 +210,28 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       {0, 1, 2, 3},             // quad is oriented the same
       {2, 0, 1},                // tri is rotated by one
       {0, 1, 2, 3, 4, 5, 6, 7}, // hex
-      {3, 2, 1, 0},             // tet, face i is opposite to vertex 3 - i
+      {1, 2, 3, 0},             // tet, t8 face i is opposite to tree vertex i
+                                //   (tree vertices see tree_vertex_to_dealii)
       {3, 4, 2, 0, 1},          // prism, triangles are the last t8 faces
       {}                        // pyramid
     };
+
+    /**
+     * The deal.II vertex of a cell that is vertex @p tree_vertex of its tree.
+     * t8code expects left-handed tetrahedra (see its negative volume check and
+     * t8_eclass_face_orientation), deal.II tetrahedra are right-handed, so
+     * the vertices 1 and 3 are swapped. This keeps the edges (0,2) and (1,3),
+     * between whose midpoints both deal.II (line (6,8)) and t8code (type 0)
+     * refine. All other cells keep the deal.II vertex order.
+     */
+    static unsigned int
+    tree_vertex_to_dealii(const ReferenceCell &ref_cell,
+                          const unsigned int   tree_vertex)
+    {
+      static constexpr std::array<unsigned int, 4> tetrahedron = {{0, 3, 2, 1}};
+      return ref_cell == ReferenceCells::Tetrahedron ? tetrahedron[tree_vertex] :
+                                                       tree_vertex;
+    }
 
     static t8_eclass_t
     t8_eclass_from_reference_cell(const ReferenceCell &ref_cell)
@@ -258,7 +278,8 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
           for (unsigned int ivertex = 0; ivertex < cell->n_vertices();
                ivertex++)
             {
-              const auto &vertex = cell->vertex(ivertex);
+              const auto &vertex = cell->vertex(
+                tree_vertex_to_dealii(cell->reference_cell(), ivertex));
               for (unsigned int idim = 0; idim < dim; idim++)
                 {
                   debug_out << "vertex[idim]" << vertex[idim] << std::endl;
@@ -266,7 +287,6 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                 }
             }
 
-          t8_cmesh_disable_negative_volume_check(cmesh);
           t8_cmesh_set_tree_vertices(cmesh,
                                      t8_index,
                                      coords.data(),
@@ -291,20 +311,22 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                   int t8_ineighface =
                     dealii_to_t8_faces[neigh_eclass][ineighface];
 
-                  // The vertices of the trees are the deal.II vertices in
-                  // deal.II order, so the t8code orientation follows from the
-                  // global vertex indices of both cells.
+                  // The t8code orientation follows from the global vertex
+                  // indices of both cells in the vertex order of the trees.
                   const auto neighbor = cell->neighbor(iface);
                   std::vector<t8_gloidx_t> vertex_ids(cell->n_vertices());
                   for (unsigned int ivertex = 0; ivertex < cell->n_vertices();
                        ivertex++)
-                    vertex_ids[ivertex] = cell->vertex_index(ivertex);
+                    vertex_ids[ivertex] = cell->vertex_index(
+                      tree_vertex_to_dealii(cell->reference_cell(), ivertex));
                   std::vector<t8_gloidx_t> neigh_vertex_ids(
                     neighbor->n_vertices());
                   for (unsigned int ivertex = 0;
                        ivertex < neighbor->n_vertices();
                        ivertex++)
-                    neigh_vertex_ids[ivertex] = neighbor->vertex_index(ivertex);
+                    neigh_vertex_ids[ivertex] = neighbor->vertex_index(
+                      tree_vertex_to_dealii(neighbor->reference_cell(),
+                                            ivertex));
                   const int orientation =
                     t8_cmesh_face_orientation_by_vertex_ids(
                       eclass,
@@ -327,10 +349,10 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
           for (unsigned int ivertex = 0; ivertex < cell->n_vertices();
                ivertex++)
             {
-              vertex_list[ivertex] = cell->vertex_index(ivertex);
+              vertex_list[ivertex] = cell->vertex_index(
+                tree_vertex_to_dealii(cell->reference_cell(), ivertex));
               debug_out << "local vertex " << ivertex
-                        << " connected to global vertex "
-                        << cell->vertex_index(ivertex);
+                        << " connected to global vertex " << vertex_list[ivertex];
             }
           t8_cmesh_set_global_vertices_of_tree(cmesh,
                                                t8_index,
