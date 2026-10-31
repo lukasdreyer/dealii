@@ -16,7 +16,7 @@
  * type, the number of DoFs and the L2 and H1 errors.
  *
  * Usage: mpirun -np N ./step-40 [degree] [n_cycles] [global]
- *   degree    polynomial degree (1 or 2, default 2)
+ *   degree    polynomial degree (1 to 4, default 2)
  *   n_cycles  number of refinement cycles (default 6)
  *   global    1 for global instead of adaptive refinement (default 0)
  */
@@ -61,6 +61,7 @@
 #include <deal.II/numerics/vector_tools.h>
 
 #include <array>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 
@@ -89,18 +90,29 @@ namespace Step40Hybrid
   const Point<dim> peak(0.5, 0.5, 0.5);
   constexpr double width = 50.;
 
+  // With the environment variable HYBRID_POLYNOMIAL=k, the exact solution is
+  // instead the polynomial (1 + a.x)^k, which the discretization reproduces
+  // exactly for degree >= k (a consistency check).
+  const unsigned int polynomial_degree =
+    std::getenv("HYBRID_POLYNOMIAL") ? std::atoi(std::getenv("HYBRID_POLYNOMIAL")) : 0;
+  const Tensor<1, dim> a({0.3, -0.7, 0.5});
+
   class ExactSolution : public Function<dim>
   {
   public:
     double
     value(const Point<dim> &p, const unsigned int = 0) const override
     {
+      if (polynomial_degree > 0)
+        return std::pow(1 + a * p, polynomial_degree);
       return std::exp(-width * (p - peak).norm_square());
     }
 
     Tensor<1, dim>
     gradient(const Point<dim> &p, const unsigned int = 0) const override
     {
+      if (polynomial_degree > 0)
+        return polynomial_degree * std::pow(1 + a * p, polynomial_degree - 1) * a;
       return -2 * width * (p - peak) * value(p);
     }
   };
@@ -111,6 +123,11 @@ namespace Step40Hybrid
     double
     value(const Point<dim> &p, const unsigned int = 0) const override
     {
+      if (polynomial_degree > 1)
+        return -1. * polynomial_degree * (polynomial_degree - 1) *
+               std::pow(1 + a * p, polynomial_degree - 2) * (a * a);
+      else if (polynomial_degree == 1)
+        return 0;
       const double r2 = (p - peak).norm_square();
       return (6 * width - 4 * width * width * r2) * std::exp(-width * r2);
     }
@@ -320,7 +337,9 @@ namespace Step40Hybrid
     , degree(degree)
     , n_cycles(n_cycles)
     , global_refinement(global_refinement)
-    , fe(FE_Q<dim>(degree),
+    // FE_Q with equidistant support points, like the other elements, so that
+    // their DoFs on common faces coincide
+    , fe(FE_Q<dim>(QIterated<1>(QTrapezoid<1>(), degree)),
          FE_SimplexP<dim>(degree),
          FE_WedgeP<dim>(degree),
          FE_PyramidP<dim>(degree))
@@ -494,12 +513,12 @@ namespace Step40Hybrid
   {
     TimerOutput::Scope t(computing_timer, "errors");
 
-    // a higher quadrature than for the assembly (the simplex rules, also
-    // used by the wedge rule, exist for at most 4 points)
+    // a higher quadrature than for the assembly (the rules for tetrahedra
+    // exist for at most 5 points)
     const hp::QCollection<dim> error_quadrature(
       QGauss<dim>(degree + 3),
-      QGaussSimplex<dim>(std::min(degree + 3, 4u)),
-      QGaussWedge<dim>(std::min(degree + 3, 4u)),
+      QGaussSimplex<dim>(std::min(degree + 3, 5u)),
+      QGaussWedge<dim>(degree + 3),
       QGaussPyramid<dim>(degree + 3));
 
     Vector<float> l2_errors(triangulation.n_active_cells());
