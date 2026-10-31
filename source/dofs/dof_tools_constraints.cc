@@ -149,6 +149,29 @@ namespace DoFTools
 
 
       /**
+       * The first face of the reference cell of @p fe with the shape
+       * @p face_reference_cell. The face and subface interpolation matrices
+       * only depend on the shape of the face, so the cells on both sides of a
+       * face can use the face of their element with this shape, even if the
+       * face has different numbers in the two cells (e.g. a quadrilateral
+       * between a hexahedron and a wedge).
+       */
+      template <int dim, int spacedim>
+      unsigned int
+      face_with_shape(const FiniteElement<dim, spacedim> &fe,
+                      const ReferenceCell                &face_reference_cell)
+      {
+        for (const unsigned int face_no : fe.reference_cell().face_indices())
+          if (fe.reference_cell().face_reference_cell(face_no) ==
+              face_reference_cell)
+            return face_no;
+        DEAL_II_ASSERT_UNREACHABLE();
+        return numbers::invalid_unsigned_int;
+      }
+
+
+
+      /**
        * When restricting, on a face, the degrees of freedom of fe1 to the space
        * described by fe2 (for example for the complex case described
        * in the @ref hp_paper "hp-paper"), we have to select fe2.dofs_per_face
@@ -346,19 +369,18 @@ namespace DoFTools
       ensure_existence_of_face_matrix(
         const FiniteElement<dim, spacedim>  &fe1,
         const FiniteElement<dim, spacedim>  &fe2,
+        const ReferenceCell                 &face_reference_cell,
         std::unique_ptr<FullMatrix<double>> &matrix)
       {
-        // TODO: the implementation makes the assumption that all faces have the
-        // same number of dofs
-        AssertDimension(fe1.n_unique_faces(), 1);
-        AssertDimension(fe2.n_unique_faces(), 1);
-        const unsigned int face_no = 0;
-
         if (matrix == nullptr)
           {
+            const unsigned int face_no_1 =
+              face_with_shape(fe1, face_reference_cell);
+            const unsigned int face_no_2 =
+              face_with_shape(fe2, face_reference_cell);
             matrix = std::make_unique<FullMatrix<double>>(
-              fe2.n_dofs_per_face(face_no), fe1.n_dofs_per_face(face_no));
-            fe1.get_face_interpolation_matrix(fe2, *matrix, face_no);
+              fe2.n_dofs_per_face(face_no_2), fe1.n_dofs_per_face(face_no_1));
+            fe1.get_face_interpolation_matrix(fe2, *matrix, face_no_1);
           }
       }
 
@@ -372,23 +394,22 @@ namespace DoFTools
       ensure_existence_of_subface_matrix(
         const FiniteElement<dim, spacedim>  &fe1,
         const FiniteElement<dim, spacedim>  &fe2,
+        const ReferenceCell                 &face_reference_cell,
         const unsigned int                   subface,
         std::unique_ptr<FullMatrix<double>> &matrix)
       {
-        // TODO: the implementation makes the assumption that all faces have the
-        // same number of dofs
-        AssertDimension(fe1.n_unique_faces(), 1);
-        AssertDimension(fe2.n_unique_faces(), 1);
-        const unsigned int face_no = 0;
-
         if (matrix == nullptr)
           {
+            const unsigned int face_no_1 =
+              face_with_shape(fe1, face_reference_cell);
+            const unsigned int face_no_2 =
+              face_with_shape(fe2, face_reference_cell);
             matrix = std::make_unique<FullMatrix<double>>(
-              fe2.n_dofs_per_face(face_no), fe1.n_dofs_per_face(face_no));
+              fe2.n_dofs_per_face(face_no_2), fe1.n_dofs_per_face(face_no_1));
             fe1.get_subface_interpolation_matrix(fe2,
                                                  subface,
                                                  *matrix,
-                                                 face_no);
+                                                 face_no_1);
           }
       }
 
@@ -2345,14 +2366,18 @@ namespace DoFTools
       std::vector<types::global_dof_index> scratch_dofs;
 
       // caches for the face and subface interpolation matrices between
-      // different (or the same) finite elements. we compute them only once,
+      // different (or the same) finite elements, for each shape of the face
+      // (indexed by its number of vertices). we compute them only once,
       // namely the first time they are needed, and then just reuse them
-      Table<2, std::unique_ptr<FullMatrix<double>>> face_interpolation_matrices(
-        n_finite_elements(dof_handler), n_finite_elements(dof_handler));
-      Table<3, std::unique_ptr<FullMatrix<double>>>
+      Table<3, std::unique_ptr<FullMatrix<double>>> face_interpolation_matrices(
+        n_finite_elements(dof_handler),
+        n_finite_elements(dof_handler),
+        GeometryInfo<dim - 1>::vertices_per_cell + 1);
+      Table<4, std::unique_ptr<FullMatrix<double>>>
         subface_interpolation_matrices(
           n_finite_elements(dof_handler),
           n_finite_elements(dof_handler),
+          GeometryInfo<dim - 1>::vertices_per_cell + 1,
           GeometryInfo<dim>::max_children_per_face);
 
       // similarly have a cache for the matrices that are split into their
@@ -2384,7 +2409,9 @@ namespace DoFTools
             continue;
 
           for (const unsigned int face : cell->face_indices())
-            if (cell->face(face)->has_children())
+            if (const ReferenceCell face_reference_cell =
+                  cell->reference_cell().face_reference_cell(face);
+                cell->face(face)->has_children())
               {
                 // first of all, make sure that we treat a case which is
                 // possible, i.e. either no dofs on the face at all or no
@@ -2518,7 +2545,9 @@ namespace DoFTools
                             //std::cout << "face, child, subface index, fe, n_dofs_per_face: " << face << " " << c << " " << subface_fe_index << " " << subface->get_fe(subface_fe_index).get_name() << " " << subface->get_fe(subface_fe_index).n_dofs_per_face(face, c) << std::endl;
                             dependent_dofs.resize(
                               subface->get_fe(subface_fe_index)
-                                .n_dofs_per_face(face, c));
+                                .n_dofs_per_face(face_with_shape(
+                                  subface->get_fe(subface_fe_index),
+                                  face_reference_cell)));
                             subface->get_dof_indices(dependent_dofs,
                                                      subface_fe_index);
 
@@ -2572,9 +2601,10 @@ namespace DoFTools
                             ensure_existence_of_subface_matrix(
                               cell->get_fe(),
                               subface->get_fe(subface_fe_index),
+                              face_reference_cell,
                               c,
                               subface_interpolation_matrices
-                                [cell->active_fe_index()][subface_fe_index][c]);
+                                [cell->active_fe_index()][subface_fe_index][face_reference_cell.n_vertices()][c]);
 
                             // Add constraints to global AffineConstraints
                             // object.
@@ -2582,7 +2612,7 @@ namespace DoFTools
                                                dependent_dofs,
                                                *(subface_interpolation_matrices
                                                    [cell->active_fe_index()]
-                                                   [subface_fe_index][c]),
+                                                   [subface_fe_index][face_reference_cell.n_vertices()][c]),
                                                constraints);
                           } // loop over subfaces
 
@@ -2646,15 +2676,17 @@ namespace DoFTools
 
                         // first get the interpolation matrix from the mother to
                         // the virtual dofs
-                        Assert(dominating_fe.n_dofs_per_face(face) <=
+                        Assert(dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)) <=
                                  cell->get_fe().n_dofs_per_face(face),
                                ExcInternalError());
 
                         ensure_existence_of_face_matrix(
                           dominating_fe,
                           cell->get_fe(),
+                          face_reference_cell,
                           face_interpolation_matrices[dominating_fe_index]
-                                                     [cell->active_fe_index()]);
+                                                     [cell->active_fe_index()][face_reference_cell.n_vertices()]);
 
                         // split this matrix into primary and dependent
                         // components. invert the primary component
@@ -2662,13 +2694,13 @@ namespace DoFTools
                           cell->get_fe(),
                           dominating_fe,
                           (*face_interpolation_matrices
-                             [dominating_fe_index][cell->active_fe_index()]),
+                             [dominating_fe_index][cell->active_fe_index()][face_reference_cell.n_vertices()]),
                           primary_dof_masks[dominating_fe_index]
                                            [cell->active_fe_index()]);
 
                         ensure_existence_of_split_face_matrix(
                           *face_interpolation_matrices[dominating_fe_index]
-                                                      [cell->active_fe_index()],
+                                                      [cell->active_fe_index()][face_reference_cell.n_vertices()],
                           (*primary_dof_masks[dominating_fe_index]
                                              [cell->active_fe_index()]),
                           split_face_interpolation_matrices
@@ -2690,8 +2722,10 @@ namespace DoFTools
                         // between the inverse matrix and the dependent part
                         constraint_matrix.reinit(
                           cell->get_fe().n_dofs_per_face(face) -
-                            dominating_fe.n_dofs_per_face(face),
-                          dominating_fe.n_dofs_per_face(face));
+                            dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)),
+                          dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)));
                         restrict_mother_to_virtual_dependent.mmult(
                           constraint_matrix,
                           restrict_mother_to_virtual_primary_inv);
@@ -2718,10 +2752,12 @@ namespace DoFTools
                             dependent_dofs.push_back(scratch_dofs[i]);
 
                         AssertDimension(primary_dofs.size(),
-                                        dominating_fe.n_dofs_per_face(face));
+                                        dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)));
                         AssertDimension(dependent_dofs.size(),
                                         cell->get_fe().n_dofs_per_face(face) -
-                                          dominating_fe.n_dofs_per_face(face));
+                                          dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)));
 
                         filter_constraints(primary_dofs,
                                            dependent_dofs,
@@ -2758,31 +2794,37 @@ namespace DoFTools
 
                             // first get the interpolation matrix from the
                             // subface to the virtual dofs
-                            Assert(dominating_fe.n_dofs_per_face(face) <=
-                                     subface_fe.n_dofs_per_face(face),
+                            Assert(dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)) <=
+                                     subface_fe.n_dofs_per_face(
+  face_with_shape(subface_fe, face_reference_cell)),
                                    ExcInternalError());
                             ensure_existence_of_subface_matrix(
                               dominating_fe,
                               subface_fe,
+                              face_reference_cell,
                               sf,
                               subface_interpolation_matrices
-                                [dominating_fe_index][subface_fe_index][sf]);
+                                [dominating_fe_index][subface_fe_index][face_reference_cell.n_vertices()][sf]);
 
                             const FullMatrix<double>
                               &restrict_subface_to_virtual = *(
                                 subface_interpolation_matrices
-                                  [dominating_fe_index][subface_fe_index][sf]);
+                                  [dominating_fe_index][subface_fe_index][face_reference_cell.n_vertices()][sf]);
 
                             constraint_matrix.reinit(
-                              subface_fe.n_dofs_per_face(face),
-                              dominating_fe.n_dofs_per_face(face));
+                              subface_fe.n_dofs_per_face(
+  face_with_shape(subface_fe, face_reference_cell)),
+                              dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)));
 
                             restrict_subface_to_virtual.mmult(
                               constraint_matrix,
                               restrict_mother_to_virtual_primary_inv);
 
                             dependent_dofs.resize(
-                              subface_fe.n_dofs_per_face(face));
+                              subface_fe.n_dofs_per_face(
+  face_with_shape(subface_fe, face_reference_cell)));
                             cell->face(face)->child(sf)->get_dof_indices(
                               dependent_dofs, subface_fe_index);
 
@@ -2855,7 +2897,8 @@ namespace DoFTools
                               break;
 
                             dependent_dofs.resize(
-                              neighbor->get_fe().n_dofs_per_face(face));
+                              neighbor->get_fe().n_dofs_per_face(
+  face_with_shape(neighbor->get_fe(), face_reference_cell)));
                             cell->face(face)->get_dof_indices(
                               dependent_dofs, neighbor->active_fe_index());
 
@@ -2864,9 +2907,10 @@ namespace DoFTools
                             ensure_existence_of_face_matrix(
                               cell->get_fe(),
                               neighbor->get_fe(),
+                              face_reference_cell,
                               face_interpolation_matrices
                                 [cell->active_fe_index()]
-                                [neighbor->active_fe_index()]);
+                                [neighbor->active_fe_index()][face_reference_cell.n_vertices()]);
 
                             // Add constraints to global constraint matrix.
                             filter_constraints(
@@ -2874,7 +2918,7 @@ namespace DoFTools
                               dependent_dofs,
                               *(face_interpolation_matrices
                                   [cell->active_fe_index()]
-                                  [neighbor->active_fe_index()]),
+                                  [neighbor->active_fe_index()][face_reference_cell.n_vertices()]),
                               constraints);
 
                             break;
@@ -2962,15 +3006,17 @@ namespace DoFTools
 
                             // first get the interpolation matrix from main FE
                             // to the virtual dofs
-                            Assert(dominating_fe.n_dofs_per_face(face) <=
+                            Assert(dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)) <=
                                      cell->get_fe().n_dofs_per_face(face),
                                    ExcInternalError());
 
                             ensure_existence_of_face_matrix(
                               dominating_fe,
                               cell->get_fe(),
+                              face_reference_cell,
                               face_interpolation_matrices
-                                [dominating_fe_index][cell->active_fe_index()]);
+                                [dominating_fe_index][cell->active_fe_index()][face_reference_cell.n_vertices()]);
 
                             // split this matrix into primary and dependent
                             // components. invert the primary component
@@ -2979,13 +3025,13 @@ namespace DoFTools
                               dominating_fe,
                               (*face_interpolation_matrices
                                  [dominating_fe_index]
-                                 [cell->active_fe_index()]),
+                                 [cell->active_fe_index()][face_reference_cell.n_vertices()]),
                               primary_dof_masks[dominating_fe_index]
                                                [cell->active_fe_index()]);
 
                             ensure_existence_of_split_face_matrix(
                               *face_interpolation_matrices
-                                [dominating_fe_index][cell->active_fe_index()],
+                                [dominating_fe_index][cell->active_fe_index()][face_reference_cell.n_vertices()],
                               (*primary_dof_masks[dominating_fe_index]
                                                  [cell->active_fe_index()]),
                               split_face_interpolation_matrices
@@ -3007,8 +3053,10 @@ namespace DoFTools
                             // between the inverse matrix and the dependent part
                             constraint_matrix.reinit(
                               cell->get_fe().n_dofs_per_face(face) -
-                                dominating_fe.n_dofs_per_face(face),
-                              dominating_fe.n_dofs_per_face(face));
+                                dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)),
+                              dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)));
                             restrict_mother_to_virtual_dependent.mmult(
                               constraint_matrix,
                               restrict_mother_to_virtual_primary_inv);
@@ -3039,7 +3087,8 @@ namespace DoFTools
                             AssertDimension(
                               dependent_dofs.size(),
                               cell->get_fe().n_dofs_per_face(face) -
-                                dominating_fe.n_dofs_per_face(face));
+                                dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)));
 
                             filter_constraints(primary_dofs,
                                                dependent_dofs,
@@ -3049,33 +3098,39 @@ namespace DoFTools
                             // now do the same for another FE this is pretty
                             // much the same we do above to resolve h-refinement
                             // constraints
-                            Assert(dominating_fe.n_dofs_per_face(face) <=
-                                     neighbor->get_fe().n_dofs_per_face(face),
+                            Assert(dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)) <=
+                                     neighbor->get_fe().n_dofs_per_face(
+  face_with_shape(neighbor->get_fe(), face_reference_cell)),
                                    ExcInternalError());
 
                             ensure_existence_of_face_matrix(
                               dominating_fe,
                               neighbor->get_fe(),
+                              face_reference_cell,
                               face_interpolation_matrices
                                 [dominating_fe_index]
-                                [neighbor->active_fe_index()]);
+                                [neighbor->active_fe_index()][face_reference_cell.n_vertices()]);
 
                             const FullMatrix<double>
                               &restrict_secondface_to_virtual =
                                 *(face_interpolation_matrices
                                     [dominating_fe_index]
-                                    [neighbor->active_fe_index()]);
+                                    [neighbor->active_fe_index()][face_reference_cell.n_vertices()]);
 
                             constraint_matrix.reinit(
-                              neighbor->get_fe().n_dofs_per_face(face),
-                              dominating_fe.n_dofs_per_face(face));
+                              neighbor->get_fe().n_dofs_per_face(
+  face_with_shape(neighbor->get_fe(), face_reference_cell)),
+                              dominating_fe.n_dofs_per_face(
+  face_with_shape(dominating_fe, face_reference_cell)));
 
                             restrict_secondface_to_virtual.mmult(
                               constraint_matrix,
                               restrict_mother_to_virtual_primary_inv);
 
                             dependent_dofs.resize(
-                              neighbor->get_fe().n_dofs_per_face(face));
+                              neighbor->get_fe().n_dofs_per_face(
+  face_with_shape(neighbor->get_fe(), face_reference_cell)));
                             cell->face(face)->get_dof_indices(
                               dependent_dofs, neighbor->active_fe_index());
 
