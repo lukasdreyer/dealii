@@ -3331,8 +3331,15 @@ ReferenceCell::child_cell_on_face(
             AssertIndexRange(subface, 4);
             AssertIndexRange(combined_orientation, 6);
 
+            // the subface is given in the numbering of the face, so map it
+            // back to the face in standard orientation (with the inverse
+            // orientation, which differs for the rotations 2 and 4)
             const unsigned int std_subface = (subface < 3) ?
-              triangle_vertex_permutations[combined_orientation][subface]: subface;
+              triangle_vertex_permutations
+                [this->face_reference_cell(face)
+                   .get_inverse_combined_orientation(combined_orientation)]
+                [subface] :
+              subface;
 
             static constexpr unsigned int
               child_table[4][4] =
