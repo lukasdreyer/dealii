@@ -1151,6 +1151,23 @@ namespace internal
     }
 
 
+
+    template <int dim, int spacedim>
+    typename types<dim>::forest *
+    adapt(typename types<dim>::forest  *parallel_forest,
+          Triangulation<dim, spacedim> *triangulation)
+    {
+      const auto *tria =
+        dynamic_cast<const dealii::parallel::distributed::Triangulation<dim, spacedim>
+                       *>(triangulation);
+      Assert(tria != nullptr, ExcInternalError());
+      return adapt(parallel_forest,
+                   triangulation,
+                   tria->get_p4est_tree_to_coarse_cell_permutation(),
+                   tria->locally_owned_subdomain());
+    }
+
+
     template <int dim>
     typename types<dim>::eclass
     get_eclass(const typename types<dim>::forest *, typename types<dim>::locidx)
