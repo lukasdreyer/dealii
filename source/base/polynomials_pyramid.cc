@@ -25,6 +25,108 @@ DEAL_II_NAMESPACE_OPEN
 
 
 
+namespace
+{
+  // Second derivative of the Jacobi polynomial, from
+  // d/dx P_n^{a,b} = c P_{n-1}^{a+1,b+1} as in
+  // Polynomials::jacobi_polynomial_derivative().
+  double
+  jacobi_polynomial_second_derivative(const unsigned int degree,
+                                      const int          alpha,
+                                      const int          beta,
+                                      const double       x,
+                                      const bool rescale_to_dealii_unit_interval)
+  {
+    if (degree < 2)
+      return 0.;
+    return (rescale_to_dealii_unit_interval ? 1. : 0.5) *
+           (1 + alpha + beta + degree) *
+           Polynomials::jacobi_polynomial_derivative<double>(
+             degree - 1,
+             alpha + 1,
+             beta + 1,
+             x,
+             rescale_to_dealii_unit_interval);
+  }
+
+
+
+  // The Hessian of the orthogonal basis function A(xi) B(eta) C(z) with
+  // xi = x/(1-z), eta = y/(1-z), A = P_i, B = P_j (Legendre on [-1,1]) and
+  // C = (1-z)^m Q_k(z), m = max(i,j), Q_k = P_k^{2m+2,0} on [0,1].
+  Tensor<2, 3>
+  orthogonal_basis_hessian(const unsigned int i,
+                           const unsigned int j,
+                           const unsigned int k,
+                           const Point<3>    &p)
+  {
+    const double       x = p[0], y = p[1], z = p[2];
+    const unsigned int m = std::max(i, j);
+    const int          a = 2 * m + 2;
+
+    const double Q   = Polynomials::jacobi_polynomial_value<double>(k, a, 0, z, true);
+    const double Q1  = Polynomials::jacobi_polynomial_derivative<double>(k, a, 0, z, true);
+    const double Q2  = jacobi_polynomial_second_derivative(k, a, 0, z, true);
+
+    Tensor<2, 3> H;
+
+    // the cases in which 1/(1-z) cancels: Q_k(z), y Q_k(z), x Q_k(z)
+    if (i == 0 && j == 0)
+      {
+        H[2][2] = Q2;
+        return H;
+      }
+    else if (i == 0 && j == 1)
+      {
+        H[1][2] = H[2][1] = Q1;
+        H[2][2]           = y * Q2;
+        return H;
+      }
+    else if (i == 1 && j == 0)
+      {
+        H[0][2] = H[2][0] = Q1;
+        H[2][2]           = x * Q2;
+        return H;
+      }
+    else if (std::abs(z - 1.0) < 1e-14)
+      // the rational functions are not smooth at the tip
+      return H;
+
+    const double r   = 1.0 / (1.0 - z);
+    const double xi  = x * r;
+    const double eta = y * r;
+
+    const double A  = Polynomials::jacobi_polynomial_value<double>(i, 0, 0, xi, false);
+    const double A1 = Polynomials::jacobi_polynomial_derivative<double>(i, 0, 0, xi, false);
+    const double A2 = jacobi_polynomial_second_derivative(i, 0, 0, xi, false);
+    const double B  = Polynomials::jacobi_polynomial_value<double>(j, 0, 0, eta, false);
+    const double B1 = Polynomials::jacobi_polynomial_derivative<double>(j, 0, 0, eta, false);
+    const double B2 = jacobi_polynomial_second_derivative(j, 0, 0, eta, false);
+
+    const double s  = 1.0 - z;
+    const double C  = std::pow(s, m) * Q;
+    const double C1 = -1.0 * m * std::pow(s, m - 1) * Q + std::pow(s, m) * Q1;
+    const double C2 = (m >= 2 ? m * (m - 1.0) * std::pow(s, m - 2) * Q : 0.) -
+                      2.0 * m * std::pow(s, m - 1) * Q1 + std::pow(s, m) * Q2;
+
+    const double r2 = r * r;
+    H[0][0] = A2 * r2 * B * C;
+    H[1][1] = A * B2 * r2 * C;
+    H[0][1] = H[1][0] = A1 * B1 * r2 * C;
+    H[0][2] = H[2][0] = A2 * xi * r2 * B * C + A1 * r2 * B * C +
+                        A1 * B1 * eta * r2 * C + A1 * r * B * C1;
+    H[1][2] = H[2][1] = A * B2 * eta * r2 * C + A * B1 * r2 * C +
+                        A1 * xi * r2 * B1 * C + A * B1 * r * C1;
+    H[2][2] = (A2 * xi * xi * r2 + 2 * A1 * xi * r2) * B * C +
+              2 * A1 * xi * r * B1 * eta * r * C + 2 * A1 * xi * r * B * C1 +
+              A * (B2 * eta * eta * r2 + 2 * B1 * eta * r2) * C +
+              2 * A * B1 * eta * r * C1 + A * B * C2;
+    return H;
+  }
+} // namespace
+
+
+
 template <int dim>
 ScalarLagrangePolynomialPyramid<dim>::ScalarLagrangePolynomialPyramid(
   const unsigned int degree)
@@ -370,11 +472,27 @@ ScalarLagrangePolynomialPyramid<dim>::compute_grad_grad(
   const unsigned int i,
   const Point<dim>  &p) const
 {
-  (void)i;
-  (void)p;
+  AssertDimension(dim, 3);
+  AssertIndexRange(i, vandermonde_matrix_inverse.m());
 
-  DEAL_II_NOT_IMPLEMENTED();
-  return Tensor<2, dim>();
+  Tensor<2, dim> grad_grad;
+  if constexpr (dim == 3)
+    {
+      // the orthogonal basis functions in the order of
+      // evaluate_orthogonal_basis_function()
+      unsigned int counter = 0;
+      for (unsigned int j = 0; j <= this->degree(); ++j)
+        for (unsigned int k = 0; k <= this->degree(); ++k)
+          for (unsigned int l = 0; l <= this->degree() - std::max(j, k);
+               ++l, ++counter)
+            if (vandermonde_matrix_inverse[i][counter] != 0.)
+              grad_grad += vandermonde_matrix_inverse[i][counter] *
+                           orthogonal_basis_hessian(j, k, l, p);
+    }
+  else
+    (void)p;
+
+  return grad_grad;
 }
 
 
@@ -401,6 +519,10 @@ ScalarLagrangePolynomialPyramid<dim>::evaluate(
   if (grads.size() == this->n())
     for (unsigned int i = 0; i < this->n(); ++i)
       grads[i] = compute_grad(i, unit_point);
+
+  if (grad_grads.size() == this->n())
+    for (unsigned int i = 0; i < this->n(); ++i)
+      grad_grads[i] = compute_grad_grad(i, unit_point);
 }
 
 
@@ -422,12 +544,7 @@ ScalarLagrangePolynomialPyramid<dim>::compute_2nd_derivative(
   const unsigned int i,
   const Point<dim>  &p) const
 {
-  (void)i;
-  (void)p;
-
-  DEAL_II_NOT_IMPLEMENTED();
-
-  return {};
+  return compute_grad_grad(i, p);
 }
 
 
