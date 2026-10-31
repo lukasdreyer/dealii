@@ -15,6 +15,7 @@
 
 #include <deal.II/base/config.h>
 
+#include <deal.II/base/mutex.h>
 #include <deal.II/base/polynomials_wedge.h>
 
 #include <deal.II/fe/fe_poly.h>
@@ -48,6 +49,68 @@ public:
   convert_generalized_support_point_values_to_dof_values(
     const std::vector<Vector<double>> &support_point_values,
     std::vector<double>               &nodal_values) const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::get_prolongation_matrix()
+   *
+   * @note Only isotropic refinement is implemented.
+   */
+  virtual const FullMatrix<double> &
+  get_prolongation_matrix(
+    const unsigned int         child,
+    const RefinementCase<dim> &refinement_case =
+      RefinementCase<dim>::isotropic_refinement) const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::get_restriction_matrix()
+   *
+   * @note Only isotropic refinement is implemented.
+   */
+  virtual const FullMatrix<double> &
+  get_restriction_matrix(
+    const unsigned int         child,
+    const RefinementCase<dim> &refinement_case =
+      RefinementCase<dim>::isotropic_refinement) const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::get_face_interpolation_matrix()
+   */
+  virtual void
+  get_face_interpolation_matrix(const FiniteElement<dim, spacedim> &source_fe,
+                                FullMatrix<double> &interpolation_matrix,
+                                const unsigned int  face_no) const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::get_subface_interpolation_matrix()
+   */
+  virtual void
+  get_subface_interpolation_matrix(
+    const FiniteElement<dim, spacedim> &source_fe,
+    const unsigned int                  subface,
+    FullMatrix<double>                 &interpolation_matrix,
+    const unsigned int                  face_no) const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::hp_constraints_are_implemented()
+   */
+  virtual bool
+  hp_constraints_are_implemented() const override;
+
+  /**
+   * @copydoc dealii::FiniteElement::face_to_cell_index()
+   */
+  virtual unsigned int
+  face_to_cell_index(const unsigned int                 face_dof_index,
+                     const unsigned int                 face,
+                     const types::geometric_orientation combined_orientation =
+                       numbers::default_geometric_orientation) const override;
+
+private:
+  /**
+   * Mutex for protecting initialization of restriction and embedding matrix.
+   */
+  mutable Threads::Mutex restriction_matrix_mutex;
+  mutable Threads::Mutex prolongation_matrix_mutex;
 };
 
 /**
