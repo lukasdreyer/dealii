@@ -17,6 +17,7 @@
 #include <deal.II/base/quadrature_lib.h>
 
 #include <deal.II/fe/fe_dgq.h>
+#include <deal.II/fe/fe_face_dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_pyramid_p.h>
 #include <deal.II/fe/fe_q.h>
@@ -40,7 +41,11 @@ namespace
   }
 
   /**
-   * Helper function to set up the dpo vector of FE_PyramidP for a given @p degree.
+   * The support points of FE_PyramidP of the given @p degree: the
+   * equidistant lattice points, ordered by vertices, lines (from their first
+   * to their second vertex), faces (in the order of the support points of
+   * FE_Q with equidistant points on the quadrilateral and of FE_SimplexP on
+   * the triangles) and the interior (by layers in z).
    */
   template <int dim>
   std::vector<Point<dim>>
@@ -49,129 +54,64 @@ namespace
     AssertDimension(dim, 3);
     Assert(degree > 0, ExcInternalError("Degree must be larger than 0."));
 
-
+    const ReferenceCell     pyramid = ReferenceCells::Pyramid;
     std::vector<Point<dim>> support_points;
-    support_points.resize(compute_n_dofs(dim, degree));
 
-    const double z_equidistance = 1.0 / degree;
+    // vertices
+    for (const unsigned int v : pyramid.vertex_indices())
+      support_points.push_back(pyramid.vertex<dim>(v));
 
-    // the support points on the 8 lines excluding the vertices
-    const unsigned int n_dofs_per_line = degree - 1;
-
-    // support points on the bottom quad face and on the 4 triangular faces,
-    // on the triangular faces the number of points is the sum from 1 to
-    // (degree - 2) so 4*0.5*(degree - 2)*(degree - 1)
-    const unsigned int n_dofs_per_quad = n_dofs_per_line * n_dofs_per_line;
-    const unsigned int total_dofs_faces =
-      n_dofs_per_quad + 2 * (degree - 2) * (degree - 1);
-
-    // starting indices for lines 4 - 7
-    std::vector<unsigned int> start_lines(4);
-    // line 4 starts after the DoFs at the vertices and the DoFs on the lines of
-    // the bottom quad
-    start_lines[0] = 5 + 4 * n_dofs_per_line;
-    // the rest increments with the number of DoFs on the edges 4 - 7
-    for (unsigned int i = 1; i < 4; ++i)
-      start_lines[i] = start_lines[i - 1] + n_dofs_per_line;
-
-    // same applies to the triangular faces 1 - 4
-    std::vector<unsigned int> start_faces(4);
-    start_faces[0] = 5 + 8 * n_dofs_per_line + n_dofs_per_quad;
-
-    for (unsigned int i = 1; i < 4; ++i)
-      start_faces[i] = start_faces[i - 1] + (degree - 2) * (degree - 1) / 2;
-
-    unsigned int start_hex = 5 + 8 * n_dofs_per_line + total_dofs_faces;
-
-    auto lift_point =
-      [](const Point<2> &p2d, const double scale, const double z) {
-        return Point<dim>(scale * (2.0 * p2d[0] - 1.0),
-                          scale * (2.0 * p2d[1] - 1.0),
-                          z);
-      };
-    {
-      // this gives all info on the vertices, the first 4 edges and the
-      // first face
-      // switch to FE_Q when simplex supports electrostatic points
-      // FE_Q<2> fe_q(degree);
-      FE_Q<2> fe_q(QIterated<1>(QTrapezoid<1>(), degree));
-
-      // vertices
-      for (unsigned int v = 0; v < fe_q.reference_cell().n_vertices(); ++v)
-        {
-          support_points[v] =
-            lift_point(fe_q.get_unit_support_points()[v], 1.0, 0.0);
-        }
-      // lines
-      for (unsigned int l = 0;
-           l < fe_q.reference_cell().n_lines() * fe_q.n_dofs_per_line();
-           ++l)
-        {
-          support_points[5 + l] = lift_point(
-            fe_q.get_unit_support_points()[fe_q.reference_cell().n_vertices() +
-                                           l],
-            1.0,
-            0.0);
-        }
-      // quad
-      for (unsigned int q = 0; q < fe_q.n_dofs_per_quad(); ++q)
-        {
-          support_points[5 + 8 * n_dofs_per_line + q] = lift_point(
-            fe_q.get_unit_support_points()[fe_q.reference_cell().n_vertices() +
-                                           fe_q.reference_cell().n_lines() *
-                                             fe_q.n_dofs_per_line() +
-                                           q],
-            1.0,
-            0.0);
-        }
-    }
-    // now add the other layers
-    for (unsigned int current_degree = degree - 1; current_degree > 0;
-         --current_degree)
+    // lines
+    for (const unsigned int l : pyramid.line_indices())
       {
-        // switch to FE_Q when simplex supports electrostatic points
-        // FE_Q<2> fe_q(current_degree);
-        FE_Q<2> fe_q(QIterated<1>(QTrapezoid<1>(), current_degree));
+        const Point<dim> p0 =
+          pyramid.vertex<dim>(pyramid.line_to_cell_vertices(l, 0));
+        const Point<dim> p1 =
+          pyramid.vertex<dim>(pyramid.line_to_cell_vertices(l, 1));
+        for (unsigned int i = 1; i < degree; ++i)
+          support_points.push_back(p0 + (double(i) / degree) * (p1 - p0));
+      }
 
-
-        const auto  &points = fe_q.get_unit_support_points();
-        unsigned int p      = 0;
-
-        const double z     = (degree - current_degree) * z_equidistance;
-        const double scale = current_degree * z_equidistance;
-
-        // vertices are on lines
-        for (unsigned int line = 0; line < fe_q.reference_cell().n_vertices();
-             ++line)
+    // faces: the support points inside the faces of the 2d elements, mapped
+    // to the faces
+    if (degree > 1)
+      {
+        const FE_Q<2>        fe_quad(QIterated<1>(QTrapezoid<1>(), degree));
+        const FE_SimplexP<2> fe_triangle(degree);
+        for (const unsigned int f : pyramid.face_indices())
           {
-            support_points[start_lines[line]++] =
-              lift_point(points[p++], scale, z);
-          }
-        // lines are on face
-        for (unsigned int face = 0; face < fe_q.reference_cell().n_lines();
-             ++face)
-          {
-            for (unsigned int n_dof = 0; n_dof < fe_q.n_dofs_per_line();
-                 ++n_dof)
-              support_points[start_faces[face]++] =
-                lift_point(points[p++], scale, z);
-          }
-        // faces are on hex
-        for (unsigned int hex = 0; hex < fe_q.n_dofs_per_quad(); ++hex)
-          {
-            support_points[start_hex++] = lift_point(points[p++], scale, z);
+            const ReferenceCell face = pyramid.face_reference_cell(f);
+            const FiniteElement<2> &fe_face =
+              face == ReferenceCells::Quadrilateral ?
+                static_cast<const FiniteElement<2> &>(fe_quad) :
+                static_cast<const FiniteElement<2> &>(fe_triangle);
+            std::vector<Point<dim>> face_vertices;
+            for (const unsigned int v : face.vertex_indices())
+              face_vertices.push_back(
+                pyramid.vertex<dim>(pyramid.face_to_cell_vertices(
+                  f, v, numbers::default_geometric_orientation)));
+            const unsigned int first =
+              face.n_vertices() * (1 + fe_face.n_dofs_per_line());
+            for (unsigned int i = first; i < fe_face.n_dofs_per_cell(); ++i)
+              support_points.push_back(
+                internal::FEFaceDofTools::map_face_point(
+                  face, fe_face.get_unit_support_points()[i], face_vertices));
           }
       }
-    Point<dim> tip;
-    for (unsigned int d = 0; d < dim; ++d)
-      {
-        if (d == 2)
-          tip[d] = 1.0;
-        else
-          tip[d] = 0.0;
-      }
-    support_points[4] = tip;
 
+    // interior: the lattice points of the layers z = k/degree
+    for (unsigned int k = 1; k < degree; ++k)
+      {
+        const unsigned int m = degree - k;
+        const double       z = double(k) / degree;
+        for (unsigned int j = 1; j < m; ++j)
+          for (unsigned int i = 1; i < m; ++i)
+            support_points.emplace_back((1. - z) * (2. * i / m - 1.),
+                                        (1. - z) * (2. * j / m - 1.),
+                                        z);
+      }
+
+    AssertDimension(support_points.size(), compute_n_dofs(dim, degree));
     return support_points;
   }
 
@@ -550,59 +490,34 @@ FE_PyramidP<dim, spacedim>::FE_PyramidP(const unsigned int degree)
                                   false,
                                   FiniteElementData<dim>::H1)
 {
+  internal::FEFaceDofTools::fill_line_dof_orientation_table(
+    this->adjust_line_dof_index_for_line_orientation_table,
+    this->n_dofs_per_line());
+
+  // the DoFs inside the faces are permuted with the orientation of the face,
+  // like the ones of FE_Q on the quadrilateral and of FE_SimplexP on the
+  // triangles
   if (degree > 2)
     {
-      // adjust DoFs on lines
-      for (unsigned int i = 0; i < this->n_dofs_per_line(); ++i)
-        this->adjust_line_dof_index_for_line_orientation_table[i] =
-          this->n_dofs_per_line() - 1 - i - i;
-
-      // do the quad face first
-      const unsigned int n            = degree - 1;
-      const unsigned int face_no_quad = 0;
-      Assert(n * n == this->n_dofs_per_quad(face_no_quad), ExcInternalError());
-      // see fe_q_base.cc
-      for (unsigned int local = 0; local < this->n_dofs_per_quad(face_no_quad);
-           ++local)
+      const FE_Q<2>        fe_quad(QIterated<1>(QTrapezoid<1>(), degree));
+      const FE_SimplexP<2> fe_triangle(degree);
+      for (const unsigned int f : this->reference_cell().face_indices())
         {
-          unsigned int i = local % n, j = local / n;
-
-          // face_orientation=false, face_flip=false, face_rotation=false
-          this->adjust_quad_dof_index_for_face_orientation_table[face_no_quad](
-            local, internal::combined_face_orientation(false, false, false)) =
-            j + i * n - local;
-          // face_orientation=false, face_flip=false, face_rotation=true
-          this->adjust_quad_dof_index_for_face_orientation_table[face_no_quad](
-            local, internal::combined_face_orientation(false, true, false)) =
-            i + (n - 1 - j) * n - local;
-          // face_orientation=false, face_flip=true,  face_rotation=false
-          this->adjust_quad_dof_index_for_face_orientation_table[face_no_quad](
-            local, internal::combined_face_orientation(false, false, true)) =
-            (n - 1 - j) + (n - 1 - i) * n - local;
-          // face_orientation=false, face_flip=true,  face_rotation=true
-          this->adjust_quad_dof_index_for_face_orientation_table[face_no_quad](
-            local, internal::combined_face_orientation(false, true, true)) =
-            (n - 1 - i) + j * n - local;
-          // face_orientation=true,  face_flip=false, face_rotation=false
-          this->adjust_quad_dof_index_for_face_orientation_table[face_no_quad](
-            local, internal::combined_face_orientation(true, false, false)) = 0;
-          // face_orientation=true,  face_flip=false, face_rotation=true
-          this->adjust_quad_dof_index_for_face_orientation_table[face_no_quad](
-            local, internal::combined_face_orientation(true, true, false)) =
-            j + (n - 1 - i) * n - local;
-          // face_orientation=true,  face_flip=true,  face_rotation=false
-          this->adjust_quad_dof_index_for_face_orientation_table[face_no_quad](
-            local, internal::combined_face_orientation(true, false, true)) =
-            (n - 1 - i) + (n - 1 - j) * n - local;
-          // face_orientation=true,  face_flip=true,  face_rotation=true
-          this->adjust_quad_dof_index_for_face_orientation_table[face_no_quad](
-            local, internal::combined_face_orientation(true, true, true)) =
-            (n - 1 - j) + i * n - local;
+          const ReferenceCell face = this->reference_cell().face_reference_cell(f);
+          const FiniteElement<2> &fe_face =
+            face == ReferenceCells::Quadrilateral ?
+              static_cast<const FiniteElement<2> &>(fe_quad) :
+              static_cast<const FiniteElement<2> &>(fe_triangle);
+          const unsigned int first =
+            face.n_vertices() * (1 + fe_face.n_dofs_per_line());
+          const std::vector<Point<2>> interior_points(
+            fe_face.get_unit_support_points().begin() + first,
+            fe_face.get_unit_support_points().end());
+          internal::FEFaceDofTools::fill_face_dof_orientation_table(
+            this->adjust_quad_dof_index_for_face_orientation_table[f],
+            face,
+            interior_points);
         }
-
-      // Now do it for the triangular faces
-      // for degree 3 there is only 1 DoF on the face
-      Assert(degree <= 3, ExcNotImplemented());
     }
 }
 
@@ -732,20 +647,9 @@ std::vector<std::pair<unsigned int, unsigned int>>
 FE_PyramidP<dim, spacedim>::hp_line_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other) const
 {
-  (void)fe_other;
-
-  Assert((dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other)) ||
-           (dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)) ||
-           (dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other)),
-         ExcNotImplemented());
-
-  std::vector<std::pair<unsigned int, unsigned int>> result;
-
-  result.reserve(this->degree - 1);
-  for (unsigned int i = 0; i < this->degree - 1; ++i)
-    result.emplace_back(i, i);
-
-  return result;
+  // the DoFs at the same positions on the line (the elements next to this
+  // one, FE_Q, FE_SimplexP, FE_WedgeP and FE_PyramidP, are Lagrange elements)
+  return internal::FEFaceDofTools::line_dof_identities(*this, fe_other);
 }
 
 
@@ -756,33 +660,10 @@ FE_PyramidP<dim, spacedim>::hp_quad_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other,
   const unsigned int                  face_no) const
 {
-  (void)fe_other;
-
-
-  AssertIndexRange(face_no, 5);
-
-  // the quadrilateral next to hexahedra or wedges, the triangles next to
-  // tetrahedra or wedges (at most one DoF inside a face for degree <= 2)
-  if (face_no == 0)
-    {
-      Assert((dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)) ||
-               (dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other)),
-             ExcNotImplemented());
-    }
-  else
-    {
-      Assert((dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other)) ||
-               (dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other)),
-             ExcNotImplemented());
-    }
-
-  std::vector<std::pair<unsigned int, unsigned int>> result;
-
-  result.reserve(this->n_dofs_per_quad(face_no));
-  for (unsigned int i = 0; i < this->n_dofs_per_quad(face_no); ++i)
-    result.emplace_back(i, i);
-
-  return result;
+  // the DoFs at the same positions inside the face
+  return internal::FEFaceDofTools::face_dof_identities(*this,
+                                                       fe_other,
+                                                       face_no);
 }
 
 
