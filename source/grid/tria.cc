@@ -6609,6 +6609,337 @@ namespace internal
       }
 
 
+      /**
+       * Refinement of pyramids and of the tetrahedra inside them as in
+       * t8code's pyramid scheme: a pyramid is split into 6 pyramids and 4
+       * tetrahedra, a tetrahedron inside a pyramid into 4 tetrahedra at its
+       * vertices and 2 pyramids, which split the inner octahedron at the
+       * quadrilateral between the middles of the lines 1, 2, 3, 4 (the
+       * apexes are the middles of the lines 0 and 5).
+       *
+       * The children are given by their vertices in the local numbering of
+       * the parent: the vertices, the middles of the lines (in the order of
+       * the lines) and the centers of the quadrilateral faces. The children
+       * see the children of the parent's faces in the order of the face
+       * refinement (where the parent sees the face in standard orientation),
+       * and each inner face is created in the vertex order of the child given
+       * in `inner_faces`. Then every face is seen in standard orientation by
+       * at least one of its two cells (also with the tetrahedra of
+       * tetrahedral cells and the wedges next to them), and t8code's
+       * subdivision of every element of its pyramid scheme matches the
+       * children.
+       */
+      struct VertexBasedRefinement
+      {
+        unsigned int                                n_children;
+        std::array<ReferenceCell, 10>               child_types;
+        std::array<std::array<unsigned int, 5>, 10> child_vertices;
+        unsigned int                                n_inner_faces;
+        // (child, face of the child)
+        std::array<std::array<unsigned int, 2>, 13> inner_faces;
+        unsigned int                                n_inner_lines;
+        std::array<std::array<unsigned int, 2>, 4>  inner_lines;
+      };
+
+      static const VertexBasedRefinement &
+      pyramid_refinement()
+      {
+        static const unsigned int X = numbers::invalid_unsigned_int;
+        static const VertexBasedRefinement refinement{
+          10,
+          {{ReferenceCells::Pyramid,
+            ReferenceCells::Pyramid,
+            ReferenceCells::Pyramid,
+            ReferenceCells::Pyramid,
+            ReferenceCells::Tetrahedron,
+            ReferenceCells::Tetrahedron,
+            ReferenceCells::Tetrahedron,
+            ReferenceCells::Tetrahedron,
+            ReferenceCells::Pyramid,
+            ReferenceCells::Pyramid}},
+          {{{{0, 7, 5, 13, 9}}, // base pyramids at the vertices 0-3
+            {{7, 1, 13, 6, 10}},
+            {{5, 13, 2, 8, 11}},
+            {{13, 6, 8, 3, 12}},
+            {{9, 11, 13, 5, X}}, // tetrahedra at the lines 0-3
+            {{10, 12, 6, 13, X}},
+            {{9, 10, 7, 13, X}},
+            {{11, 12, 13, 8, X}},
+            {{9, 11, 10, 12, 13}}, // upside down pyramid
+            {{9, 10, 11, 12, 4}}}}, // top pyramid
+          13,
+          {{{{0, 2}},
+            {{0, 4}},
+            {{1, 1}},
+            {{1, 4}},
+            {{2, 2}},
+            {{2, 3}},
+            {{3, 1}},
+            {{3, 3}},
+            {{4, 0}},
+            {{5, 1}},
+            {{6, 1}},
+            {{7, 0}},
+            {{8, 0}}}},
+          4,
+          {{{{9, 13}}, {{10, 13}}, {{11, 13}}, {{12, 13}}}}};
+        return refinement;
+      }
+
+      static const VertexBasedRefinement &
+      tetrahedron_inside_pyramid_refinement()
+      {
+        static const unsigned int X = numbers::invalid_unsigned_int;
+        static const VertexBasedRefinement refinement{
+          6,
+          {{ReferenceCells::Tetrahedron,
+            ReferenceCells::Tetrahedron,
+            ReferenceCells::Tetrahedron,
+            ReferenceCells::Tetrahedron,
+            ReferenceCells::Pyramid,
+            ReferenceCells::Pyramid,
+            ReferenceCells::Invalid,
+            ReferenceCells::Invalid,
+            ReferenceCells::Invalid,
+            ReferenceCells::Invalid}},
+          {{{{0, 4, 6, 7, X}}, // tetrahedra at the vertices 0-3
+            {{4, 1, 5, 8, X}},
+            {{6, 5, 2, 9, X}},
+            {{7, 8, 9, 3, X}},
+            {{5, 8, 6, 7, 4}}, // pyramids with apex at the middle of line 0
+            {{5, 6, 8, 7, 9}}, // and line 5
+            {{X, X, X, X, X}},
+            {{X, X, X, X, X}},
+            {{X, X, X, X, X}},
+            {{X, X, X, X, X}}}},
+          5,
+          {{{{2, 1}},
+            {{3, 0}},
+            {{4, 0}},
+            {{4, 3}},
+            {{4, 4}},
+            {{X, X}},
+            {{X, X}},
+            {{X, X}},
+            {{X, X}},
+            {{X, X}},
+            {{X, X}},
+            {{X, X}},
+            {{X, X}}}},
+          0,
+          {{{{X, X}}, {{X, X}}, {{X, X}}, {{X, X}}}}};
+        return refinement;
+      }
+
+      /**
+       * Return whether @p cell is a tetrahedron inside a pyramid, i.e., a
+       * child of a pyramid or of a tetrahedron inside a pyramid. These are
+       * refined into 4 tetrahedra and 2 pyramids, which is stored as
+       * refinement case cut_z.
+       */
+      template <typename CellIterator>
+      static bool
+      is_tetrahedron_inside_pyramid(const CellIterator &cell)
+      {
+        if (cell->reference_cell() != ReferenceCells::Tetrahedron ||
+            cell->level() == 0)
+          return false;
+        const auto parent = cell->parent();
+        return parent->reference_cell() == ReferenceCells::Pyramid ||
+               (parent->reference_cell() == ReferenceCells::Tetrahedron &&
+                parent->refinement_case() == RefinementCase<3>::cut_z);
+      }
+
+      /**
+       * Create the inner lines and faces and the children of @p cell for a
+       * VertexBasedRefinement. The lines, faces and cells are already
+       * allocated; the faces and lines of the parent are refined.
+       */
+      template <int spacedim>
+      static void
+      create_children_from_vertices(
+        Triangulation<3, spacedim>                                &triangulation,
+        const typename Triangulation<3, spacedim>::cell_iterator &cell,
+        const VertexBasedRefinement                               &refinement,
+        const std::array<typename Triangulation<3, spacedim>::raw_line_iterator,
+                         6>                                       &new_lines,
+        const std::array<typename Triangulation<3, spacedim>::raw_quad_iterator,
+                         13>                                      &new_faces,
+        const std::array<typename Triangulation<3, spacedim>::raw_cell_iterator,
+                         10>                                      &new_cells)
+      {
+        using raw_line_iterator =
+          typename Triangulation<3, spacedim>::raw_line_iterator;
+        using raw_quad_iterator =
+          typename Triangulation<3, spacedim>::raw_quad_iterator;
+        const unsigned int X = numbers::invalid_unsigned_int;
+
+        // global vertex indices of the local numbering
+        std::array<unsigned int, 14> vertex_indices;
+        vertex_indices.fill(X);
+        unsigned int k = 0;
+        for (const unsigned int v : cell->vertex_indices())
+          vertex_indices[k++] = cell->vertex_index(v);
+        for (const unsigned int l : cell->line_indices())
+          vertex_indices[k++] = cell->line(l)->child(0)->vertex_index(1);
+        for (const unsigned int f : cell->reference_cell().face_indices_by_type(
+               ReferenceCells::Quadrilateral))
+          vertex_indices[k++] = cell->face(f)->child(0)->vertex_index(3);
+
+        const auto line_key = [](const unsigned int a, const unsigned int b) {
+          return a < b ? std::array<unsigned int, 2>{{a, b}} :
+                         std::array<unsigned int, 2>{{b, a}};
+        };
+        const auto face_key = [X](std::array<unsigned int, 4> vertices,
+                                  const unsigned int          n_vertices) {
+          std::fill(vertices.begin() + n_vertices, vertices.end(), X);
+          std::sort(vertices.begin(), vertices.begin() + n_vertices);
+          return vertices;
+        };
+
+        // the lines and faces on the faces of the parent, by their vertices
+        std::map<std::array<unsigned int, 2>, raw_line_iterator> lines;
+        std::map<std::array<unsigned int, 4>, raw_quad_iterator> faces;
+        for (const unsigned int f : cell->face_indices())
+          for (unsigned int c = 0; c < cell->face(f)->n_children(); ++c)
+            {
+              const auto                  face_child = cell->face(f)->child(c);
+              std::array<unsigned int, 4> vertices;
+              for (const unsigned int v : face_child->vertex_indices())
+                vertices[v] = face_child->vertex_index(v);
+              faces[face_key(vertices, face_child->n_vertices())] = face_child;
+              for (const unsigned int l : face_child->line_indices())
+                lines[line_key(face_child->line(l)->vertex_index(0),
+                               face_child->line(l)->vertex_index(1))] =
+                  face_child->line(l);
+            }
+
+        for (unsigned int i = 0; i < refinement.n_inner_lines; ++i)
+          {
+            const unsigned int v0 =
+              vertex_indices[refinement.inner_lines[i][0]];
+            const unsigned int v1 =
+              vertex_indices[refinement.inner_lines[i][1]];
+            new_lines[i]->set_bounding_object_indices({v0, v1});
+            lines[line_key(v0, v1)] = new_lines[i];
+          }
+
+        // the vertices of face f of child c in the order seen by the child
+        const auto child_face_vertices = [&](const unsigned int c,
+                                             const unsigned int f) {
+          const ReferenceCell child_type = refinement.child_types[c];
+          std::array<unsigned int, 4> vertices;
+          vertices.fill(X);
+          for (const unsigned int v :
+               child_type.face_reference_cell(f).vertex_indices())
+            vertices[v] =
+              vertex_indices[refinement.child_vertices
+                               [c][child_type.face_to_cell_vertices(
+                                 f, v, numbers::default_geometric_orientation)]];
+          return vertices;
+        };
+
+        for (unsigned int i = 0; i < refinement.n_inner_faces; ++i)
+          {
+            const unsigned int  c = refinement.inner_faces[i][0];
+            const unsigned int  f = refinement.inner_faces[i][1];
+            const ReferenceCell face_type =
+              refinement.child_types[c].face_reference_cell(f);
+            const std::array<unsigned int, 4> vertices =
+              child_face_vertices(c, f);
+            const auto &new_face = new_faces[i];
+
+            // the lines of the face run between the vertices given by the
+            // faces of the face's reference cell
+            std::array<raw_line_iterator, 4> face_lines;
+            std::array<std::array<unsigned int, 2>, 4> face_line_vertices;
+            for (const unsigned int l : face_type.face_indices())
+              {
+                face_line_vertices[l] = {
+                  {vertices[face_type.face_to_cell_vertices(
+                     l, 0, numbers::default_geometric_orientation)],
+                   vertices[face_type.face_to_cell_vertices(
+                     l, 1, numbers::default_geometric_orientation)]}};
+                face_lines[l] = lines.at(
+                  line_key(face_line_vertices[l][0], face_line_vertices[l][1]));
+              }
+
+            triangulation.faces->set_quad_type(new_face->index(), face_type);
+            if (face_type == ReferenceCells::Triangle)
+              new_face->set_bounding_object_indices({face_lines[0]->index(),
+                                                     face_lines[1]->index(),
+                                                     face_lines[2]->index()});
+            else
+              new_face->set_bounding_object_indices({face_lines[0]->index(),
+                                                     face_lines[1]->index(),
+                                                     face_lines[2]->index(),
+                                                     face_lines[3]->index()});
+
+            for (const unsigned int l : face_type.face_indices())
+              {
+                const std::array<unsigned int, 2> line_vertices = {
+                  {face_lines[l]->vertex_index(0),
+                   face_lines[l]->vertex_index(1)}};
+                const std::array<unsigned int, 2> face_line = face_line_vertices[l];
+                new_face->set_line_orientation(
+                  l,
+                  ReferenceCells::Line.get_combined_orientation(
+                    make_array_view(line_vertices),
+                    make_array_view(face_line)));
+              }
+
+            faces[face_key(vertices, face_type.n_vertices())] = new_face;
+          }
+
+        for (unsigned int c = 0; c < refinement.n_children; ++c)
+          {
+            const auto         &new_cell   = new_cells[c];
+            const ReferenceCell child_type = refinement.child_types[c];
+            Assert(new_cell->reference_cell() == child_type,
+                   ExcInternalError());
+
+            std::array<raw_quad_iterator, 5>            cell_faces;
+            std::array<std::array<unsigned int, 4>, 5> cell_face_vertices;
+            for (const unsigned int f : child_type.face_indices())
+              {
+                cell_face_vertices[f] = child_face_vertices(c, f);
+                cell_faces[f]         = faces.at(
+                  face_key(cell_face_vertices[f],
+                           child_type.face_reference_cell(f).n_vertices()));
+              }
+
+            if (child_type == ReferenceCells::Tetrahedron)
+              new_cell->set_bounding_object_indices({cell_faces[0]->index(),
+                                                     cell_faces[1]->index(),
+                                                     cell_faces[2]->index(),
+                                                     cell_faces[3]->index()});
+            else
+              new_cell->set_bounding_object_indices({cell_faces[0]->index(),
+                                                     cell_faces[1]->index(),
+                                                     cell_faces[2]->index(),
+                                                     cell_faces[3]->index(),
+                                                     cell_faces[4]->index()});
+
+            for (const unsigned int f : child_type.face_indices())
+              {
+                const unsigned int n_face_vertices = cell_faces[f]->n_vertices();
+                std::array<unsigned int, 4> face_vertices;
+                for (unsigned int v = 0; v < n_face_vertices; ++v)
+                  face_vertices[v] = cell_faces[f]->vertex_index(v);
+                new_cell->set_combined_face_orientation(
+                  f,
+                  cell_faces[f]->reference_cell().get_combined_orientation(
+                    make_array_view(cell_face_vertices[f].cbegin(),
+                                    cell_face_vertices[f].cbegin() +
+                                      n_face_vertices),
+                    make_array_view(face_vertices.cbegin(),
+                                    face_vertices.cbegin() + n_face_vertices)));
+              }
+          }
+      }
+
+
+
       template <int spacedim>
       static typename Triangulation<3, spacedim>::DistortedCellList
       execute_refinement_isotropic(Triangulation<3, spacedim> &triangulation,
@@ -6684,18 +7015,29 @@ namespace internal
 
                     // Now count up how many new cells, faces, edges, and
                     // vertices we will need to allocate to do this refinement.
-                    new_cells += cell_reference_cell.n_isotropic_children();
-
                     switch (cell_reference_cell)
                       {
                         case ReferenceCells::Tetrahedron:
-                          needed_lines_single += 1;
-                          needed_faces_single += 8;
+                          if (is_tetrahedron_inside_pyramid(cell))
+                            {
+                              new_cells += 6;
+                              needed_faces_single += 5;
+                            }
+                          else
+                            {
+                              new_cells += 8;
+                              needed_lines_single += 1;
+                              needed_faces_single += 8;
+                            }
                           break;
 
                         case ReferenceCells::Pyramid:
-                          // TODO: Pyramid
-                          DEAL_II_NOT_IMPLEMENTED();
+                          // the 4 lines from the center of the base to the
+                          // middles of the upper lines, the 13 faces between
+                          // the children (see pyramid_refinement())
+                          new_cells += 10;
+                          needed_lines_single += 4;
+                          needed_faces_single += 13;
                           break;
 
                         case ReferenceCells::Wedge:
@@ -6708,11 +7050,13 @@ namespace internal
                           //   z-direction. Rest will be provided via refinement
                           //   of faces. Store them all as singles. See also
                           //   https://link.springer.com/article/10.1007/BF01221213
+                          new_cells += 8;
                           needed_lines_single += 3;
                           needed_faces_single += 10;
                           break;
 
                         case ReferenceCells::Hexahedron:
+                          new_cells += 8;
                           // One vertex in the center of the parent
                           ++needed_vertices;
                           needed_lines_single += 6;
@@ -7368,23 +7712,37 @@ namespace internal
 
                 const auto cell_reference_cell = cell->reference_cell();
 
+                // pyramids and the tetrahedra inside them are refined from
+                // a list of child vertices
+                const bool inside_pyramid =
+                  is_tetrahedron_inside_pyramid(cell);
+                const VertexBasedRefinement *vertex_based_refinement =
+                  cell_reference_cell == ReferenceCells::Pyramid ?
+                    &pyramid_refinement() :
+                    (inside_pyramid ? &tetrahedron_inside_pyramid_refinement() :
+                                      nullptr);
+
                 unsigned int       n_new_lines = 0;
                 unsigned int       n_new_faces = 0;
                 const unsigned int n_new_cells =
-                  cell_reference_cell.n_isotropic_children();
+                  vertex_based_refinement != nullptr ?
+                    vertex_based_refinement->n_children :
+                    cell_reference_cell.n_isotropic_children();
 
                 // Must match the information used close the beginning of this
                 // function.
                 switch (cell_reference_cell)
                   {
                     case ReferenceCells::Tetrahedron:
-                      n_new_lines = 1;
-                      n_new_faces = 8;
+                      n_new_lines = inside_pyramid ? 0 : 1;
+                      n_new_faces = inside_pyramid ? 5 : 8;
+                      if (inside_pyramid)
+                        cell->set_refinement_case(RefinementCase<dim>::cut_z);
                       break;
 
                     case ReferenceCells::Pyramid:
-                      DEAL_II_NOT_IMPLEMENTED();
-                      // TODO: Pyramid
+                      n_new_lines = 4;
+                      n_new_faces = 13;
                       break;
 
                     case ReferenceCells::Wedge:
@@ -7418,7 +7776,7 @@ namespace internal
                     new_lines[i]->set_manifold_id(cell->manifold_id());
                   }
 
-                std::array<raw_quad_iterator, 12> new_faces;
+                std::array<raw_quad_iterator, 13> new_faces;
                 for (unsigned int i = 0; i < n_new_faces; ++i)
                   {
                     new_faces[i] =
@@ -7471,10 +7829,13 @@ namespace internal
 
                       auto &new_cell = new_cells[i];
 
-                      // children have the same type as the parent
+                      // children have the same type as the parent, except
+                      // for pyramids and the tetrahedra inside them
                       triangulation.levels[new_cell->level()]
                         ->reference_cell[new_cell->index()] =
-                        cell_reference_cell;
+                        vertex_based_refinement != nullptr ?
+                          vertex_based_refinement->child_types[i] :
+                          cell_reference_cell;
 
                       // Copy parent data to child.
                       AssertIsNotUsed(new_cell);
@@ -7509,6 +7870,14 @@ namespace internal
                     cell->set_children(2 * i, new_cells[2 * i]->index());
                 } // SETUP_CELLS
 
+                if (vertex_based_refinement != nullptr)
+                  create_children_from_vertices(triangulation,
+                                                cell,
+                                                *vertex_based_refinement,
+                                                new_lines,
+                                                new_faces,
+                                                new_cells);
+                else
                 { // CREATE_CELLS
                   // Build a list of all relevant vertices required for
                   // - The creation of additional faces not generated by the
@@ -14573,8 +14942,10 @@ namespace internal
 
             const auto ref_cell = cell->reference_cell();
 
+            // the cut line of tetrahedra (1-3) or the split of tetrahedra
+            // inside pyramids (cut_z)
             if (ref_cell.is_simplex())
-              Assert(cell->refinement_case() > 0 && cell->refinement_case() < 4,
+              Assert(cell->refinement_case() > 0 && cell->refinement_case() <= 4,
                      ExcInternalError());
             else
               Assert(cell->refinement_case() ==
@@ -14652,16 +15023,20 @@ namespace internal
                   break;
 
                 case ReferenceCells::Tetrahedron:
+                case ReferenceCells::Pyramid:
                 case ReferenceCells::Wedge:
                   {
                     // the inner faces and lines are the ones of the children
                     // that are not children of the faces of the cell or lines
                     // of these. tetrahedra: the 8 faces of the inner
-                    // octahedron's tetrahedra and the cut line. wedges: the
-                    // 3+3 quadrilaterals between the corner children and the
-                    // middle child of each layer, the 4 triangles between the
-                    // layers and the 3 inner lines of these triangles. there
-                    // is no inner vertex.
+                    // octahedron's tetrahedra and the cut line, or for
+                    // tetrahedra inside pyramids the 5 faces of the 2 inner
+                    // pyramids. pyramids: the 13 faces and 4 lines of
+                    // pyramid_refinement(). wedges: the 3+3 quadrilaterals
+                    // between the corner children and the middle child of
+                    // each layer, the 4 triangles between the layers and the
+                    // 3 inner lines of these triangles. there is no inner
+                    // vertex.
                     std::set<unsigned int> outer_quads, outer_lines;
                     for (const unsigned int f : cell->face_indices())
                       for (unsigned int c = 0; c < cell->face(f)->n_children();
@@ -14687,14 +15062,25 @@ namespace internal
                               inner_lines.insert(child->line_index(l)).second)
                             lines_to_delete.push_back(child->line(l));
                       }
+                    const bool inside_pyramid =
+                      ref_cell == ReferenceCells::Tetrahedron &&
+                      cell->refinement_case() == RefinementCase<dim>::cut_z;
                     AssertDimension(quads_to_delete.size(),
-                                    ref_cell == ReferenceCells::Tetrahedron ?
-                                      8 :
-                                      10);
+                                    inside_pyramid ?
+                                      5 :
+                                      (ref_cell == ReferenceCells::Tetrahedron ?
+                                         8 :
+                                         (ref_cell == ReferenceCells::Pyramid ?
+                                            13 :
+                                            10)));
                     AssertDimension(lines_to_delete.size(),
-                                    ref_cell == ReferenceCells::Tetrahedron ?
-                                      1 :
-                                      3);
+                                    inside_pyramid ?
+                                      0 :
+                                      (ref_cell == ReferenceCells::Tetrahedron ?
+                                         1 :
+                                         (ref_cell == ReferenceCells::Pyramid ?
+                                            4 :
+                                            3)));
                   }
                   break;
 

@@ -3068,7 +3068,8 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
               neighbor->reference_cell().child_cell_on_face(
                 neighbor_neighbor,
                 subface,
-                neighbor->combined_face_orientation(neighbor_neighbor)) :
+                neighbor->combined_face_orientation(neighbor_neighbor),
+                neighbor->refinement_case()) :
               GeometryInfo<dim>::child_cell_on_face(neighbor->refinement_case(),
                                                     neighbor_neighbor,
                                                     subface,
@@ -3471,7 +3472,8 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
                       neighbor_face, 
                       subface, //subface_index,
                       neighbor->combined_face_orientation(
-                      neighbor_face));
+                      neighbor_face),
+                      neighbor->refinement_case());
 
               const auto neighbor_child_here = neighbor->child(child_index);
               {

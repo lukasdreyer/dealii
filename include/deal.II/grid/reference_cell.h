@@ -553,12 +553,18 @@ public:
    * <tt>face_flip</tt> and <tt>face_rotation</tt> and defaults to the standard
    * orientation. The concept of combined orientations is explained in this
    * @ref GlossCombinedOrientation "glossary" entry.
+   *
+   * The children of a tetrahedron depend on how it was refined, which is
+   * given by @p refinement_case, the refinement case of the cell: tetrahedra
+   * inside pyramids (refinement case RefinementPossibilities<3>::cut_z) are
+   * split into 4 tetrahedra and 2 pyramids instead of 8 tetrahedra. The
+   * argument is ignored for all other reference cells.
    */
   unsigned int
-  child_cell_on_face(
-    const unsigned int                 face,
-    const unsigned int                 subface,
-    const types::geometric_orientation combined_orientation) const;
+  child_cell_on_face(const unsigned int                 face,
+                     const unsigned int                 subface,
+                     const types::geometric_orientation combined_orientation,
+                     const std::uint8_t refinement_case = 0) const;
 
   /**
    * For a given vertex in a cell, return a pair of a face index and a
@@ -3064,9 +3070,10 @@ ReferenceCell::n_isotropic_children() const
       case ReferenceCells::Tetrahedron:
         return 8;
       case ReferenceCells::Pyramid:
-        // We haven't yet decided how to refine pyramids. Update this when we
-        // have
-        return 0;
+        // 6 pyramids and 4 tetrahedra, see the refinement of pyramids in
+        // tria.cc. Tetrahedra inside pyramids are split into 4 tetrahedra
+        // and 2 pyramids, which CellAccessor::n_children() accounts for.
+        return 10;
       case ReferenceCells::Wedge:
         return 8;
       case ReferenceCells::Hexahedron:
@@ -3285,7 +3292,8 @@ inline unsigned int
 ReferenceCell::child_cell_on_face(
   const unsigned int                 face,
   const unsigned int                 subface,
-  const types::geometric_orientation combined_orientation) const
+  const types::geometric_orientation combined_orientation,
+  const std::uint8_t                 refinement_case) const
 {
   AssertIndexRange(face, n_faces());
   AssertIndexRange(subface, face_reference_cell(face).n_isotropic_children());
@@ -3350,13 +3358,51 @@ ReferenceCell::child_cell_on_face(
                   /* face 3 */ {2,1,3,7}
               };
 
-            return child_table[face][std_subface];
+            // tetrahedra inside pyramids: corner tetrahedra 0-3 and the
+            // pyramids 4 (apex at the middle of line 0) and 5 (apex at the
+            // middle of line 5)
+            static constexpr unsigned int
+              child_table_pyramid_family[4][4] =
+              {
+                  /* face 0 */ {0,1,2,4},
+                  /* face 1 */ {1,0,3,4},
+                  /* face 2 */ {0,2,3,5},
+                  /* face 3 */ {2,1,3,5}
+              };
+
+            return refinement_case == RefinementPossibilities<3>::cut_z ?
+                     child_table_pyramid_family[face][std_subface] :
+                     child_table[face][std_subface];
 
         }
       case ReferenceCells::Pyramid:
         {
-          DEAL_II_NOT_IMPLEMENTED();
-          break;
+          // the children of a face in standard orientation, see the child
+          // vertices of the pyramid in tria.cc: the base pyramids 0-3 at the
+          // vertices 0-3, the tetrahedra 4-7 at the lines 0-3 of the base, the
+          // upside down pyramid 8 and the top pyramid 9. Children 0-2 of a
+          // triangle and all children of a quadrilateral lie at the face
+          // vertex with the same index, the last child of a triangle is the
+          // middle one.
+          static constexpr ndarray<unsigned int, 5, 4> child_table = {
+            {/* face 0 */ {{0, 1, 2, 3}},
+             /* face 1 */ {{0, 2, 9, 4}},
+             /* face 2 */ {{3, 1, 9, 5}},
+             /* face 3 */ {{1, 0, 9, 6}},
+             /* face 4 */ {{2, 3, 9, 7}}}};
+
+          const ReferenceCell face_reference_cell =
+            this->face_reference_cell(face);
+          if (face_reference_cell == ReferenceCells::Triangle && subface == 3)
+            return child_table[face][subface];
+
+          // the subface is given in the numbering of the face, so map it
+          // back to the face in standard orientation
+          return child_table[face][standard_to_real_face_vertex(
+            subface,
+            face,
+            face_reference_cell.get_inverse_combined_orientation(
+              combined_orientation))];
         }
       case ReferenceCells::Wedge:
         {
