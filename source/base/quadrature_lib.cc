@@ -2406,6 +2406,37 @@ QGaussPyramid<dim>::QGaussPyramid(const unsigned int n_points_1D)
       this->weights.emplace_back(0.10078588207983);
       this->weights.emplace_back(0.23254745125351);
     }
+  else if (n_points_1D > 2)
+    {
+      // a collapsed tensor product rule: Gauss points xi, eta in [-1,1]
+      // on the base and z in [0,1], mapped by x = (1-z) xi, y = (1-z) eta,
+      // with the Jacobian (1-z)^2. A polynomial of degree k in (x,y,z) becomes
+      // one of degree k+2 in z, so n_points_1D+1 points in z integrate degree
+      // 2 n_points_1D - 1 exactly, as the 1d Gauss rule with n_points_1D
+      // points.
+      if constexpr (dim == 3)
+        {
+          const QGauss<1> quad_base(n_points_1D);
+          const QGauss<1> quad_z(n_points_1D + 1);
+          for (unsigned int k = 0; k < quad_z.size(); ++k)
+            {
+              const double z     = quad_z.point(k)[0];
+              const double scale = (1. - z) * (1. - z);
+              for (unsigned int j = 0; j < quad_base.size(); ++j)
+                for (unsigned int i = 0; i < quad_base.size(); ++i)
+                  {
+                    const double xi  = 2. * quad_base.point(i)[0] - 1.;
+                    const double eta = 2. * quad_base.point(j)[0] - 1.;
+                    this->quadrature_points.emplace_back((1. - z) * xi,
+                                                         (1. - z) * eta,
+                                                         z);
+                    this->weights.emplace_back(4. * quad_base.weight(i) *
+                                               quad_base.weight(j) *
+                                               quad_z.weight(k) * scale);
+                  }
+            }
+        }
+    }
 
   AssertDimension(this->quadrature_points.size(), this->weights.size());
   Assert(this->quadrature_points.size() > 0,
