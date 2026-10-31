@@ -3341,6 +3341,33 @@ namespace FETools
               break;
 
             case 3:
+              if (reference_cell == ReferenceCells::Wedge ||
+                  reference_cell == ReferenceCells::Pyramid)
+                {
+                  // wedges and pyramids have faces of different shapes, so
+                  // the orientation of one face cannot be used for the
+                  // canonical face of the line below: the line of the face
+                  // runs (in the face's own numbering)
+                  // from its vertex a to its vertex b: compare the cell
+                  // vertex of a with the first vertex of the line of the cell
+                  const ReferenceCell face_reference_cell =
+                    reference_cell.face_reference_cell(face_no);
+                  const unsigned int a =
+                    face_reference_cell.face_to_cell_vertices(
+                      face_line, 0, numbers::default_geometric_orientation);
+                  const unsigned int cell_line =
+                    reference_cell.face_to_cell_lines(face_no,
+                                                      face_line,
+                                                      combined_orientation);
+                  if (reference_cell.face_to_cell_vertices(
+                        face_no, a, combined_orientation) ==
+                      reference_cell.line_to_cell_vertices(cell_line, 0))
+                    adjusted_dof_index_on_line = dof_index_on_line;
+                  else
+                    adjusted_dof_index_on_line =
+                      fe.n_dofs_per_line() - dof_index_on_line - 1;
+                }
+              else
               {
                 // Line orientations are not consistent between faces of some
                 // reference cells (such as tetrahedra): e.g., a tet's first
@@ -3403,13 +3430,19 @@ namespace FETools
         const unsigned int index =
           face_dof_index - fe.get_first_face_quad_index(face_no);
 
-        // Rotating DoFs defined on quadrilateral or triangular faces may
-        // require additional information about how those elements distribute
-        // DoFs on their faces: no elements actually support this yet
-        Assert((fe.n_dofs_per_quad(face_no) <= 1) ||
-                 combined_orientation == numbers::default_geometric_orientation,
-               ExcNotImplemented());
-        return fe.get_first_quad_index(face_no) + index;
+        // With several DoFs inside the face, the face's own numbering of them
+        // is the one of the cell permuted by the orientation, see
+        // FiniteElement::adjust_quad_dof_index_for_face_orientation(), which
+        // maps the index in the cell to the one in the face: invert it
+        if (fe.n_dofs_per_quad(face_no) <= 1 ||
+            combined_orientation == numbers::default_geometric_orientation)
+          return fe.get_first_quad_index(face_no) + index;
+        for (unsigned int k = 0; k < fe.n_dofs_per_quad(face_no); ++k)
+          if (fe.adjust_quad_dof_index_for_face_orientation(
+                k, face_no, combined_orientation) == index)
+            return fe.get_first_quad_index(face_no) + k;
+        DEAL_II_ASSERT_UNREACHABLE();
+        return numbers::invalid_unsigned_int;
       }
   }
 } // namespace FETools
