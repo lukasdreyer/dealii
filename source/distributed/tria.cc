@@ -2451,8 +2451,14 @@ namespace parallel
       typename dealii::internal::amr::types<dim>::scheme_collection
         *scheme_collection = t8_scheme_new_standalone();
       //      scheme_collection = t8_scheme_new_default();
-      parallel_forest = t8_forest_new_uniform(
-        cmesh, scheme_collection, 0, 1, this->mpi_communicator);
+      // like t8_forest_new_uniform, but with ghosts across faces, edges and
+      // vertices as in all later forests (adapt, partition)
+      t8_forest_init(&parallel_forest);
+      t8_forest_set_cmesh(parallel_forest, cmesh, this->mpi_communicator);
+      t8_forest_set_scheme(parallel_forest, scheme_collection);
+      t8_forest_set_level(parallel_forest, 0);
+      t8_forest_set_ghost(parallel_forest, 1, T8_GHOST_VERTICES);
+      t8_forest_commit(parallel_forest);
       t8_forest_set_user_data(parallel_forest, this);
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
       // parallel_ghost= parallel_forest->ghosts;
