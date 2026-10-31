@@ -1,0 +1,19 @@
+
+DEAL:degree 3::nodal FE_SimplexP<3>(3): yes
+DEAL:degree 3::nodal FE_WedgeP<3>(3): yes
+DEAL:degree 3::nodal FE_PyramidP<3>(3): yes
+DEAL:degree 3::rotated wedges: cells 240, dofs 4838, constraints 1510, face dof errors 0, continuous, exact
+DEAL:degree 3::rotated hexahedra and wedges: cells 159, dofs 4574, constraints 1480, face dof errors 0, continuous, exact
+DEAL:degree 3::wedges below tetrahedra: cells 466, dofs 4945, constraints 1715, face dof errors 0, continuous, exact
+DEAL:degree 3::rotated pyramids: cells 869, dofs 9287, constraints 3880, face dof errors 0, continuous, exact
+DEAL:degree 3::rotated pyramids and hexahedra: cells 504, dofs 7472, constraints 2840, face dof errors 0, continuous, exact
+DEAL:degree 3::rotated pyramids below tetrahedra: cells 820, dofs 7188, constraints 3020, face dof errors 0, continuous, exact
+DEAL:degree 4::nodal FE_SimplexP<3>(4): yes
+DEAL:degree 4::nodal FE_WedgeP<3>(4): yes
+DEAL:degree 4::nodal FE_PyramidP<3>(4): yes
+DEAL:degree 4::rotated wedges: cells 240, dofs 10497, constraints 2688, face dof errors 0, continuous, exact
+DEAL:degree 4::rotated hexahedra and wedges: cells 159, dofs 9928, constraints 2639, face dof errors 0, continuous, exact
+DEAL:degree 4::wedges below tetrahedra: cells 466, dofs 10648, constraints 3059, face dof errors 0, continuous, exact
+DEAL:degree 4::rotated pyramids: cells 869, dofs 20123, constraints 7000, face dof errors 0, continuous, exact
+DEAL:degree 4::rotated pyramids and hexahedra: cells 504, dofs 16263, constraints 5124, face dof errors 0, continuous, exact
+DEAL:degree 4::rotated pyramids below tetrahedra: cells 820, dofs 15478, constraints 5439, face dof errors 0, continuous, exact
