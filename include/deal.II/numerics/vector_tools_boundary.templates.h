@@ -382,6 +382,56 @@ namespace VectorTools
                         }
                     }
                 }
+
+          // In 3d, a line on the boundary need not lie on a boundary face of
+          // the cell (e.g. the lines of the base of a pyramid inside a
+          // cube). If the cells whose boundary faces contain it are refined,
+          // their DoFs on it are hanging nodes constrained by the DoFs of
+          // this line, which then have to get the boundary values
+          // themselves. Set the DoFs on all lines on the boundary from the
+          // support points of the cells (for elements with support points).
+          if constexpr (dim == 3)
+            {
+              std::vector<types::global_dof_index> cell_dofs;
+              for (const auto &cell : dof.active_cell_iterators())
+                if (!cell->is_artificial())
+                  {
+                    const FiniteElement<dim, spacedim> &fe = cell->get_fe();
+                    if (fe.n_dofs_per_line() == 0 || !fe.has_support_points())
+                      continue;
+                    for (const unsigned int l : cell->line_indices())
+                      {
+                        const auto function =
+                          function_map.find(cell->line(l)->boundary_id());
+                        if (function == function_map.end())
+                          continue;
+
+                        cell_dofs.resize(fe.n_dofs_per_cell());
+                        cell->get_dof_indices(cell_dofs);
+                        const Mapping<dim, spacedim> &cell_mapping =
+                          mapping_collection[mapping_collection.size() == 1 ?
+                                               0 :
+                                               cell->active_fe_index()];
+                        for (unsigned int k = 0; k < fe.n_dofs_per_line(); ++k)
+                          {
+                            const unsigned int i = fe.get_first_line_index() +
+                                                   l * fe.n_dofs_per_line() +
+                                                   k;
+                            if (!fe.is_primitive(i))
+                              continue;
+                            const unsigned int component =
+                              fe.system_to_component_index(i).first;
+                            if (component_mask[component] == false)
+                              continue;
+                            const Point<spacedim> x =
+                              cell_mapping.transform_unit_to_real_cell(
+                                cell, fe.get_unit_support_points()[i]);
+                            boundary_values[cell_dofs[i]] =
+                              function->second->value(x, component);
+                          }
+                      }
+                  }
+            }
         }
     } // end of interpolate_boundary_values
   }   // namespace internal
