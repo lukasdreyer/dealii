@@ -551,6 +551,16 @@ FE_WedgeP<dim, spacedim>::compare_for_domination(
       else
         return FiniteElementDomination::other_element_dominates;
     }
+  else if (const FE_PyramidP<dim, spacedim> *fe_pp_other =
+             dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other))
+    {
+      if (this->degree < fe_pp_other->degree)
+        return FiniteElementDomination::this_element_dominates;
+      else if (this->degree == fe_pp_other->degree)
+        return FiniteElementDomination::either_element_can_dominate;
+      else
+        return FiniteElementDomination::other_element_dominates;
+    }
   else if (const FE_Nothing<dim> *fe_nothing =
              dynamic_cast<const FE_Nothing<dim> *>(&fe_other))
     {
@@ -577,7 +587,8 @@ FE_WedgeP<dim, spacedim>::hp_vertex_dof_identities(
   (void)fe_other;
 
   Assert((dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other)) ||
-           (dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)),
+           (dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)) ||
+           (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other)),
          ExcNotImplemented());
 
   return {{0, 0}};
@@ -593,7 +604,8 @@ FE_WedgeP<dim, spacedim>::hp_line_dof_identities(
   (void)fe_other;
 
   Assert((dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other)) ||
-           (dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)),
+           (dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)) ||
+           (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other)),
          ExcNotImplemented());
 
   std::vector<std::pair<unsigned int, unsigned int>> result;
@@ -617,14 +629,18 @@ FE_WedgeP<dim, spacedim>::hp_quad_dof_identities(
 
   AssertIndexRange(face_no, 5);
 
+  // the triangles next to tetrahedra or pyramids, the quadrilaterals next to
+  // hexahedra or pyramids (at most one DoF inside a face for degree <= 2)
   if (face_no < 2)
     {
-      Assert((dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other)),
+      Assert((dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other)) ||
+               (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other)),
              ExcNotImplemented());
     }
   else
     {
-      Assert((dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)),
+      Assert((dynamic_cast<const FE_Q<dim, spacedim> *>(&fe_other)) ||
+               (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other)),
              ExcNotImplemented());
     }
 
