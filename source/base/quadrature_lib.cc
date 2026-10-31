@@ -1702,8 +1702,10 @@ QGaussSimplex<dim>::QGaussSimplex(const unsigned int n_points_1D)
           this->weights.emplace_back(q12 * w2);
           this->weights.emplace_back(q12 * w2);
         }
-      else if (n_points_1D == 4)
+      else if (n_points_1D >= 4)
         {
+          // also for more points (in 3d, Witherden-Vincent rules exist for
+          // up to 5 points)
           Quadrature<dim>::operator=(
             QWitherdenVincentSimplex<dim>(n_points_1D));
         }
@@ -1759,8 +1761,10 @@ QGaussSimplex<dim>::QGaussSimplex(const unsigned int n_points_1D)
           Quadrature<dim>::operator=(
             QWitherdenVincentSimplex<dim>(n_points_1D));
         }
-      else if (n_points_1D == 4)
+      else if (n_points_1D >= 4)
         {
+          // also for more points (in 3d, Witherden-Vincent rules exist for
+          // up to 5 points)
           Quadrature<dim>::operator=(
             QWitherdenVincentSimplex<dim>(n_points_1D));
         }
