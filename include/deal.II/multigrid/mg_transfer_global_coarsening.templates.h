@@ -58,7 +58,7 @@ namespace MGTransferGlobalCoarseningTools
 
     const auto create_new_empty_triangulation =
       [&]() -> std::shared_ptr<Triangulation<dim, spacedim>> {
-#ifdef DEAL_II_WITH_P4EST
+#if defined(DEAL_II_WITH_P4EST) || defined(DEAL_II_WITH_T8CODE)
       if (const auto fine_triangulation = dynamic_cast<
             const parallel::distributed::Triangulation<dim, spacedim> *>(
             &fine_triangulation_in))
@@ -122,7 +122,7 @@ namespace MGTransferGlobalCoarseningTools
     std::vector<std::shared_ptr<const Triangulation<dim, spacedim>>>
       coarse_grid_triangulations(fine_triangulation_in.n_global_levels());
 
-#ifndef DEAL_II_WITH_P4EST
+#if !defined(DEAL_II_WITH_P4EST) && !defined(DEAL_II_WITH_T8CODE)
     DEAL_II_NOT_IMPLEMENTED();
     (void)policy;
     (void)keep_fine_triangulation;

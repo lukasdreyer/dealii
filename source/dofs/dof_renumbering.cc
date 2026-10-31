@@ -1409,7 +1409,7 @@ namespace DoFRenumbering
           dynamic_cast<const parallel::distributed::Triangulation<dim, spacedim>
                          *>(&dof_handler.get_triangulation()))
       {
-#ifdef DEAL_II_WITH_P4EST
+#if defined(DEAL_II_WITH_P4EST) || defined(DEAL_II_WITH_T8CODE)
         // this is a distributed Triangulation. we need to traverse the coarse
         // cells in the order p4est does to match the z-order actually used
         // by p4est. this requires using the renumbering of coarse cells

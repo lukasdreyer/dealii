@@ -12,7 +12,7 @@
 
 #include <deal.II/distributed/cell_data_transfer.templates.h>
 
-#ifdef DEAL_II_WITH_P4EST
+#if defined(DEAL_II_WITH_P4EST) || defined(DEAL_II_WITH_T8CODE)
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -21,4 +21,4 @@ DEAL_II_NAMESPACE_OPEN
 
 DEAL_II_NAMESPACE_CLOSE
 
-#endif /* DEAL_II_WITH_P4EST */
+#endif /* DEAL_II_WITH_P4EST || DEAL_II_WITH_T8CODE */

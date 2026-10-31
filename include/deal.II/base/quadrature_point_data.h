@@ -319,7 +319,7 @@ public:
 };
 
 
-#ifdef DEAL_II_WITH_P4EST
+#if defined(DEAL_II_WITH_P4EST) || defined(DEAL_II_WITH_T8CODE)
 namespace parallel
 {
   namespace distributed
@@ -1042,7 +1042,7 @@ namespace parallel
 
 } // namespace parallel
 
-#  endif // DEAL_II_WITH_P4EST
+#  endif // DEAL_II_WITH_P4EST || DEAL_II_WITH_T8CODE
 
 #endif // DOXYGEN
 DEAL_II_NAMESPACE_CLOSE
