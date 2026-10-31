@@ -23,6 +23,7 @@
 
 #include <deal.II/fe/fe_dgp.h>
 #include <deal.II/fe/fe_dgq.h>
+#include <deal.II/fe/fe_face_dof_tools.h>
 #include <deal.II/fe/fe_hermite.h>
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_pyramid_p.h>
@@ -845,61 +846,21 @@ FE_Q_Base<dim, spacedim>::hp_line_dof_identities(
 
       return identities;
     }
-  else if (const FE_SimplexP<dim, spacedim> *fe_p_other =
-             dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other))
+  else if (dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other) !=
+           nullptr)
     {
       // DoFs are located along lines, so two dofs are identical if they are
-      // located at identical positions. If we had only equidistant points, we
-      // could simply check for similarity like (i+1)*q == (j+1)*p, but we
-      // might have other support points (e.g. Gauss-Lobatto
-      // points). Therefore, read the points in unit_support_points for the
-      // first coordinate direction. For FE_Q, we take the lexicographic
-      // ordering of the line support points in the first direction (i.e.,
-      // x-direction), which we access between index 1 and p-1 (index 0 and p
-      // are vertex dofs). For FE_SimplexP, they are currently hard-coded and we
-      // iterate over points on the first line which begin after the vertex
-      // points in the complete list of unit support points
-
-      Assert(fe_p_other->degree <= 2, ExcNotImplemented());
-
-      const std::vector<unsigned int> &index_map_inverse_q =
-        this->get_poly_space_numbering_inverse();
-
-      std::vector<std::pair<unsigned int, unsigned int>> identities;
-
-      for (unsigned int i = 0; i < this->degree - 1; ++i)
-        for (unsigned int j = 0; j < fe_p_other->degree - 1; ++j)
-          if (std::fabs(
-                this->unit_support_points[index_map_inverse_q[i + 1]][0] -
-                fe_p_other->get_unit_support_points()
-                  [j + fe_p_other->reference_cell().n_vertices()][0]) < 1e-14)
-            identities.emplace_back(i, j);
-
-      return identities;
+      // located at identical positions (the support points of FE_Q may be
+      // Gauss-Lobatto points, those of FE_SimplexP are equidistant)
+      return internal::FEFaceDofTools::line_dof_identities(*this, fe_other);
     }
   else if ((dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) !=
             nullptr) ||
            (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) !=
             nullptr))
     {
-      // FE_WedgeP and FE_PyramidP have at most one DoF on a line, at its
-      // midpoint (degree 2)
-      const auto *fe_wp_other = &fe_other;
-      Assert(fe_wp_other->degree <= 2, ExcNotImplemented());
-
-      const std::vector<unsigned int> &index_map_inverse_q =
-        this->get_poly_space_numbering_inverse();
-
-      std::vector<std::pair<unsigned int, unsigned int>> identities;
-
-      if (fe_wp_other->degree == 2)
-        for (unsigned int i = 0; i < this->degree - 1; ++i)
-          if (std::fabs(
-                this->unit_support_points[index_map_inverse_q[i + 1]][0] -
-                0.5) < 1e-14)
-            identities.emplace_back(i, 0);
-
-      return identities;
+      // the DoFs at identical positions on the line
+      return internal::FEFaceDofTools::line_dof_identities(*this, fe_other);
     }
   else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
     {
@@ -976,29 +937,11 @@ FE_Q_Base<dim, spacedim>::hp_quad_dof_identities(
            (dynamic_cast<const FE_PyramidP<dim, spacedim> *>(&fe_other) !=
             nullptr))
     {
-      // FE_WedgeP and FE_PyramidP have at most one DoF on a quadrilateral, at
-      // its center (degree 2)
-      const auto *fe_wp_other = &fe_other;
-      Assert(fe_wp_other->degree <= 2, ExcNotImplemented());
-
-      const unsigned int               p = this->degree;
-      const std::vector<unsigned int> &index_map_inverse =
-        this->get_poly_space_numbering_inverse();
-
-      std::vector<std::pair<unsigned int, unsigned int>> identities;
-
-      if (fe_wp_other->degree == 2)
-        for (unsigned int i1 = 0; i1 < p - 1; ++i1)
-          for (unsigned int i2 = 0; i2 < p - 1; ++i2)
-            if ((std::fabs(
-                   this->unit_support_points[index_map_inverse[i1 + 1]][0] -
-                   0.5) < 1e-14) &&
-                (std::fabs(
-                   this->unit_support_points[index_map_inverse[i2 + 1]][0] -
-                   0.5) < 1e-14))
-              identities.emplace_back(i1 * (p - 1) + i2, 0);
-
-      return identities;
+      // the DoFs at identical positions inside the quadrilateral
+      // all faces of hexahedra are quadrilaterals
+      return internal::FEFaceDofTools::face_dof_identities(*this,
+                                                           fe_other,
+                                                           0);
     }
   else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
     {

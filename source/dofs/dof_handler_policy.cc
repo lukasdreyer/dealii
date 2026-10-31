@@ -120,10 +120,16 @@ namespace internal
 
                   case 2:
                     {
-                      // TODO: Change set to types::fe_index
-                      complete_identities = fes.hp_quad_dof_identities(
-                        std::set<unsigned int>{fe_index_1, fe_index_2},
-                        face_no);
+                      // face_no is the number of the face in the cell of
+                      // fe_index_1, so only ask that element: for cells of
+                      // different reference cells (e.g. a pyramid next to a
+                      // hexahedron), the face of the same number of the other
+                      // element can have another shape
+                      for (const auto &[i, j] :
+                           fes[fe_index_1].hp_quad_dof_identities(
+                             fes[fe_index_2], face_no))
+                        complete_identities.push_back(
+                          {{fe_index_1, i}, {fe_index_2, j}});
                       break;
                     }
 
