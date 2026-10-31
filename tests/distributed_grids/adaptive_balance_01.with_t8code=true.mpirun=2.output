@@ -1,0 +1,41 @@
+
+DEAL:2d:triangles::cells 26, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:triangles::cells 134, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:triangles::cells 152, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:triangles::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:triangles from rotated quads::cells 58, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:triangles from rotated quads::cells 76, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:triangles from rotated quads::cells 148, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:triangles from rotated quads::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:rotated quads::cells 23, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:rotated quads::cells 77, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:rotated quads::cells 95, levels 8, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:rotated quads::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:quads and triangles::cells 26, levels 7, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:quads and triangles::cells 98, levels 8, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:quads and triangles::cells 116, levels 8, unbalanced pairs 0, artificial neighbors 0
+DEAL:2d:quads and triangles::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:tetrahedra::cells 68, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:tetrahedra::cells 964, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:tetrahedra::cells 992, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:tetrahedra::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:tetrahedra from rotated hexahedra::cells 160, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:tetrahedra from rotated hexahedra::cells 440, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:tetrahedra from rotated hexahedra::cells 776, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:tetrahedra from rotated hexahedra::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated hexahedra::cells 30, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated hexahedra::cells 86, levels 6, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated hexahedra::cells 114, levels 6, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated hexahedra::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated wedges::cells 44, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated wedges::cells 380, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated wedges::cells 408, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated wedges::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated hexahedra and wedges::cells 40, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated hexahedra and wedges::cells 376, levels 6, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated hexahedra and wedges::cells 404, levels 6, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated hexahedra and wedges::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated wedges below tetrahedra::cells 88, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated wedges below tetrahedra::cells 592, levels 6, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated wedges below tetrahedra::cells 760, levels 6, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated wedges below tetrahedra::coarsening: unbalanced pairs 0, artificial neighbors 0

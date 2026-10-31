@@ -1,0 +1,61 @@
+
+DEAL:2d:triangles::cells 8, levels 1, volume 1.00000, level moment 0.00000, center moment 0.500000 0.500000
+DEAL:2d:triangles::cells 14, levels 2, volume 1.00000, level moment 0.250000, center moment 0.500000 0.500000
+DEAL:2d:triangles::cells 35, levels 3, volume 1.00000, level moment 0.937500, center moment 0.500000 0.500000
+DEAL:2d:triangles::cells 44, levels 3, volume 1.00000, level moment 1.12500, center moment 0.500000 0.500000
+DEAL:2d:triangles::cells 47, levels 3, volume 1.00000, level moment 1.15625, center moment 0.500000 0.500000
+DEAL:2d:triangles::cells 8, levels 1, volume 1.00000, level moment 0.00000, center moment 0.500000 0.500000
+DEAL:2d:triangles from rotated quads::cells 40, levels 1, volume 5.00000, level moment 0.00000, center moment 7.50000 2.50000
+DEAL:2d:triangles from rotated quads::cells 70, levels 2, volume 5.00000, level moment 1.25000, center moment 7.50000 2.50000
+DEAL:2d:triangles from rotated quads::cells 145, levels 3, volume 5.00000, level moment 2.87500, center moment 7.50000 2.50000
+DEAL:2d:triangles from rotated quads::cells 184, levels 3, volume 5.00000, level moment 4.12500, center moment 7.50000 2.50000
+DEAL:2d:triangles from rotated quads::cells 184, levels 3, volume 5.00000, level moment 4.12500, center moment 7.50000 2.50000
+DEAL:2d:triangles from rotated quads::cells 40, levels 1, volume 5.00000, level moment 0.00000, center moment 7.50000 2.50000
+DEAL:2d:rotated quads::cells 5, levels 1, volume 5.00000, level moment 0.00000, center moment 7.50000 2.50000
+DEAL:2d:rotated quads::cells 11, levels 2, volume 5.00000, level moment 2.00000, center moment 7.50000 2.50000
+DEAL:2d:rotated quads::cells 20, levels 3, volume 5.00000, level moment 3.50000, center moment 7.50000 2.50000
+DEAL:2d:rotated quads::cells 29, levels 3, volume 5.00000, level moment 5.75000, center moment 7.50000 2.50000
+DEAL:2d:rotated quads::cells 29, levels 3, volume 5.00000, level moment 5.75000, center moment 7.50000 2.50000
+DEAL:2d:rotated quads::cells 5, levels 1, volume 5.00000, level moment 0.00000, center moment 7.50000 2.50000
+DEAL:2d:quads and triangles::cells 8, levels 1, volume 6.00000, level moment 0.00000, center moment 9.00000 6.00000
+DEAL:2d:quads and triangles::cells 11, levels 2, volume 6.00000, level moment 1.00000, center moment 9.00000 6.00000
+DEAL:2d:quads and triangles::cells 14, levels 2, volume 6.00000, level moment 2.00000, center moment 9.00000 6.00000
+DEAL:2d:quads and triangles::cells 17, levels 2, volume 6.00000, level moment 3.00000, center moment 9.00000 6.00000
+DEAL:2d:quads and triangles::cells 23, levels 2, volume 6.00000, level moment 4.00000, center moment 9.00000 6.00000
+DEAL:2d:quads and triangles::cells 8, levels 1, volume 6.00000, level moment 0.00000, center moment 9.00000 6.00000
+DEAL:3d:tetrahedra::cells 40, levels 1, volume 1.00000, level moment 0.00000, center moment 0.500000 0.500000 0.500000
+DEAL:3d:tetrahedra::cells 75, levels 2, volume 1.00000, level moment 0.125000, center moment 0.500000 0.500000 0.500000
+DEAL:3d:tetrahedra::cells 306, levels 3, volume 1.00000, level moment 0.872396, center moment 0.500000 0.500000 0.500000
+DEAL:3d:tetrahedra::cells 334, levels 3, volume 1.00000, level moment 0.885417, center moment 0.500000 0.500000 0.500000
+DEAL:3d:tetrahedra::cells 348, levels 3, volume 1.00000, level moment 0.911458, center moment 0.500000 0.500000 0.500000
+DEAL:3d:tetrahedra::cells 40, levels 1, volume 1.00000, level moment 0.00000, center moment 0.500000 0.500000 0.500000
+DEAL:3d:tetrahedra from rotated hexahedra::cells 48, levels 1, volume 2.00000, level moment 0.00000, center moment 2.00000 1.00000 1.00000
+DEAL:3d:tetrahedra from rotated hexahedra::cells 139, levels 2, volume 2.00000, level moment 0.541667, center moment 2.00000 1.00000 1.00000
+DEAL:3d:tetrahedra from rotated hexahedra::cells 412, levels 3, volume 2.00000, level moment 1.43750, center moment 2.00000 1.00000 1.00000
+DEAL:3d:tetrahedra from rotated hexahedra::cells 503, levels 3, volume 2.00000, level moment 1.68750, center moment 2.00000 1.00000 1.00000
+DEAL:3d:tetrahedra from rotated hexahedra::cells 531, levels 3, volume 2.00000, level moment 1.78125, center moment 2.00000 1.00000 1.00000
+DEAL:3d:tetrahedra from rotated hexahedra::cells 48, levels 1, volume 2.00000, level moment 0.00000, center moment 2.00000 1.00000 1.00000
+DEAL:3d:rotated hexahedra::cells 2, levels 1, volume 2.00000, level moment 0.00000, center moment 2.00000 1.00000 1.00000
+DEAL:3d:rotated hexahedra::cells 9, levels 2, volume 2.00000, level moment 1.00000, center moment 2.00000 1.00000 1.00000
+DEAL:3d:rotated hexahedra::cells 23, levels 3, volume 2.00000, level moment 2.12500, center moment 2.00000 1.00000 1.00000
+DEAL:3d:rotated hexahedra::cells 30, levels 3, volume 2.00000, level moment 2.25000, center moment 2.00000 1.00000 1.00000
+DEAL:3d:rotated hexahedra::cells 37, levels 3, volume 2.00000, level moment 2.37500, center moment 2.00000 1.00000 1.00000
+DEAL:3d:rotated hexahedra::cells 2, levels 1, volume 2.00000, level moment 0.00000, center moment 2.00000 1.00000 1.00000
+DEAL:3d:rotated wedges::cells 16, levels 1, volume 8.00000, level moment 0.00000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges::cells 30, levels 2, volume 8.00000, level moment 1.00000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges::cells 128, levels 3, volume 8.00000, level moment 7.12500, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges::cells 156, levels 3, volume 8.00000, level moment 8.25000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges::cells 163, levels 3, volume 8.00000, level moment 8.31250, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges::cells 16, levels 1, volume 8.00000, level moment 0.00000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated hexahedra and wedges::cells 12, levels 1, volume 8.00000, level moment 0.00000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated hexahedra and wedges::cells 19, levels 2, volume 8.00000, level moment 1.00000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated hexahedra and wedges::cells 103, levels 3, volume 8.00000, level moment 8.12500, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated hexahedra and wedges::cells 110, levels 3, volume 8.00000, level moment 8.25000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated hexahedra and wedges::cells 117, levels 3, volume 8.00000, level moment 8.37500, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated hexahedra and wedges::cells 12, levels 1, volume 8.00000, level moment 0.00000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges below tetrahedra::cells 32, levels 1, volume 8.00000, level moment 0.00000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges below tetrahedra::cells 46, levels 2, volume 8.00000, level moment 1.00000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges below tetrahedra::cells 172, levels 3, volume 8.00000, level moment 5.12500, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges below tetrahedra::cells 214, levels 3, volume 8.00000, level moment 5.25000, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges below tetrahedra::cells 256, levels 3, volume 8.00000, level moment 5.37500, center moment 8.00000 8.00000 8.00000
+DEAL:3d:rotated wedges below tetrahedra::cells 32, levels 1, volume 8.00000, level moment 0.00000, center moment 8.00000 8.00000 8.00000

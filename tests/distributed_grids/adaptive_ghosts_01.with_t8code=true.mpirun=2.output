@@ -1,0 +1,61 @@
+
+DEAL:2d:triangles::cells 8, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles::cells 14, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles::cells 35, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles::cells 44, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles::cells 47, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles from rotated quads::cells 40, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles from rotated quads::cells 70, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles from rotated quads::cells 145, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles from rotated quads::cells 184, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles from rotated quads::cells 184, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:triangles from rotated quads::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:rotated quads::cells 5, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:rotated quads::cells 11, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:rotated quads::cells 20, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:rotated quads::cells 29, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:rotated quads::cells 29, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:rotated quads::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:quads and triangles::cells 8, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:quads and triangles::cells 11, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:quads and triangles::cells 14, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:quads and triangles::cells 17, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:quads and triangles::cells 23, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:2d:quads and triangles::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra::cells 40, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra::cells 75, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra::cells 306, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra::cells 334, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra::cells 348, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra from rotated hexahedra::cells 48, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra from rotated hexahedra::cells 139, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra from rotated hexahedra::cells 412, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra from rotated hexahedra::cells 503, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra from rotated hexahedra::cells 531, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:tetrahedra from rotated hexahedra::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra::cells 2, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra::cells 9, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra::cells 23, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra::cells 30, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra::cells 37, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges::cells 16, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges::cells 30, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges::cells 128, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges::cells 156, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges::cells 163, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra and wedges::cells 12, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra and wedges::cells 19, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra and wedges::cells 103, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra and wedges::cells 110, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra and wedges::cells 117, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated hexahedra and wedges::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges below tetrahedra::cells 32, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges below tetrahedra::cells 46, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges below tetrahedra::cells 172, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges below tetrahedra::cells 214, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges below tetrahedra::cells 256, missing ghosts 0, superfluous ghosts 0, wrong ghosts 0
+DEAL:3d:rotated wedges below tetrahedra::coarsening: missing ghosts 0, superfluous ghosts 0, wrong ghosts 0

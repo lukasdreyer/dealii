@@ -1,0 +1,51 @@
+
+DEAL:2d:triangles::cells 14, dofs 43, exact
+DEAL:2d:triangles::cells 35, dofs 95, exact
+DEAL:2d:triangles::cells 44, dofs 121, exact
+DEAL:2d:triangles::cells 47, dofs 133, exact
+DEAL:2d:triangles::coarsening: exact
+DEAL:2d:triangles from rotated quads::cells 70, dofs 183, exact
+DEAL:2d:triangles from rotated quads::cells 145, dofs 359, exact
+DEAL:2d:triangles from rotated quads::cells 184, dofs 455, exact
+DEAL:2d:triangles from rotated quads::cells 184, dofs 455, exact
+DEAL:2d:triangles from rotated quads::coarsening: exact
+DEAL:2d:rotated quads::cells 11, dofs 67, exact
+DEAL:2d:rotated quads::cells 20, dofs 117, exact
+DEAL:2d:rotated quads::cells 29, dofs 163, exact
+DEAL:2d:rotated quads::cells 29, dofs 163, exact
+DEAL:2d:rotated quads::coarsening: exact
+DEAL:2d:quads and triangles::cells 11, dofs 53, exact
+DEAL:2d:quads and triangles::cells 14, dofs 68, exact
+DEAL:2d:quads and triangles::cells 17, dofs 83, exact
+DEAL:2d:quads and triangles::cells 23, dofs 97, exact
+DEAL:2d:quads and triangles::coarsening: exact
+DEAL:3d:tetrahedra::cells 75, dofs 218, exact
+DEAL:3d:tetrahedra::cells 306, dofs 665, exact
+DEAL:3d:tetrahedra::cells 334, dofs 753, exact
+DEAL:3d:tetrahedra::cells 348, dofs 797, exact
+DEAL:3d:tetrahedra::coarsening: exact
+DEAL:3d:tetrahedra from rotated hexahedra::cells 139, dofs 324, exact
+DEAL:3d:tetrahedra from rotated hexahedra::cells 412, dofs 864, exact
+DEAL:3d:tetrahedra from rotated hexahedra::cells 503, dofs 1091, exact
+DEAL:3d:tetrahedra from rotated hexahedra::cells 531, dofs 1163, exact
+DEAL:3d:tetrahedra from rotated hexahedra::coarsening: exact
+DEAL:3d:rotated hexahedra::cells 9, dofs 148, exact
+DEAL:3d:rotated hexahedra::cells 23, dofs 338, exact
+DEAL:3d:rotated hexahedra::cells 30, dofs 451, exact
+DEAL:3d:rotated hexahedra::cells 37, dofs 537, exact
+DEAL:3d:rotated hexahedra::coarsening: exact
+DEAL:3d:rotated wedges::cells 30, dofs 235, exact
+DEAL:3d:rotated wedges::cells 128, dofs 779, exact
+DEAL:3d:rotated wedges::cells 156, dofs 961, exact
+DEAL:3d:rotated wedges::cells 163, dofs 1030, exact
+DEAL:3d:rotated wedges::coarsening: exact
+DEAL:3d:rotated hexahedra and wedges::cells 19, dofs 235, exact
+DEAL:3d:rotated hexahedra and wedges::cells 103, dofs 845, exact
+DEAL:3d:rotated hexahedra and wedges::cells 110, dofs 961, exact
+DEAL:3d:rotated hexahedra and wedges::cells 117, dofs 1071, exact
+DEAL:3d:rotated hexahedra and wedges::coarsening: exact
+DEAL:3d:rotated wedges below tetrahedra::cells 46, dofs 235, exact
+DEAL:3d:rotated wedges below tetrahedra::cells 172, dofs 641, exact
+DEAL:3d:rotated wedges below tetrahedra::cells 214, dofs 757, exact
+DEAL:3d:rotated wedges below tetrahedra::cells 256, dofs 867, exact
+DEAL:3d:rotated wedges below tetrahedra::coarsening: exact
