@@ -618,15 +618,30 @@ FE_Q_Base<dim, spacedim>::get_subface_interpolation_matrix(
   FullMatrix<double>                 &interpolation_matrix,
   const unsigned int                  face_no) const
 {
-  Assert(interpolation_matrix.m() == source_fe.n_dofs_per_face(face_no),
+  // the face of source_fe with the shape of our faces: the face numbers of
+  // the two elements differ at an interface between different reference
+  // cells (e.g. a hexahedron and a wedge)
+  unsigned int source_face_no = face_no;
+  if (source_face_no >= source_fe.reference_cell().n_faces() ||
+      source_fe.reference_cell().face_reference_cell(source_face_no) !=
+        this->reference_cell().face_reference_cell(face_no))
+    for (const unsigned int f : source_fe.reference_cell().face_indices())
+      if (source_fe.reference_cell().face_reference_cell(f) ==
+          this->reference_cell().face_reference_cell(face_no))
+        {
+          source_face_no = f;
+          break;
+        }
+
+  Assert(interpolation_matrix.m() == source_fe.n_dofs_per_face(source_face_no),
          ExcDimensionMismatch(interpolation_matrix.m(),
-                              source_fe.n_dofs_per_face(face_no)));
+                              source_fe.n_dofs_per_face(source_face_no)));
 
   Assert(source_fe.n_components() == this->n_components(),
          ExcDimensionMismatch(source_fe.n_components(), this->n_components()));
 
-  if ((source_fe.has_face_support_points(face_no)) &&
-      (source_fe.n_dofs_per_face(face_no) > 0))
+  if ((source_fe.has_face_support_points(source_face_no)) &&
+      (source_fe.n_dofs_per_face(source_face_no) > 0))
     {
       // have this test in here since a table of size 2x0 reports its size as
       // 0x0
@@ -640,13 +655,13 @@ FE_Q_Base<dim, spacedim>::get_subface_interpolation_matrix(
       // produced in that case might lead to problems in the hp-procedures,
       // which use this method.
       Assert(
-        this->n_dofs_per_face(face_no) <= source_fe.n_dofs_per_face(face_no),
+        this->n_dofs_per_face(face_no) <= source_fe.n_dofs_per_face(source_face_no),
         (typename FiniteElement<dim,
                                 spacedim>::ExcInterpolationNotImplemented()));
 
       // generate a point on this cell and evaluate the shape functions there
       const Quadrature<dim - 1> quad_face_support(
-        source_fe.get_unit_face_support_points(face_no));
+        source_fe.get_unit_face_support_points(source_face_no));
 
       // Rule of thumb for FP accuracy, that can be expected for a given
       // polynomial degree.  This value is used to cut off values close to
@@ -672,7 +687,7 @@ FE_Q_Base<dim, spacedim>::get_subface_interpolation_matrix(
             subface,
             numbers::default_geometric_orientation,
             RefinementCase<dim - 1>::isotropic_refinement);
-      for (unsigned int i = 0; i < source_fe.n_dofs_per_face(face_no); ++i)
+      for (unsigned int i = 0; i < source_fe.n_dofs_per_face(source_face_no); ++i)
         {
           const Point<dim> &p = subface_quadrature.point(i);
 
@@ -697,7 +712,7 @@ FE_Q_Base<dim, spacedim>::get_subface_interpolation_matrix(
         {
           // make sure that the row sum of each of the matrices is 1 at this
           // point. this must be so since the shape functions sum up to 1
-          for (unsigned int j = 0; j < source_fe.n_dofs_per_face(face_no); ++j)
+          for (unsigned int j = 0; j < source_fe.n_dofs_per_face(source_face_no); ++j)
             {
               double sum = 0.;
 
@@ -742,6 +757,13 @@ FE_Q_Base<dim, spacedim>::hp_vertex_dof_identities(
       return {{0U, 0U}};
     }
   else if (dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other) !=
+           nullptr)
+    {
+      // there should be exactly one single DoF of each FE at a vertex, and they
+      // should have identical value
+      return {{0U, 0U}};
+    }
+  else if (dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) !=
            nullptr)
     {
       // there should be exactly one single DoF of each FE at a vertex, and they
@@ -852,6 +874,26 @@ FE_Q_Base<dim, spacedim>::hp_line_dof_identities(
 
       return identities;
     }
+  else if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
+             dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+    {
+      // FE_WedgeP has at most one DoF on a line, at its midpoint (degree 2)
+      Assert(fe_wp_other->degree <= 2, ExcNotImplemented());
+
+      const std::vector<unsigned int> &index_map_inverse_q =
+        this->get_poly_space_numbering_inverse();
+
+      std::vector<std::pair<unsigned int, unsigned int>> identities;
+
+      if (fe_wp_other->degree == 2)
+        for (unsigned int i = 0; i < this->degree - 1; ++i)
+          if (std::fabs(
+                this->unit_support_points[index_map_inverse_q[i + 1]][0] -
+                0.5) < 1e-14)
+            identities.emplace_back(i, 0);
+
+      return identities;
+    }
   else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
     {
       // the FE_Nothing has no degrees of freedom, so there are no
@@ -919,6 +961,32 @@ FE_Q_Base<dim, spacedim>::hp_quad_dof_identities(
                        ->unit_support_points[index_map_inverse_other[j2 + 1]]
                                             [0]) < 1e-14))
                 identities.emplace_back(i1 * (p - 1) + i2, j1 * (q - 1) + j2);
+
+      return identities;
+    }
+  else if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
+             dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+    {
+      // FE_WedgeP has at most one DoF on a quadrilateral, at its center
+      // (degree 2)
+      Assert(fe_wp_other->degree <= 2, ExcNotImplemented());
+
+      const unsigned int               p = this->degree;
+      const std::vector<unsigned int> &index_map_inverse =
+        this->get_poly_space_numbering_inverse();
+
+      std::vector<std::pair<unsigned int, unsigned int>> identities;
+
+      if (fe_wp_other->degree == 2)
+        for (unsigned int i1 = 0; i1 < p - 1; ++i1)
+          for (unsigned int i2 = 0; i2 < p - 1; ++i2)
+            if ((std::fabs(
+                   this->unit_support_points[index_map_inverse[i1 + 1]][0] -
+                   0.5) < 1e-14) &&
+                (std::fabs(
+                   this->unit_support_points[index_map_inverse[i2 + 1]][0] -
+                   0.5) < 1e-14))
+              identities.emplace_back(i1 * (p - 1) + i2, 0);
 
       return identities;
     }

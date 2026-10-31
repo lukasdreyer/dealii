@@ -22,6 +22,7 @@
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_simplex_p.h>
 #include <deal.II/fe/fe_tools.h>
+#include <deal.II/fe/fe_wedge_p.h>
 #include <deal.II/fe/mapping.h>
 
 #include <deal.II/grid/grid_generator.h>
@@ -578,17 +579,34 @@ FE_SimplexPoly<dim, spacedim>::get_face_interpolation_matrix(
   FullMatrix<double>                 &interpolation_matrix,
   const unsigned int                  face_no) const
 {
-  Assert(interpolation_matrix.m() == source_fe.n_dofs_per_face(face_no),
+  // the face of source_fe with the shape of our face: the face numbers of
+  // the two elements differ at an interface between different reference
+  // cells (e.g. a tetrahedron and a wedge)
+  unsigned int source_face_no = face_no;
+  if (source_face_no >= source_fe.reference_cell().n_faces() ||
+      source_fe.reference_cell().face_reference_cell(source_face_no) !=
+        this->reference_cell().face_reference_cell(face_no))
+    for (const unsigned int f : source_fe.reference_cell().face_indices())
+      if (source_fe.reference_cell().face_reference_cell(f) ==
+          this->reference_cell().face_reference_cell(face_no))
+        {
+          source_face_no = f;
+          break;
+        }
+
+  Assert(interpolation_matrix.m() == source_fe.n_dofs_per_face(source_face_no),
          ExcDimensionMismatch(interpolation_matrix.m(),
-                              source_fe.n_dofs_per_face(face_no)));
+                              source_fe.n_dofs_per_face(source_face_no)));
 
   // see if source is a P or Q element
   if ((dynamic_cast<const FE_SimplexPoly<dim, spacedim> *>(&source_fe) !=
        nullptr) ||
-      (dynamic_cast<const FE_Q_Base<dim, spacedim> *>(&source_fe) != nullptr))
+      (dynamic_cast<const FE_Q_Base<dim, spacedim> *>(&source_fe) != nullptr) ||
+      (dynamic_cast<const FE_WedgePoly<dim, spacedim> *>(&source_fe) !=
+       nullptr))
     {
       const Quadrature<dim - 1> quad_face_support(
-        source_fe.get_unit_face_support_points(face_no));
+        source_fe.get_unit_face_support_points(source_face_no));
 
       const double eps = 2e-13 * this->degree * (dim - 1);
 
@@ -599,7 +617,7 @@ FE_SimplexPoly<dim, spacedim>::get_face_interpolation_matrix(
                                          numbers::default_geometric_orientation)
           .get_points();
 
-      for (unsigned int i = 0; i < source_fe.n_dofs_per_face(face_no); ++i)
+      for (unsigned int i = 0; i < source_fe.n_dofs_per_face(source_face_no); ++i)
         for (unsigned int j = 0; j < this->n_dofs_per_face(face_no); ++j)
           {
             double matrix_entry =
@@ -619,7 +637,7 @@ FE_SimplexPoly<dim, spacedim>::get_face_interpolation_matrix(
 
       if constexpr (running_in_debug_mode())
         {
-          for (unsigned int j = 0; j < source_fe.n_dofs_per_face(face_no); ++j)
+          for (unsigned int j = 0; j < source_fe.n_dofs_per_face(source_face_no); ++j)
             {
               double sum = 0.;
 
@@ -651,17 +669,34 @@ FE_SimplexPoly<dim, spacedim>::get_subface_interpolation_matrix(
   FullMatrix<double>                 &interpolation_matrix,
   const unsigned int                  face_no) const
 {
-  Assert(interpolation_matrix.m() == source_fe.n_dofs_per_face(face_no),
+  // the face of source_fe with the shape of our face: the face numbers of
+  // the two elements differ at an interface between different reference
+  // cells (e.g. a tetrahedron and a wedge)
+  unsigned int source_face_no = face_no;
+  if (source_face_no >= source_fe.reference_cell().n_faces() ||
+      source_fe.reference_cell().face_reference_cell(source_face_no) !=
+        this->reference_cell().face_reference_cell(face_no))
+    for (const unsigned int f : source_fe.reference_cell().face_indices())
+      if (source_fe.reference_cell().face_reference_cell(f) ==
+          this->reference_cell().face_reference_cell(face_no))
+        {
+          source_face_no = f;
+          break;
+        }
+
+  Assert(interpolation_matrix.m() == source_fe.n_dofs_per_face(source_face_no),
          ExcDimensionMismatch(interpolation_matrix.m(),
-                              source_fe.n_dofs_per_face(face_no)));
+                              source_fe.n_dofs_per_face(source_face_no)));
 
   // see if source is a P or Q element
   if ((dynamic_cast<const FE_SimplexPoly<dim, spacedim> *>(&source_fe) !=
        nullptr) ||
-      (dynamic_cast<const FE_Q_Base<dim, spacedim> *>(&source_fe) != nullptr))
+      (dynamic_cast<const FE_Q_Base<dim, spacedim> *>(&source_fe) != nullptr) ||
+      (dynamic_cast<const FE_WedgePoly<dim, spacedim> *>(&source_fe) !=
+       nullptr))
     {
       const Quadrature<dim - 1> quad_face_support(
-        source_fe.get_unit_face_support_points(face_no));
+        source_fe.get_unit_face_support_points(source_face_no));
 
       const double eps = 2e-13 * this->degree * (dim - 1);
 
@@ -674,7 +709,7 @@ FE_SimplexPoly<dim, spacedim>::get_subface_interpolation_matrix(
           numbers::default_geometric_orientation,
           RefinementCase<dim - 1>::isotropic_refinement);
 
-      for (unsigned int i = 0; i < source_fe.n_dofs_per_face(face_no); ++i)
+      for (unsigned int i = 0; i < source_fe.n_dofs_per_face(source_face_no); ++i)
         for (unsigned int j = 0; j < this->n_dofs_per_face(face_no); ++j)
           {
             double matrix_entry =
@@ -694,7 +729,7 @@ FE_SimplexPoly<dim, spacedim>::get_subface_interpolation_matrix(
 
       if constexpr (running_in_debug_mode())
         {
-          for (unsigned int j = 0; j < source_fe.n_dofs_per_face(face_no); ++j)
+          for (unsigned int j = 0; j < source_fe.n_dofs_per_face(source_face_no); ++j)
             {
               double sum = 0.;
 
@@ -837,6 +872,16 @@ FE_SimplexP<dim, spacedim>::compare_for_domination(
       else
         return FiniteElementDomination::other_element_dominates;
     }
+  else if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
+             dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+    {
+      if (this->degree < fe_wp_other->degree)
+        return FiniteElementDomination::this_element_dominates;
+      else if (this->degree == fe_wp_other->degree)
+        return FiniteElementDomination::either_element_can_dominate;
+      else
+        return FiniteElementDomination::other_element_dominates;
+    }
   else if (const FE_Nothing<dim, spacedim> *fe_nothing =
              dynamic_cast<const FE_Nothing<dim, spacedim> *>(&fe_other))
     {
@@ -860,6 +905,10 @@ std::vector<std::pair<unsigned int, unsigned int>>
 FE_SimplexP<dim, spacedim>::hp_vertex_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other) const
 {
+  // tetrahedra next to wedges
+  if (dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other) != nullptr)
+    return {{0U, 0U}};
+
   AssertDimension(dim, 2);
 
   if (dynamic_cast<const FE_SimplexP<dim, spacedim> *>(&fe_other) != nullptr)
@@ -905,6 +954,19 @@ std::vector<std::pair<unsigned int, unsigned int>>
 FE_SimplexP<dim, spacedim>::hp_line_dof_identities(
   const FiniteElement<dim, spacedim> &fe_other) const
 {
+  // tetrahedra next to wedges: both elements have at most one DoF on a line,
+  // at its midpoint (degree 2)
+  if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
+        dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+    {
+      Assert(this->degree <= 2 && fe_wp_other->degree <= 2,
+             ExcNotImplemented());
+      if (this->degree == 2 && fe_wp_other->degree == 2)
+        return {{0U, 0U}};
+      else
+        return {};
+    }
+
   AssertDimension(dim, 2);
 
   if (const FE_SimplexP<dim, spacedim> *fe_p_other =
@@ -1000,6 +1062,29 @@ FE_SimplexP<dim, spacedim>::hp_line_dof_identities(
       DEAL_II_NOT_IMPLEMENTED();
       return {};
     }
+}
+
+
+
+template <int dim, int spacedim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_SimplexP<dim, spacedim>::hp_quad_dof_identities(
+  const FiniteElement<dim, spacedim> &fe_other,
+  const unsigned int) const
+{
+  // tetrahedra next to wedges: the wedge elements (degree <= 2) have no DoFs
+  // inside triangles
+  if (const FE_WedgeP<dim, spacedim> *fe_wp_other =
+        dynamic_cast<const FE_WedgeP<dim, spacedim> *>(&fe_other))
+    {
+      Assert(fe_wp_other->degree <= 2, ExcNotImplemented());
+      return {};
+    }
+  else if (dynamic_cast<const FE_Nothing<dim> *>(&fe_other) != nullptr)
+    return {};
+
+  DEAL_II_NOT_IMPLEMENTED();
+  return {};
 }
 
 
