@@ -24,17 +24,17 @@
 #include "deal.II/grid/reference_cell.h"
 #include "deal.II/grid/tria.h"
 
-#include <t8_eclass.h>
-#include <t8_forest/t8_forest_adapt.h>
-#include <t8_forest/t8_forest_general.h>
-#include <t8_forest/t8_forest_io.h>
-#include <t8_geometry/t8_geometry_implementations/t8_geometry_linear.hxx>
-
 #include <cstdint>
 #include <vector>
 
 
 #ifdef DEAL_II_WITH_T8CODE
+#  include <t8_eclass.h>
+#  include <t8_forest/t8_forest_adapt.h>
+#  include <t8_forest/t8_forest_general.h>
+#  include <t8_forest/t8_forest_io.h>
+#  include <t8_geometry/t8_geometry_implementations/t8_geometry_linear.hxx>
+
 #  include <deal.II/distributed/p4est_wrappers.h>
 
 #  include <t8_forest/t8_forest_ghost.h>
@@ -918,10 +918,10 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
   } // namespace t8code
 } // namespace internal
 
-#endif // DEAL_II_WITH_T8CODE
-
 /*-------------- Explicit Instantiations -------------------------------*/
-#include "distributed/t8code_wrappers.inst"
+#  include "distributed/t8code_wrappers.inst"
 
 
 DEAL_II_NAMESPACE_CLOSE
+
+#endif // DEAL_II_WITH_T8CODE

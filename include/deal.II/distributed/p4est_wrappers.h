@@ -17,6 +17,8 @@
 
 #include <deal.II/base/geometry_info.h>
 
+#include <deal.II/grid/reference_cell.h>
+
 #include <type_traits>
 #include <vector>
 
@@ -538,6 +540,19 @@ namespace internal
     bool
     tree_exists_locally(const typename types<dim>::forest *parallel_forest,
                         const typename types<dim>::topidx  coarse_grid_cell);
+
+    /**
+     * Return the local index of a coarse cell in the forest, which for p4est
+     * (which stores all trees on every process) is its global index, as for
+     * t8code's function of the same name.
+     */
+    template <int dim>
+    inline typename types<dim>::locidx
+    global_to_local_tree(const typename types<dim>::forest *,
+                         const typename types<dim>::topidx coarse_grid_cell)
+    {
+      return coarse_grid_cell;
+    }
 
     template <int dim>
     typename types<dim>::locidx

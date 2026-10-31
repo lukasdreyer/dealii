@@ -831,7 +831,7 @@ namespace FETools
           // generate a bogus result
           {
             AssertThrow(!dealii::internal::amr::cell_exists_in_tree<dim>(
-                          forest, tree, &p4est_coarse_cell),
+                          tr->parallel_forest, tree, &p4est_coarse_cell),
                         ExcGridNotRefinedAtLeastOnce());
           }
 
