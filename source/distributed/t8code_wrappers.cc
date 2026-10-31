@@ -153,6 +153,44 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
           return std::pair<unsigned int, unsigned int>{dealii_child_index,
                                                        dealii_child_type};
         }
+      else if (ref_cell == ReferenceCells::Wedge)
+        {
+          // generated with generate_prism.py, see there for the states
+          // State = 6 * t8_type + allowed_permutation_index
+          const ::dealii::ndarray<unsigned int, 12, 8>
+            prism_perms_t8_to_dealii = {{{{0, 1, 3, 2, 4, 5, 7, 6}},
+                                         {{2, 0, 3, 1, 6, 4, 7, 5}},
+                                         {{1, 2, 3, 0, 5, 6, 7, 4}},
+                                         {{4, 6, 7, 5, 0, 2, 3, 1}},
+                                         {{5, 4, 7, 6, 1, 0, 3, 2}},
+                                         {{6, 5, 7, 4, 2, 1, 3, 0}},
+                                         {{0, 3, 2, 1, 4, 7, 6, 5}},
+                                         {{1, 3, 0, 2, 5, 7, 4, 6}},
+                                         {{2, 3, 1, 0, 6, 7, 5, 4}},
+                                         {{4, 7, 5, 6, 0, 3, 1, 2}},
+                                         {{6, 7, 4, 5, 2, 3, 0, 1}},
+                                         {{5, 7, 6, 4, 1, 3, 2, 0}}}};
+          const ::dealii::ndarray<unsigned int, 12, 8> prism_child_types = {
+            {{{0, 0, 0, 7, 0, 0, 0, 6}},
+             {{1, 1, 1, 6, 1, 1, 1, 8}},
+             {{2, 2, 2, 8, 2, 2, 2, 7}},
+             {{3, 3, 3, 9, 3, 3, 3, 10}},
+             {{4, 4, 4, 11, 4, 4, 4, 9}},
+             {{5, 5, 5, 10, 5, 5, 5, 11}},
+             {{6, 6, 6, 0, 6, 6, 6, 1}},
+             {{7, 7, 7, 2, 7, 7, 7, 0}},
+             {{8, 8, 8, 1, 8, 8, 8, 2}},
+             {{9, 9, 9, 4, 9, 9, 9, 3}},
+             {{10, 10, 10, 3, 10, 10, 10, 5}},
+             {{11, 11, 11, 5, 11, 11, 11, 4}}}};
+
+          const unsigned int dealii_child_index =
+            prism_perms_t8_to_dealii[dealii_type][child];
+
+          return std::pair<unsigned int, unsigned int>{
+            dealii_child_index,
+            prism_child_types[dealii_type][dealii_child_index]};
+        }
       else
         {
           DEAL_II_NOT_IMPLEMENTED();
@@ -171,7 +209,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       {2, 0, 1},                // tri is rotated by one
       {0, 1, 2, 3, 4, 5, 6, 7}, // hex
       {3, 2, 1, 0},             // tet, face i is opposite to vertex 3 - i
-      {},                       // prism
+      {3, 4, 2, 0, 1},          // prism, triangles are the last t8 faces
       {}                        // pyramid
     };
 
@@ -188,6 +226,8 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
             return T8_ECLASS_HEX;
           case ReferenceCells::Tetrahedron:
             return T8_ECLASS_TET;
+          case ReferenceCells::Wedge:
+            return T8_ECLASS_PRISM;
           default:
             DEAL_II_NOT_IMPLEMENTED();
             return T8_ECLASS_INVALID;
