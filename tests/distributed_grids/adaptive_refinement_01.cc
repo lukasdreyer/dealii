@@ -42,12 +42,22 @@ print_mesh(const parallel::distributed::Triangulation<dim> &tria)
         center_moment += cell->center() * measure;
       }
 
-  const MPI_Comm comm = tria.get_mpi_communicator();
+  // round the sums, whose last digits depend on the order of summation and
+  // thus on the number of processes
+  const auto round = [](const double x) {
+    return std::round(x * 1e10) / 1e10;
+  };
+  const MPI_Comm       comm = tria.get_mpi_communicator();
+  const Tensor<1, dim> center_moment_sum =
+    Utilities::MPI::sum(center_moment, comm);
+  Tensor<1, dim> rounded_center_moment;
+  for (unsigned int d = 0; d < dim; ++d)
+    rounded_center_moment[d] = round(center_moment_sum[d]);
   deallog << "cells " << tria.n_global_active_cells() << ", levels "
           << tria.n_global_levels() << ", volume "
-          << Utilities::MPI::sum(volume, comm) << ", level moment "
-          << Utilities::MPI::sum(level_moment, comm) << ", center moment "
-          << Utilities::MPI::sum(center_moment, comm) << std::endl;
+          << round(Utilities::MPI::sum(volume, comm)) << ", level moment "
+          << round(Utilities::MPI::sum(level_moment, comm))
+          << ", center moment " << rounded_center_moment << std::endl;
 }
 
 

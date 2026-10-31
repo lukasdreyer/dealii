@@ -69,3 +69,24 @@ DEAL:3d:rotated wedges below tetrahedra::cells 172, degree 2, dofs 641, constrai
 DEAL:3d:rotated wedges below tetrahedra::cells 235, degree 1, dofs 136, constrained dofs 60, continuous
 DEAL:3d:rotated wedges below tetrahedra::cells 235, degree 2, dofs 808, constrained dofs 282, continuous
 DEAL:3d:rotated wedges below tetrahedra::coarsening: continuous
+DEAL:3d:rotated pyramids::cells 129, degree 1, dofs 73, constrained dofs 21, continuous
+DEAL:3d:rotated pyramids::cells 129, degree 2, dofs 439, constrained dofs 99, continuous
+DEAL:3d:rotated pyramids::cells 345, degree 1, dofs 171, constrained dofs 93, continuous
+DEAL:3d:rotated pyramids::cells 345, degree 2, dofs 1115, constrained dofs 459, continuous
+DEAL:3d:rotated pyramids::cells 372, degree 1, dofs 178, constrained dofs 87, continuous
+DEAL:3d:rotated pyramids::cells 372, degree 2, dofs 1165, constrained dofs 423, continuous
+DEAL:3d:rotated pyramids::coarsening: continuous
+DEAL:3d:rotated pyramids and hexahedra::cells 62, degree 1, dofs 62, constrained dofs 21, continuous
+DEAL:3d:rotated pyramids and hexahedra::cells 62, degree 2, dofs 351, constrained dofs 99, continuous
+DEAL:3d:rotated pyramids and hexahedra::cells 198, degree 1, dofs 160, constrained dofs 75, continuous
+DEAL:3d:rotated pyramids and hexahedra::cells 198, degree 2, dofs 1009, constrained dofs 351, continuous
+DEAL:3d:rotated pyramids and hexahedra::cells 225, degree 1, dofs 167, constrained dofs 63, continuous
+DEAL:3d:rotated pyramids and hexahedra::cells 225, degree 2, dofs 1053, constrained dofs 297, continuous
+DEAL:3d:rotated pyramids and hexahedra::coarsening: continuous
+DEAL:3d:rotated pyramids below tetrahedra::cells 129, degree 1, dofs 65, constrained dofs 18, continuous
+DEAL:3d:rotated pyramids below tetrahedra::cells 129, degree 2, dofs 379, constrained dofs 84, continuous
+DEAL:3d:rotated pyramids below tetrahedra::cells 327, degree 1, dofs 135, constrained dofs 63, continuous
+DEAL:3d:rotated pyramids below tetrahedra::cells 327, degree 2, dofs 853, constrained dofs 303, continuous
+DEAL:3d:rotated pyramids below tetrahedra::cells 376, degree 1, dofs 157, constrained dofs 78, continuous
+DEAL:3d:rotated pyramids below tetrahedra::cells 376, degree 2, dofs 982, constrained dofs 372, continuous
+DEAL:3d:rotated pyramids below tetrahedra::coarsening: continuous

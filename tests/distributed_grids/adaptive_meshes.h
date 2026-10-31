@@ -30,6 +30,7 @@
 
 #include <deal.II/dofs/dof_handler.h>
 
+#include <deal.II/fe/fe_pyramid_p.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_simplex_p.h>
 #include <deal.II/fe/fe_wedge_p.h>
@@ -48,6 +49,7 @@
 
 #include "../tests.h"
 
+#include "../simplex/pyramid_meshes.h"
 #include "../simplex/wedge_meshes.h"
 
 
@@ -67,7 +69,10 @@ coarse_mesh_names()
             "rotated hexahedra",
             "rotated wedges",
             "rotated hexahedra and wedges",
-            "rotated wedges below tetrahedra"};
+            "rotated wedges below tetrahedra",
+            "rotated pyramids",
+            "rotated pyramids and hexahedra",
+            "rotated pyramids below tetrahedra"};
 }
 
 
@@ -132,22 +137,27 @@ make_coarse_mesh(Triangulation<dim> &tria, const unsigned int i)
     }
   else if (i < 5)
     make_wedge_mesh(tria, 2, i == 4);
-  else
+  else if (i == 5)
     make_wedge_tetrahedron_mesh(tria, 2);
+  else
+    make_pyramid_mesh(tria, 2, i - 6);
 }
 
 
 
 // The continuous elements of the given degree for the reference cells of
 // dim: the hypercube element first, the simplex element second, in 3d the
-// wedge element third.
+// wedge element third and the pyramid element fourth.
 template <int dim>
 hp::FECollection<dim>
 make_fe_collection(const unsigned int degree)
 {
   hp::FECollection<dim> fe{FE_Q<dim>(degree), FE_SimplexP<dim>(degree)};
   if constexpr (dim == 3)
-    fe.push_back(FE_WedgeP<dim>(degree));
+    {
+      fe.push_back(FE_WedgeP<dim>(degree));
+      fe.push_back(FE_PyramidP<dim>(degree));
+    }
   return fe;
 }
 
@@ -164,8 +174,12 @@ make_mapping_collection()
     ReferenceCells::get_simplex<dim>()
       .template get_default_linear_mapping<dim>());
   if constexpr (dim == 3)
-    mapping.push_back(
-      ReferenceCells::Wedge.template get_default_linear_mapping<dim>());
+    {
+      mapping.push_back(
+        ReferenceCells::Wedge.template get_default_linear_mapping<dim>());
+      mapping.push_back(
+        ReferenceCells::Pyramid.template get_default_linear_mapping<dim>());
+    }
   return mapping;
 }
 
@@ -180,9 +194,10 @@ set_fe_indices(DoFHandler<dim> &dof_handler)
   for (const auto &cell : dof_handler.active_cell_iterators())
     if (cell->is_locally_owned())
       cell->set_active_fe_index(
-        cell->reference_cell().is_simplex() ? 1 :
-        cell->reference_cell().is_hyper_cube() ? 0 :
-                                                 2);
+        cell->reference_cell().is_simplex()                ? 1 :
+        cell->reference_cell().is_hyper_cube()             ? 0 :
+        cell->reference_cell() == ReferenceCells::Wedge ? 2 :
+                                                             3);
 }
 
 

@@ -39,3 +39,15 @@ DEAL:3d:rotated wedges below tetrahedra::cells 88, levels 5, unbalanced pairs 0,
 DEAL:3d:rotated wedges below tetrahedra::cells 592, levels 6, unbalanced pairs 0, artificial neighbors 0
 DEAL:3d:rotated wedges below tetrahedra::cells 760, levels 6, unbalanced pairs 0, artificial neighbors 0
 DEAL:3d:rotated wedges below tetrahedra::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids::cells 156, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids::cells 372, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids::cells 588, levels 6, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids and hexahedra::cells 56, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids and hexahedra::cells 192, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids and hexahedra::cells 408, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids and hexahedra::coarsening: unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids below tetrahedra::cells 160, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids below tetrahedra::cells 316, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids below tetrahedra::cells 552, levels 5, unbalanced pairs 0, artificial neighbors 0
+DEAL:3d:rotated pyramids below tetrahedra::coarsening: unbalanced pairs 0, artificial neighbors 0
