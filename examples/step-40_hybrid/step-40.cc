@@ -19,6 +19,10 @@
  *   degree    polynomial degree (1 to 4, default 2)
  *   n_cycles  number of refinement cycles (default 6)
  *   global    1 for global instead of adaptive refinement (default 0)
+ * Environment variables: HYBRID_POLYNOMIAL=k (polynomial exact solution, see
+ * below), HYBRID_IRREGULAR=1 (irregular refinement), HYBRID_SMOOTHING=none
+ * (no limit_level_difference_at_vertices, so that the mesh is balanced only
+ * across faces and edges).
  */
 
 #include <deal.II/base/conditional_ostream.h>
@@ -63,6 +67,7 @@
 #include <array>
 #include <cstdlib>
 #include <fstream>
+#include <string>
 #include <iostream>
 
 namespace LA
@@ -332,8 +337,12 @@ namespace Step40Hybrid
                                  const unsigned int n_cycles,
                                  const bool         global_refinement)
     : mpi_communicator(MPI_COMM_WORLD)
-    , triangulation(mpi_communicator,
-                    Triangulation<dim>::limit_level_difference_at_vertices)
+    , triangulation(
+        mpi_communicator,
+        std::getenv("HYBRID_SMOOTHING") &&
+            std::string(std::getenv("HYBRID_SMOOTHING")) == "none" ?
+          Triangulation<dim>::none :
+          Triangulation<dim>::limit_level_difference_at_vertices)
     , degree(degree)
     , n_cycles(n_cycles)
     , global_refinement(global_refinement)
