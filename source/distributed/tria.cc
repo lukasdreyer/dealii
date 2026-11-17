@@ -31,6 +31,7 @@
 #include <mpi.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -38,11 +39,35 @@
 #include <string>
 
 
-// Debug output of the t8code coupling, discarded by a stream without buffer.
-// Replace debug_out by std::cout to print it again.
-static std::ostream debug_out(nullptr);
-// Whether to write the debug vtk files of the t8code coupling (t8_grid_*, grid-*)
-static constexpr bool write_debug_output = false;
+// Debug output of the t8code coupling, discarded without formatting the
+// arguments (a std::ostream without buffer would still format them, which
+// cost about 8% of the refinement on hybrid meshes because of the output of
+// the transferred data in execute_transfer). Replace the definition by
+//   static std::ostream &debug_out = std::cout;
+// to print it again.
+namespace
+{
+  struct DiscardingStream
+  {
+    template <typename T>
+    DiscardingStream &
+    operator<<(const T &)
+    {
+      return *this;
+    }
+
+    DiscardingStream &
+    operator<<(std::ostream &(*)(std::ostream &))
+    {
+      return *this;
+    }
+  };
+} // namespace
+static DiscardingStream debug_out;
+// Whether to write the debug vtk files of the t8code coupling (t8_grid_*, grid-*),
+// set by the environment variable DEAL_II_T8CODE_DEBUG_OUTPUT
+static const bool write_debug_output =
+  std::getenv("DEAL_II_T8CODE_DEBUG_OUTPUT") != nullptr;
 
 DEAL_II_NAMESPACE_OPEN
 
