@@ -26,7 +26,22 @@
  *   max_level=5       maximal refinement level
  *   solve=1           0 to skip the linear solver
  *   coarsen=1         0 to only refine
+ *   smoothing=vertices  mesh smoothing: vertices (limit_level_difference_at_
+ *                     vertices, balance across vertices) or none (balance
+ *                     across faces and edges only)
  *   csv=timings.csv   output file
+ *   output=           directory for VTU output of every cycle (cell type,
+ *                     subdomain, level, solution; not timed), empty for none
+ *   path=helix        path of the refinement point: helix (half a turn around
+ *                     the vertical axis, rising) or cut (a full circle in the
+ *                     plane y = 0.5 through all layers, for the video, which
+ *                     shows this plane)
+ *   rhs=constant      right hand side: constant (1) or gaussian (a source at
+ *                     the refinement point, so that the solution moves with it)
+ *   period=0          number of cycles for the whole path, 0 for cycles; with
+ *                     path=cut, e.g. cycles=43 period=40 gives a closed loop
+ *                     of the cycles 3 to 42 after the mesh has been refined
+ *                     up to max_level (for the video)
  */
 
 #include <deal.II/base/conditional_ostream.h>
@@ -66,6 +81,7 @@
 #include <deal.II/lac/sparsity_tools.h>
 #include <deal.II/lac/vector.h>
 
+#include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/solution_transfer.h>
 #include <deal.II/numerics/vector_tools.h>
 
@@ -105,7 +121,12 @@ namespace AMRBenchmark
     unsigned int max_level = 5;
     bool         solve     = true;
     bool         coarsen   = true;
+    std::string  smoothing = "vertices";
     std::string  csv       = "timings.csv";
+    std::string  output    = "";
+    std::string  path      = "helix";
+    std::string  rhs       = "constant";
+    unsigned int period    = 0;
 
     void
     parse(int argc, char *argv[])
@@ -133,13 +154,29 @@ namespace AMRBenchmark
             solve = std::stoi(value) != 0;
           else if (key == "coarsen")
             coarsen = std::stoi(value) != 0;
+          else if (key == "smoothing")
+            smoothing = value;
           else if (key == "csv")
             csv = value;
+          else if (key == "output")
+            output = value;
+          else if (key == "path")
+            path = value;
+          else if (key == "rhs")
+            rhs = value;
+          else if (key == "period")
+            period = std::stoi(value);
           else
             AssertThrow(false, ExcMessage("Unknown argument " + key));
         }
       AssertThrow(mesh == "hex" || mesh == "hybrid",
                   ExcMessage("mesh must be hex or hybrid"));
+      AssertThrow(smoothing == "vertices" || smoothing == "none",
+                  ExcMessage("smoothing must be vertices or none"));
+      AssertThrow(path == "helix" || path == "cut",
+                  ExcMessage("path must be helix or cut"));
+      AssertThrow(rhs == "constant" || rhs == "gaussian",
+                  ExcMessage("rhs must be constant or gaussian"));
     }
   };
 
@@ -285,8 +322,19 @@ namespace AMRBenchmark
 
   // the point around which the mesh is refined in cycle k
   Point<dim>
-  refinement_center(const unsigned int k, const unsigned int n_cycles)
+  refinement_center(const unsigned int k,
+                    const unsigned int n_cycles,
+                    const std::string &path)
   {
+    if (path == "cut")
+      {
+        // a full circle in the plane y = 0.5, so that the last cycle connects
+        // to the first one
+        const double t = 2 * numbers::PI * k / std::max(1u, n_cycles);
+        return Point<dim>(0.5 + 0.3 * std::cos(t),
+                          0.5,
+                          0.5 + 0.33 * std::sin(t));
+      }
     const double t = numbers::PI * k / std::max(1u, n_cycles);
     return Point<dim>(0.5 + 0.3 * std::cos(t),
                       0.5 + 0.3 * std::sin(t),
@@ -307,11 +355,13 @@ namespace AMRBenchmark
     void
     setup_dofs();
     void
-    assemble();
+    assemble(const unsigned int cycle);
     unsigned int
     solve();
     void
     mark_cells(const unsigned int cycle);
+    void
+    output_results(const unsigned int cycle) const;
 
     // time a phase: the wall time of each process for each cycle
     template <typename F>
@@ -349,7 +399,9 @@ namespace AMRBenchmark
     , mpi_communicator(MPI_COMM_WORLD)
     , pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
     , triangulation(mpi_communicator,
-                    Triangulation<dim>::limit_level_difference_at_vertices)
+                    parameters.smoothing == "vertices" ?
+                      Triangulation<dim>::limit_level_difference_at_vertices :
+                      Triangulation<dim>::none)
     , dof_handler(triangulation)
   {
     const unsigned int p = parameters.degree;
@@ -489,14 +541,24 @@ namespace AMRBenchmark
 
 
   void
-  Benchmark::assemble()
+  Benchmark::assemble(const unsigned int cycle)
   {
+    // the source of rhs=gaussian, at the refinement point
+    const Point<dim> center =
+      refinement_center(cycle,
+                        parameters.period > 0 ? parameters.period :
+                                                parameters.cycles,
+                        parameters.path);
+    const bool   gaussian = parameters.rhs == "gaussian";
+    const double width    = 0.08;
     time("assembly", [&]() {
       hp::FEValues<dim>                    hp_fe_values(mapping,
                                      fe,
                                      quadrature,
                                      update_values | update_gradients |
-                                       update_JxW_values);
+                                       update_JxW_values |
+                                       (gaussian ? update_quadrature_points :
+                                                   update_default));
       FullMatrix<double>                   cell_matrix;
       Vector<double>                       cell_rhs;
       std::vector<types::global_dof_index> dof_indices;
@@ -509,14 +571,24 @@ namespace AMRBenchmark
             cell_matrix.reinit(n, n);
             cell_rhs.reinit(n);
             for (const unsigned int q : fe_values.quadrature_point_indices())
-              for (unsigned int i = 0; i < n; ++i)
-                {
-                  for (unsigned int j = 0; j < n; ++j)
-                    cell_matrix(i, j) += fe_values.shape_grad(i, q) *
-                                         fe_values.shape_grad(j, q) *
-                                         fe_values.JxW(q);
-                  cell_rhs(i) += fe_values.shape_value(i, q) * fe_values.JxW(q);
-                }
+              {
+                const double f =
+                  gaussian ?
+                    std::exp(-fe_values.quadrature_point(q).distance_square(
+                               center) /
+                             (width * width)) /
+                      (width * width) :
+                    1.;
+                for (unsigned int i = 0; i < n; ++i)
+                  {
+                    for (unsigned int j = 0; j < n; ++j)
+                      cell_matrix(i, j) += fe_values.shape_grad(i, q) *
+                                           fe_values.shape_grad(j, q) *
+                                           fe_values.JxW(q);
+                    cell_rhs(i) +=
+                      f * fe_values.shape_value(i, q) * fe_values.JxW(q);
+                  }
+              }
             dof_indices.resize(n);
             cell->get_dof_indices(dof_indices);
             constraints.distribute_local_to_global(
@@ -558,7 +630,11 @@ namespace AMRBenchmark
   Benchmark::mark_cells(const unsigned int cycle)
   {
     // refine around the moving point, coarsen behind it
-    const Point<dim> center = refinement_center(cycle, parameters.cycles);
+    const Point<dim> center =
+      refinement_center(cycle,
+                        parameters.period > 0 ? parameters.period :
+                                                parameters.cycles,
+                        parameters.path);
     const double     radius = 0.15;
     for (const auto &cell : triangulation.active_cell_iterators())
       if (cell->is_locally_owned())
@@ -576,6 +652,40 @@ namespace AMRBenchmark
 
 
   void
+  Benchmark::output_results(const unsigned int cycle) const
+  {
+    if (parameters.output.empty())
+      return;
+    Vector<float> cell_type(triangulation.n_active_cells());
+    Vector<float> subdomain(triangulation.n_active_cells());
+    Vector<float> level(triangulation.n_active_cells());
+    for (const auto &cell : triangulation.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          const auto r = cell->reference_cell();
+          // the fe indices: 0 hexahedron, 1 tetrahedron, 2 wedge, 3 pyramid
+          cell_type(cell->active_cell_index()) =
+            r == ReferenceCells::Hexahedron  ? 0 :
+            r == ReferenceCells::Tetrahedron ? 1 :
+            r == ReferenceCells::Wedge       ? 2 :
+                                               3;
+          subdomain(cell->active_cell_index()) = cell->subdomain_id();
+          level(cell->active_cell_index())     = cell->level();
+        }
+    DataOut<dim> data_out;
+    data_out.attach_dof_handler(dof_handler);
+    data_out.add_data_vector(solution, "solution");
+    data_out.add_data_vector(cell_type, "cell_type");
+    data_out.add_data_vector(subdomain, "subdomain");
+    data_out.add_data_vector(level, "level");
+    data_out.build_patches(mapping);
+    data_out.write_vtu_with_pvtu_record(
+      parameters.output + "/", "amr", cycle, mpi_communicator, 4);
+  }
+
+
+
+  void
   Benchmark::run()
   {
     pcout << "amr_benchmark: "
@@ -586,7 +696,8 @@ namespace AMRBenchmark
 #endif
           << ", " << Utilities::MPI::n_mpi_processes(mpi_communicator)
           << " processes, mesh " << parameters.mesh << ", n " << parameters.n
-          << ", degree " << parameters.degree << std::endl;
+          << ", degree " << parameters.degree << ", smoothing "
+          << parameters.smoothing << std::endl;
 
     time("coarse mesh", [&]() {
       if (parameters.mesh == "hex")
@@ -597,9 +708,10 @@ namespace AMRBenchmark
     time("refine", [&]() { triangulation.refine_global(parameters.global); });
     setup_dofs();
     solution.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-    assemble();
+    assemble(0);
     const unsigned int iterations = parameters.solve ? solve() : 0;
     record_cycle(0, iterations);
+    output_results(0);
 
     for (unsigned int cycle = 1; cycle <= parameters.cycles; ++cycle)
       {
@@ -622,9 +734,10 @@ namespace AMRBenchmark
                           mpi_communicator);
           solution = transferred;
         });
-        assemble();
+        assemble(cycle);
         const unsigned int iterations = parameters.solve ? solve() : 0;
         record_cycle(cycle, iterations);
+        output_results(cycle);
       }
 
     // the summary: the sums over the cycles of the maxima over the processes
