@@ -1345,8 +1345,15 @@ namespace internal
 
     template <int dim>
     typename types<dim>::forest *
-    balance_full(typename types<dim>::forest *forest)
+    balance_full(typename types<dim>::forest *forest,
+                 const bool /*balance_vertices*/)
     {
+      // p4est always balances across faces, edges and corners, as deal.II
+      // always did. Balancing across vertices is only needed with
+      // limit_level_difference_at_vertices (and for multigrid), otherwise
+      // P4EST_CONNECT_FACE (2d) or P8EST_CONNECT_EDGE (3d) would suffice for
+      // the hanging node constraints, like the t8code backend does (see its
+      // balance_full). Not done here to keep the meshes of upstream deal.II.
       if constexpr (dim == 2)
         {
           p4est_balance(forest, P4EST_CONNECT_FULL, nullptr);

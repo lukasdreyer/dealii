@@ -165,7 +165,8 @@ for (deal_II_dimension : DIMENSIONS)
 
         template types<deal_II_dimension>::forest *
         balance_full<deal_II_dimension>(
-          types<deal_II_dimension>::forest *forest);
+          types<deal_II_dimension>::forest *forest,
+          const bool                        balance_vertices);
 
         template types<deal_II_dimension>::forest *
         partition<deal_II_dimension>(

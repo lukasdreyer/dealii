@@ -2765,8 +2765,10 @@ namespace parallel
         this->smooth_grid;
 
       // We will refine manually to match the p4est further down, which
-      // obeys a level difference of 2 at each vertex (see the balance call
-      // to p4est). We can disable this here so we store fewer artificial
+      // obeys a level difference of 2 at each vertex (p4est), or at each
+      // edge and at each vertex only with limit_level_difference_at_vertices
+      // (t8code), see the balance call to p4est/t8code.
+      // We can disable this here so we store fewer artificial
       // cells (in some cases).
       // For geometric multigrid it turns out that
       // we will miss level cells at shared vertices if we ignore this.
@@ -3484,9 +3486,14 @@ namespace parallel
               dealii::internal::amr::adapt<dim>(parallel_forest, this);
 
 
-            // enforce 2:1 hanging node condition
-            parallel_forest =
-              dealii::internal::amr::balance_full<dim>(parallel_forest);
+            // enforce 2:1 hanging node condition across faces and edges, and
+            // across vertices if requested by the mesh smoothing (always for
+            // multigrid, see the constructor); p4est always balances across
+            // vertices
+            parallel_forest = dealii::internal::amr::balance_full<dim>(
+              parallel_forest,
+              this->smooth_grid & dealii::Triangulation<dim, spacedim>::
+                                    limit_level_difference_at_vertices);
 
             // since refinement and/or coarsening on the parallel forest
             // has happened, we need to update the element cell relations

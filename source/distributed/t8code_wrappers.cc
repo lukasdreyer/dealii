@@ -568,14 +568,18 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
 
     template <int dim>
     typename types<dim>::forest *
-    balance_full(typename types<dim>::forest *forest)
+    balance_full(typename types<dim>::forest *forest,
+                 const bool                   balance_vertices)
     {
       t8_forest_t new_forest;
       t8_forest_init(&new_forest);
       t8_forest_set_balance(new_forest, forest, 1);
-      // Balance across faces, edges and vertices, like p4est's
-      // P4EST_CONNECT_FULL
-      t8_forest_set_balance_type(new_forest, T8_GHOST_VERTICES);
+      // Balance across faces and edges (deal.II's hanging node constraints
+      // need both in 3d), and also across vertices if requested, like p4est's
+      // P8EST_CONNECT_EDGE and P8EST_CONNECT_FULL. In 2d edges are faces.
+      t8_forest_set_balance_type(new_forest,
+                                 balance_vertices ? T8_GHOST_VERTICES :
+                                                    T8_GHOST_EDGES);
       t8_forest_set_user_data(new_forest, t8_forest_get_user_data(forest));
       t8_forest_commit(new_forest);
       return new_forest;
@@ -593,10 +597,10 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       t8_forest_commit(new_forest);
       if constexpr (running_in_debug_mode())
         {
-          // The forest must be balanced across faces, edges and vertices (see
+          // The forest must be balanced at least across faces and edges (see
           // balance_full), which t8code checks with the vertex ghost layer.
           const t8_ghost_type_t balance_type = new_forest->balance_type;
-          new_forest->balance_type           = T8_GHOST_VERTICES;
+          new_forest->balance_type           = T8_GHOST_EDGES;
           const int locally_balanced = t8_forest_is_balanced(new_forest);
           new_forest->balance_type   = balance_type;
           const int balanced =
@@ -604,7 +608,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                                 t8_forest_get_mpicomm(new_forest));
           AssertThrow(balanced,
                       ExcMessage("The t8code forest is not balanced across "
-                                 "vertices after partitioning (on " +
+                                 "faces and edges after partitioning (on " +
                                  std::string(locally_balanced ? "another" :
                                                                 "this") +
                                  " process)."));

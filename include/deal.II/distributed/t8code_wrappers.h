@@ -238,7 +238,8 @@ namespace internal
 
     template <int dim>
     types<dim>::forest *
-    balance_full(typename types<dim>::forest *forest);
+    balance_full(typename types<dim>::forest *forest,
+                 const bool                   balance_vertices);
 
     template <int dim>
     void
