@@ -205,6 +205,30 @@ namespace internal
                         const typename types<dim>::tree     tree,
                         const typename types<dim>::element *element);
 
+    /**
+     * During the lifetime of an object of this class, cell_exists_in_tree(),
+     * element_overlaps_tree() and leaf_index_in_tree() for @p forest compare
+     * the linear ids of the elements with cached linear ids of the leaves of
+     * each tree (at the finest level of its leaves), instead of comparing
+     * elements, which computes two linear ids at the maximum level for each
+     * comparison of the binary search. The forest must not change in the
+     * meantime. Scopes can be nested (an inner scope of the same forest uses
+     * the cache of the outer one).
+     */
+    template <int dim>
+    class TreeLookupScope
+    {
+    public:
+      explicit TreeLookupScope(const typename types<dim>::forest *forest);
+      ~TreeLookupScope();
+
+    private:
+      // the cache of the enclosing scope, restored at the end of this one
+      void *previous_cache;
+      // whether this scope created its own cache
+      bool owns_cache;
+    };
+
     template <int dim>
     int
     element_ancestor_id(const typename types<dim>::forest  *forest,

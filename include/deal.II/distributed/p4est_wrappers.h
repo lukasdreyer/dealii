@@ -632,6 +632,19 @@ namespace internal
                         const typename types<dim>::tree     tree,
                         const typename types<dim>::element *element);
 
+    /**
+     * The t8code backend caches the linear ids of the leaves in this scope
+     * (see its TreeLookupScope); p4est compares quadrants cheaply, so this
+     * does nothing.
+     */
+    template <int dim>
+    class TreeLookupScope
+    {
+    public:
+      explicit TreeLookupScope(const typename types<dim>::forest *)
+      {}
+    };
+
 
     template <int dim>
     bool

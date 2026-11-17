@@ -81,6 +81,8 @@ for (deal_II_dimension : DIMENSIONS)
           const types<deal_II_dimension>::forest *parallel_forest,
           const types<deal_II_dimension>::topidx  coarse_grid_cell);
 
+        template class TreeLookupScope<deal_II_dimension>;
+
         template types<deal_II_dimension>::locidx
         leaf_index_in_tree<deal_II_dimension>(
           const types<deal_II_dimension>::forest  *forest,

@@ -24,7 +24,9 @@
 #include "deal.II/grid/reference_cell.h"
 #include "deal.II/grid/tria.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 
@@ -693,12 +695,130 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
     }
 
 
+    namespace
+    {
+      /**
+       * The linear ids of the leaves of the trees of a forest, see
+       * TreeLookupScope.
+       */
+      struct TreeLookupCache
+      {
+        struct Tree
+        {
+          // the level at which the ids are computed: the finest level of the
+          // leaves of the tree
+          int                         id_level;
+          std::vector<t8_linearidx_t> ids;
+        };
+
+        const t8_forest                           *forest;
+        std::unordered_map<const t8_tree *, Tree> trees;
+      };
+
+      TreeLookupCache *tree_lookup_cache = nullptr;
+
+      // the cached ids of a tree, computed on first use, or nullptr outside a
+      // TreeLookupScope of the forest
+      const TreeLookupCache::Tree *
+      cached_tree(const t8_forest *forest, const t8_tree *tree)
+      {
+        if (tree_lookup_cache == nullptr || tree_lookup_cache->forest != forest)
+          return nullptr;
+        auto found = tree_lookup_cache->trees.find(tree);
+        if (found != tree_lookup_cache->trees.end())
+          return &found->second;
+
+        const t8_scheme *scheme =
+          t8_forest_get_scheme(const_cast<t8_forest_t>(forest));
+        const t8_element_array_t *leaves = &tree->leaf_elements;
+        const size_t n_leaves = t8_element_array_get_count(leaves);
+        TreeLookupCache::Tree entry;
+        entry.id_level = 0;
+        for (size_t i = 0; i < n_leaves; ++i)
+          entry.id_level =
+            std::max(entry.id_level,
+                     scheme->element_get_level(
+                       tree->eclass, t8_element_array_index_locidx(leaves, i)));
+        entry.ids.resize(n_leaves);
+        for (size_t i = 0; i < n_leaves; ++i)
+          entry.ids[i] = scheme->element_get_linear_id(
+            tree->eclass,
+            t8_element_array_index_locidx(leaves, i),
+            entry.id_level);
+        return &tree_lookup_cache->trees.emplace(tree, std::move(entry))
+                  .first->second;
+      }
+
+      // the index of element in the leaves of tree if it is a leaf, -1
+      // otherwise, using the cached ids. Since the ids are computed at the
+      // finest level of the leaves, they keep the order of the leaves, and an
+      // element is a leaf iff a leaf has its id and its level.
+      int
+      cached_leaf_index(const t8_forest           *forest,
+                        const t8_tree             *tree,
+                        const TreeLookupCache::Tree &cached,
+                        const t8_element_t          *element)
+      {
+        const t8_scheme *scheme =
+          t8_forest_get_scheme(const_cast<t8_forest_t>(forest));
+        const int level = scheme->element_get_level(tree->eclass, element);
+        if (level > cached.id_level)
+          return -1;
+        const t8_linearidx_t id =
+          scheme->element_get_linear_id(tree->eclass, element, cached.id_level);
+        const auto it =
+          std::lower_bound(cached.ids.begin(), cached.ids.end(), id);
+        if (it == cached.ids.end() || *it != id)
+          return -1;
+        const int index = it - cached.ids.begin();
+        const t8_element_t *leaf =
+          t8_element_array_index_locidx(&tree->leaf_elements, index);
+        return scheme->element_get_level(tree->eclass, leaf) == level ? index :
+                                                                        -1;
+      }
+    } // namespace
+
+
+
+    template <int dim>
+    TreeLookupScope<dim>::TreeLookupScope(
+      const typename types<dim>::forest *forest)
+      : previous_cache(tree_lookup_cache)
+      , owns_cache(tree_lookup_cache == nullptr ||
+                   tree_lookup_cache->forest != forest)
+    {
+      if (owns_cache)
+        {
+          tree_lookup_cache         = new TreeLookupCache;
+          tree_lookup_cache->forest = forest;
+        }
+    }
+
+
+
+    template <int dim>
+    TreeLookupScope<dim>::~TreeLookupScope()
+    {
+      if (owns_cache)
+        {
+          delete tree_lookup_cache;
+          tree_lookup_cache = static_cast<TreeLookupCache *>(previous_cache);
+        }
+    }
+
+
+
     template <int dim>
     bool
     cell_exists_in_tree(const typename types<dim>::forest  *forest,
                         typename types<dim>::tree           tree,
                         const typename types<dim>::element *element)
     {
+      if (const auto *cached = cached_tree(forest, tree))
+        return cached_leaf_index(forest,
+                                 tree,
+                                 *cached,
+                                 (const t8_element_t *)element) >= 0;
       typename types<dim>::eclass             eclass = tree->eclass;
       typename types<dim>::scheme_collection *scheme =
         t8_forest_get_scheme(const_cast<t8_forest_t>(forest));
@@ -725,6 +845,32 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       typename types<dim>::eclass             eclass = tree->eclass;
       typename types<dim>::scheme_collection *scheme =
         t8_forest_get_scheme(const_cast<t8_forest_t>(forest));
+      if (const auto *cached = cached_tree(forest, tree))
+        {
+          // compare the ranges of the linear ids of the descendants at the
+          // finest level of the leaves (an element on a finer level lies in
+          // the range of its ancestor on that level)
+          if (cached->ids.empty())
+            return false;
+          const t8_element_t *el    = (const t8_element_t *)element;
+          const int           level = scheme->element_get_level(eclass, el);
+          const t8_linearidx_t first =
+            scheme->element_get_linear_id(eclass, el, cached->id_level);
+          const t8_linearidx_t last =
+            level <= cached->id_level ?
+              first +
+                scheme->element_count_leaves(eclass, el, cached->id_level) - 1 :
+              first;
+          const t8_element_t *last_leaf = t8_element_array_index_locidx(
+            &tree->leaf_elements, cached->ids.size() - 1);
+          const t8_linearidx_t tree_first = cached->ids.front();
+          const t8_linearidx_t tree_last =
+            cached->ids.back() +
+            scheme->element_count_leaves(eclass, last_leaf, cached->id_level) -
+            1;
+          return first <= tree_last && last >= tree_first;
+        }
+
       typename types<dim>::element element_last_desc;
       bool                         element_overlaps = true;
 
@@ -767,6 +913,13 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                        const typename types<dim>::locidx   ltreeid,
                        const typename types<dim>::element *leaf)
     {
+      const t8_tree *tree =
+        t8_forest_get_tree(const_cast<t8_forest_t>(forest), ltreeid);
+      if (const auto *cached = cached_tree(forest, tree))
+        return cached_leaf_index(forest,
+                                 tree,
+                                 *cached,
+                                 (const t8_element_t *)leaf);
       return t8_forest_element_leaf_index_in_tree(
         const_cast<t8_forest_t>(forest), (const t8_element_t *)leaf, ltreeid);
     }

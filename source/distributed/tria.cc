@@ -2764,6 +2764,11 @@ namespace parallel
       typename Triangulation<dim, spacedim>::MeshSmoothing save_smooth =
         this->smooth_grid;
 
+      // matching the deal.II mesh with the forest looks up many elements in
+      // the leaves of the trees
+      const dealii::internal::amr::TreeLookupScope<dim> lookup_scope(
+        parallel_forest);
+
       // We will refine manually to match the p4est further down, which
       // obeys a level difference of 2 at each vertex (p4est), or at each
       // edge and at each vertex only with limit_level_difference_at_vertices
@@ -4285,6 +4290,10 @@ void Triangulation<dim, spacedim>::add_periodicity(
             this->local_cell_relations.resize(
               dealii::internal::amr::get_num_leafs<dim>(parallel_forest));
             this->local_cell_relations.shrink_to_fit();
+
+            // the recursion looks up many elements in the leaves of the trees
+            const dealii::internal::amr::TreeLookupScope<dim> lookup_scope(
+              parallel_forest);
 
             // recurse over p4est
             for (const auto &cell : this->cell_iterators_on_level(0))
