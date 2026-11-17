@@ -185,16 +185,21 @@ ScalarLagrangePolynomialWedge<dim>::compute_grad_grad(const unsigned int i,
   const auto     gg_line = poly_line.compute_grad_grad(pair[1], p_line);
 
   // the product rule for the triangle polynomial in x_0, x_1 times the line
-  // polynomial in x_2
+  // polynomial in x_2 (wedges only exist in 3d; the guard avoids writing out
+  // of bounds in the other instantiations)
   Tensor<2, dim> grad_grad;
-  for (unsigned int a = 0; a < 2; ++a)
+  AssertDimension(dim, 3);
+  if constexpr (dim == 3)
     {
-      for (unsigned int b = 0; b < 2; ++b)
-        grad_grad[a][b] = gg_tri[a][b] * v_line;
-      grad_grad[a][2] = g_tri[a] * g_line[0];
-      grad_grad[2][a] = g_tri[a] * g_line[0];
+      for (unsigned int a = 0; a < 2; ++a)
+        {
+          for (unsigned int b = 0; b < 2; ++b)
+            grad_grad[a][b] = gg_tri[a][b] * v_line;
+          grad_grad[a][2] = g_tri[a] * g_line[0];
+          grad_grad[2][a] = g_tri[a] * g_line[0];
+        }
+      grad_grad[2][2] = v_tri * gg_line[0][0];
     }
-  grad_grad[2][2] = v_tri * gg_line[0][0];
 
   return grad_grad;
 }
