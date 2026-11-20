@@ -237,7 +237,7 @@ namespace internal
       static void (&reset_data)(types<2>::forest *p4est,
                                 std::size_t       data_size,
                                 p4est_init_t      init_fn,
-                                void             *user_pointer); // TODO
+                                void             *user_pointer);
 
       static std::size_t (&forest_memory_used)(types<2>::forest *p4est);
 

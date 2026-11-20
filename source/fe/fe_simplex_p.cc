@@ -1117,7 +1117,7 @@ FE_SimplexDGP<dim, spacedim>::get_restriction_matrix(
         }
       else if (dim == 3)
         {
-          // TODO: only the line (6,8), see
+          // Note: only the line (6,8), see
           // FE_SimplexPoly::get_prolongation_matrix()
           AssertThrow(
             refinement_case ==

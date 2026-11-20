@@ -25,6 +25,9 @@
 #include <t8_schemes/t8_standalone/t8_standalone_elements.hxx>
 
 #include <t8.h>
+
+#include <algorithm>
+#include <iterator>
 // #include <t8_cmesh/t8_cmesh.h>
 #include <t8_cmesh/t8_cmesh_internal/t8_cmesh_types.h>
 #include <t8_element.h>
@@ -47,13 +50,32 @@ namespace internal
                                           t8_element_t *element);
     template <int dim>
     struct types
-    { // TODO: check which should be pointer, and which not
+    {
       using connectivity = t8_cmesh_t;
       using forest       = struct t8_forest;
       using tree         = t8_tree_t;
       using element      = t8_standalone_element<
         dim == 3 ? (t8_eclass_t)4 :
-                        (t8_eclass_t)dim>; // TODO: make standalone dependent on dim!
+                        (t8_eclass_t)dim>;
+      // One element type per dimension: the standalone elements of all
+      // classes of a dimension have the same layout (anchor coordinates,
+      // level, type), so it holds the elements of every class of a hybrid
+      // mesh.
+      static_assert(
+        dim != 3 ||
+          (sizeof(element) == sizeof(t8_standalone_element<T8_ECLASS_TET>) &&
+           sizeof(element) == sizeof(t8_standalone_element<T8_ECLASS_PRISM>) &&
+           sizeof(element) ==
+             sizeof(t8_standalone_element<T8_ECLASS_PYRAMID>)),
+        "The standalone elements of a dimension must share their layout.");
+      static_assert(
+        dim != 2 ||
+          sizeof(element) == sizeof(t8_standalone_element<T8_ECLASS_TRIANGLE>),
+        "The standalone elements of a dimension must share their layout.");
+      // CellId stores the child indices of at most 30 levels (cell_id.h).
+      static_assert(*std::max_element(std::begin(T8_ELEMENT_MAXLEVEL),
+                                      std::end(T8_ELEMENT_MAXLEVEL)) <= 30,
+                    "CellId::child_indices is too short for t8code.");
       using element_coord     = t8_element_coord;
       using eclass            = t8_eclass_t;
       using scheme_collection = const t8_scheme;
@@ -150,7 +172,6 @@ namespace internal
     vtk_write_file(const typename types<dim>::forest *forest,
                    const char                        *baseName);
 
-    // TODO: forest const?
     template <int dim>
     types<dim>::eclass
     get_eclass(const typename types<dim>::forest *parallel_forest,

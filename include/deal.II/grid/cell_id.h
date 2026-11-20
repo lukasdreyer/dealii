@@ -223,13 +223,9 @@ private:
    * creation of this object. If the given dimensions ever become a limitation
    * the array can be extended.
    */
-  // TODO: vector? get_max_level is not constexpr in t8code
-  // #ifdef DEAL_II_WITH_P4EST
-  //   std::array<std::uint8_t, internal::p4est::functions<2>::max_level>
-  //     child_indices;
-  // #else
+  // 30 levels: at least the maximum level of p4est and of the standalone
+  // scheme of t8code (checked by a static_assert in t8code_wrappers.h).
   std::array<std::uint8_t, 30> child_indices;
-  // #endif
 
   friend std::istream &
   operator>>(std::istream &is, CellId &cid);

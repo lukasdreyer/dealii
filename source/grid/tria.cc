@@ -8000,8 +8000,6 @@ namespace internal
                           else
                             DEAL_II_NOT_IMPLEMENTED();
 
-                          // chosen_line_tetrahedron = 0; //TODO move this in
-                          // distributed/tria.cc
 
                           cell->set_refinement_case(
                             RefinementCase<dim>(chosen_line_tetrahedron + 1));

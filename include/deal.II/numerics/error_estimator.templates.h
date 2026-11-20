@@ -780,7 +780,7 @@ namespace internal
          ++subface_no)
       {
         // The middle (i.e. last) face child of a tet must be handled separately
-        // TODO: this is only a temporary fix, it would be nicer to adjust the
+        // Note: this is a temporary fix, it would be nicer to adjust the
         // neighbor_of_neighbor interface to subfaces
         if (cell->reference_cell().is_simplex() && dim == 3 &&
             subface_no == face->n_children() - 1)

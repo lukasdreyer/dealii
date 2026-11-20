@@ -337,7 +337,6 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
         *tria)
     {
       t8_cmesh_t cmesh;
-      // TODO!! coarse mesh permutation!!!
       t8_cmesh_init(&cmesh);
       t8_cmesh_register_geometry<t8_geometry_linear>(cmesh);
       const auto &coarse_cell_permutation =

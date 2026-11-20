@@ -1690,7 +1690,7 @@ namespace FETools
 
     if (fe.reference_cell() == ReferenceCells::Tetrahedron)
       {
-        // TODO: only the refinement along the line (6,8) is implemented in
+        // Note: only the refinement along the line (6,8) is implemented in
         // Triangulation (the child tables for (5,7) and (4,9) are disabled),
         // and the t8code coupling only uses this one, so only compute its
         // matrices. Go up to cut_tet_49 again once the others are enabled.
@@ -2116,7 +2116,7 @@ namespace FETools
     unsigned int ref_case_start, ref_case_end;
     if (reference_cell == ReferenceCells::Tetrahedron)
       {
-        // TODO: only the line (6,8), see compute_embedding_matrices()
+        // Note: only the line (6,8), see compute_embedding_matrices()
         ref_case_start =
           static_cast<unsigned int>(IsotropicRefinementChoice::cut_tet_68);
         ref_case_end =

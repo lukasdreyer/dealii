@@ -196,7 +196,7 @@ namespace
     for (; cell != endc; ++cell)
       {
         const unsigned int index =
-          coarse_cell_to_p4est_tree_permutation[cell->index()]; // TODO
+          coarse_cell_to_p4est_tree_permutation[cell->index()];
 
         for (const unsigned int v : GeometryInfo<dim>::vertex_indices())
           {
@@ -459,7 +459,7 @@ namespace
 
 
         const unsigned int n_children =
-          dealii::internal::amr::element_children<dim>(forest, // TODO
+          dealii::internal::amr::element_children<dim>(forest,
                                                        eclass,
                                                        &amr_cell,
                                                        p4est_child);
@@ -577,7 +577,6 @@ namespace
       dealii::internal::amr::element_level<dim>(forest,
                                                 ghost_eclass,
                                                 &ghost_element);
-    // TODO: dealii type
     int dealii_type = 0;
     for (unsigned int i = 0; i < l; ++i)
       {
@@ -1355,7 +1354,7 @@ namespace
       {
         // recurse further
         typename dealii::internal::amr::types<dim>::element
-          p4est_child[ReferenceCells::max_n_children<dim>()]; // TODO
+          p4est_child[ReferenceCells::max_n_children<dim>()];
 
         dealii::internal::amr::element_children<dim>(forest,
                                                      eclass,
@@ -1624,7 +1623,6 @@ namespace parallel
 
 
 #  ifdef DEAL_II_WITH_P4EST
-    // TODOP4
     template <int dim, int spacedim>
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::execute_transfer(
@@ -2433,10 +2431,10 @@ namespace parallel
       t8_forest_commit(parallel_forest);
       t8_forest_set_user_data(parallel_forest, this);
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
-      // parallel_ghost= parallel_forest->ghosts;
-      // TODO      Assert(this->n_subdomains==1U ||
-      // this->n_locally_owned_active_cells()==0 || (parallel_ghost!=nullptr),
-      // ExcInternalError());
+      Assert(this->n_subdomains == 1U ||
+               this->n_locally_owned_active_cells() == 0 ||
+               parallel_ghost != nullptr,
+             ExcInternalError());
     }
 #    endif
 #  endif
@@ -2761,9 +2759,10 @@ namespace parallel
         }
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
 
-      // TODO      Assert(this->n_subdomains == 1  ||
-      // this->n_locally_owned_active_cells()==0 || parallel_ghost,
-      // ExcInternalError());
+      Assert(this->n_subdomains == 1 ||
+               this->n_locally_owned_active_cells() == 0 ||
+               parallel_ghost != nullptr,
+             ExcInternalError());
 
 
       // set all cells to artificial. we will later set it to the correct
@@ -3395,7 +3394,7 @@ namespace parallel
 
 // before repartitioning the mesh, save a copy of the current positions
 // of elements only if data needs to be transferred later
-#  ifdef DEAL_II_WITH_P4EST // TODOP4
+#  ifdef DEAL_II_WITH_P4EST
             std::vector<typename dealii::internal::amr::types<dim>::gloidx>
               previous_global_first_element;
 
@@ -3461,7 +3460,6 @@ namespace parallel
                       &PartitionWeights<dim, spacedim>::cell_weight);
 
                     // release data
-                    // TODO: reset element data?
                     dealii::internal::amr::forest_set_user_pointer<dim>(
                       parallel_forest, nullptr);
 #  else
@@ -3607,7 +3605,7 @@ namespace parallel
 
 // before repartitioning the mesh, save a copy of the current positions
 // of elements only if data needs to be transferred later
-#  ifdef DEAL_II_WITH_P4EST // TODOP4
+#  ifdef DEAL_II_WITH_P4EST
             std::vector<typename dealii::internal::amr::types<dim>::gloidx>
               previous_global_first_element;
 

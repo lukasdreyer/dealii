@@ -286,7 +286,7 @@ if constexpr (dim==2){
           forest,
           0,
           element,
-          &*this_object->current_refine_pointer)) // TODO get eclass
+          &*this_object->current_refine_pointer)) // p4est has one element class
       {
         ++this_object->current_refine_pointer;
         return 1;
@@ -341,7 +341,7 @@ if constexpr (dim==2){
           forest,
           0,
           children[0],
-          &*this_object->current_coarsen_pointer)) // TODO eclass
+          &*this_object->current_coarsen_pointer)) // p4est has one element class
       {
         // move current pointer one up
         ++this_object->current_coarsen_pointer;
@@ -355,7 +355,7 @@ if constexpr (dim==2){
                      forest,
                      0,
                      children[c],
-                     &*this_object->current_coarsen_pointer), // TODO: eclass
+                     &*this_object->current_coarsen_pointer), // one element class
                    ExcInternalError());
             ++this_object->current_coarsen_pointer;
           }
