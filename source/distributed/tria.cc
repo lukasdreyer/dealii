@@ -2471,8 +2471,10 @@ namespace parallel
       t8_forest_commit(parallel_forest);
       t8_forest_set_user_data(parallel_forest, this);
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
-      Assert(this->n_subdomains == 1U ||
-               this->n_locally_owned_active_cells() == 0 ||
+      // a process without elements in the forest has no ghost layer (with
+      // t8code); the deal.II triangulation still shows the old mesh here
+      Assert(this->n_subdomains == 1 ||
+               dealii::internal::amr::get_num_leafs<dim>(parallel_forest) == 0 ||
                parallel_ghost != nullptr,
              ExcInternalError());
     }
@@ -2799,8 +2801,10 @@ namespace parallel
         }
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
 
+      // a process without elements in the forest has no ghost layer (with
+      // t8code); the deal.II triangulation still shows the old mesh here
       Assert(this->n_subdomains == 1 ||
-               this->n_locally_owned_active_cells() == 0 ||
+               dealii::internal::amr::get_num_leafs<dim>(parallel_forest) == 0 ||
                parallel_ghost != nullptr,
              ExcInternalError());
 
