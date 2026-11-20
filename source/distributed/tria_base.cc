@@ -37,8 +37,6 @@
 
 
 // Debug output of the t8code coupling, discarded by a stream without buffer.
-// Replace debug_out by std::cout to print it again.
-static std::ostream debug_out(nullptr);
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -714,10 +712,6 @@ namespace parallel
       std::any_of(this->begin_active(this->n_global_levels() - 2),
                   this->end_active(this->n_global_levels() - 2),
                   [](const CellAccessor<dim, spacedim> &cell) {
-                    debug_out<<cell.id()<<" is "<<std::endl;
-                    if(cell.is_locally_owned())
-                      debug_out<< "not ";
-                    debug_out<<"locally owned"<<std::endl;
                     return cell.is_locally_owned();
                   });
 

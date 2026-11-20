@@ -57,8 +57,6 @@
 
 
 // Debug output of the t8code coupling, discarded by a stream without buffer.
-// Replace debug_out by std::cout to print it again.
-static std::ostream debug_out(nullptr);
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -6945,7 +6943,6 @@ namespace internal
       execute_refinement_isotropic(Triangulation<3, spacedim> &triangulation,
                                    const bool check_for_distorted_cells)
       {
-        debug_out<<"Into execute_refinement_isotropic!"<<std::endl;
         static const int          dim = 3;
         static const unsigned int X   = numbers::invalid_unsigned_int;
         using raw_line_iterator =
@@ -7244,7 +7241,6 @@ namespace internal
                                        triangulation.vertices_used);
               triangulation.vertices[current_vertex] = line->center(true);
 
-              // std::cout<<"line "<<line->index()<<" gets refined into children with indices "<<children[0]->index()<<" and"<<children[1]->index()<<std::endl;
               children[0]->set_bounding_object_indices(
                 {line->vertex_index(0), current_vertex});
               children[1]->set_bounding_object_indices(
@@ -7261,7 +7257,6 @@ namespace internal
                   child->set_boundary_id_internal(boundary_id);
                   child->set_manifold_id(manifold_id);
                 }
-              // std::cout<<"line "<<line->index()<<"("<< line->vertex_index(0) <<", " << line->vertex_index(1) <<") gets refined into children with indices "<<children[0]->index()
             //  <<"("<< children[0]->vertex_index(0) <<", " << children[0]->vertex_index(1) <<") and"<<children[1]->index()
             //  <<"("<< children[1]->vertex_index(0) <<", " << children[1]->vertex_index(1) <<")"
             //  <<"and midpoint"<< children[0]->vertex_index(1)<<"/"<<children[1]->vertex_index(0) <<std::endl;
@@ -7294,7 +7289,6 @@ namespace internal
                       new_lines[l] =
                         triangulation.faces->lines
                           .template next_free_single_object<1>(triangulation);
-//                          std::cout<<"created new line with index "<<new_lines[l]->index()<<std::endl;
                       new_lines[l]->set_used_flag();
                     }
                     break;
@@ -7341,16 +7335,13 @@ namespace internal
 
                   face->set_children(2 * f, new_faces[2 * f]->index());
                 }
-              // std::cout<<"face "<<face->index()<<" has children faces "<<
               //   new_faces[0]<<" "<<
               //   new_faces[1]<<" "<<
               //   new_faces[2]<<" "<<
               //   new_faces[3]<<" "<<std::endl;
-              // std::cout<<"and vertices "<<
               //   face->vertex_index(0)<<" "<<
               //   face->vertex_index(1)<<" "<<
               //   face->vertex_index(2)<<std::endl;
-              // std::cout<<"and new vertices "<<
               //   face->line(0)->child(0)->vertex_index(1)<<" "<<
               //   face->line(1)->child(0)->vertex_index(1)<<" "<<
               //   face->line(2)->child(0)->vertex_index(1)<<std::endl;
@@ -7406,12 +7397,9 @@ namespace internal
                 lines[n_lines++] = new_lines[l];
 
               std::array<int, 12> line_indices;
-              debug_out <<"line indices: ";
               for (unsigned int i = 0; i < n_lines; ++i){
                 line_indices[i] = lines[i]->index();
-                debug_out << line_indices[i]<<" ";
               }
-              debug_out<<std::endl;
 
               // 2---7---3   .-6-.-7-.   .---.---.
               // |   |   |   1   9   3   | 2 | 3 |
@@ -7522,8 +7510,6 @@ namespace internal
                   new_line->set_bounding_object_indices(
                     {vertex_indices[line_vertices[j][0]],
                      vertex_indices[line_vertices[j][1]]});
-                  debug_out<<"added new internal line "<<new_line->index()<<" with vertices "<<
-                  vertex_indices[line_vertices[j][0]] <<" "<< vertex_indices[line_vertices[j][1]]<<std::endl;
 //                  new_line->set_used_flag();
                   new_line->clear_user_flag();
                   new_line->clear_user_data();
@@ -7537,7 +7523,6 @@ namespace internal
                 {
                   // 5.a) Create faces
                   auto &new_face = new_faces[i];
-                  debug_out<<"set properties of new face "<<new_face->index()<<" with vertices:"<<std::endl;
 
                   // We assume here that all children have the same type as the
                   // parent face.
@@ -7552,34 +7537,21 @@ namespace internal
                           {line_indices[face_lines[i][0]],
                            line_indices[face_lines[i][1]],
                            line_indices[face_lines[i][2]]});
-                           debug_out<<"added lines:"<<std::endl;
                            unsigned int index;
                            index = line_indices[face_lines[i][0]];
                            auto line = triangulation.begin_raw_line();
                            std::advance(line, index);
 
-                          debug_out << index << " "
-                                    << line->vertex_index(0) << " "
-                                    << line->vertex_index(1)
-                                    << std::endl;
 
                                                                index = line_indices[face_lines[i][1]];
                            line = triangulation.begin_raw_line();
                            std::advance(line, index);
 
-                          debug_out << index << " "
-                                    << line->vertex_index(0) << " "
-                                    << line->vertex_index(1)
-                                    << std::endl;
 
                                                                index = line_indices[face_lines[i][2]];
                            line = triangulation.begin_raw_line();
                            std::advance(line, index);
 
-                          debug_out << index << " "
-                                    << line->vertex_index(0) << " "
-                                    << line->vertex_index(1)
-                                    << std::endl;
                           }
                           break;
 
@@ -7604,10 +7576,6 @@ namespace internal
 
                   [[maybe_unused]] std::set<unsigned int> s;
 
-                  // std::cout <<"face needs ordered vertices "<<std::endl;
-                  // std::cout <<vertex_indices[tri_line_vertices_tri[i][0][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][0][1]]<<std::endl;
-                  // std::cout <<vertex_indices[tri_line_vertices_tri[i][1][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][1][1]]<<std::endl;
-                  // std::cout <<vertex_indices[tri_line_vertices_tri[i][2][0]]<<" "<<vertex_indices[tri_line_vertices_tri[i][2][1]]<<std::endl;
                   // 5.b.I) Fix orientation of lines of face
                   // For triangles an expensive algorithm is used,
                   // quadrilaterals are treated a few lines below by a cheaper
@@ -7624,16 +7592,6 @@ namespace internal
                             {vertex_indices[tri_line_vertices_tri[i][f][0]],
                              vertex_indices[tri_line_vertices_tri[i][f][1]]}};
 
-                            debug_out<<"vertices_0:";
-                            for(const auto &vertex:vertices_0){
-                              debug_out<<vertex<<" ";
-                            }
-                            debug_out<<std::endl;
-                            debug_out<<"vertices_1:";
-                            for(const auto &vertex:vertices_1){
-                              debug_out<<vertex<<" ";
-                            }
-                            debug_out<<std::endl;
 
                           const auto orientation =
                             ReferenceCells::Line.get_combined_orientation(
@@ -7703,7 +7661,6 @@ namespace internal
                     RefinementCase<dim>::no_refinement)
                   continue;
 
-                debug_out<<"create children cells of cell "<<cell->id()<<std::endl;
                 // Copy the requested refinement case to the cell's actual
                 // refinement flag, informing the cell how it has been refined.
                 const RefinementCase<dim> ref_case = cell->refine_flag_set();
@@ -7979,11 +7936,8 @@ namespace internal
                         triangulation.vertices[current_vertex] =
                           cell->center(true, true);
                       }
-                      // std::cout<<"vertex_indices:"<<std::endl;
                       // for (unsigned int i=0; i<k; i++){
-                      //   std::cout<<vertex_indices[i]<<" ";
                       // }
-                      // std::cout<<std::endl;
                   } // GET_VERTICES
 
                   unsigned int chosen_line_tetrahedron = 0;
@@ -8048,7 +8002,6 @@ namespace internal
 
                           // chosen_line_tetrahedron = 0; //TODO move this in
                           // distributed/tria.cc
-                          // std::cout<<"chosen_line_tetrahedron: "<<chosen_line_tetrahedron<<std::endl;
 
                           cell->set_refinement_case(
                             RefinementCase<dim>(chosen_line_tetrahedron + 1));
@@ -8292,13 +8245,10 @@ namespace internal
 
 
                     // 4. Extract and store indices of the relevant lines.
-                        //  std::cout<<"relevant lines"<<std::endl;
                     for (unsigned int i = 0; i < relevant_lines_counter;
                          ++i){
                            relevant_line_indices[i] = relevant_lines[i]->index();
-                          //  std::cout <<   relevant_line_indices[i] << " ";
                          }
-                        //  std::cout<<std::endl;
 
 
                     // New faces (internal to the parent) are required for the
@@ -8978,7 +8928,6 @@ namespace internal
                     for (unsigned int q = 0; q < n_new_faces; ++q)
                       {
                         auto &new_face = new_faces[q];
-                        // std::cout<<"create new face "<<new_face->index()<<" with line indices ";
 
                         if (new_face_lines[q][3] == X)
                           {
@@ -8991,8 +8940,6 @@ namespace internal
                               {relevant_line_indices[new_face_lines[q][0]],
                                relevant_line_indices[new_face_lines[q][1]],
                                relevant_line_indices[new_face_lines[q][2]]});
-                            // std::cout<<new_face_lines[q][0]<<" "<<new_face_lines[q][1]<<" "<<new_face_lines[q][2];
-                            // std::cout<<"("<<relevant_line_indices[new_face_lines[q][0]]<<" "<<relevant_line_indices[new_face_lines[q][1]]<<" "<<relevant_line_indices[new_face_lines[q][2]]<<")"<<std::endl;
                           }
                         else
                           {
@@ -9666,7 +9613,6 @@ namespace internal
                         auto      &new_cell = new_cells[c];
                         const auto child_reference_cell =
                           new_cell->reference_cell();
-                        // std::cout<<"new cell "<<new_cell->id()<<std::endl;
                         // Set the bounding faces of the new cells
                         // This seems to be the only option since
                         // set_bounding_object_indices() takes an
@@ -9679,11 +9625,6 @@ namespace internal
                                  face_indices[cell_faces[c][1]],
                                  face_indices[cell_faces[c][2]],
                                  face_indices[cell_faces[c][3]]});
-                              // std::cout<<"with face indices: ";
-                              // std::cout<<face_indices[cell_faces[c][0]]<<" ";
-                              // std::cout<<face_indices[cell_faces[c][1]]<<" ";
-                              // std::cout<<face_indices[cell_faces[c][2]]<<" ";
-                              // std::cout<<face_indices[cell_faces[c][3]]<<std::endl;
                               break;
 
                             // Pyramids and Wedges share same number of faces
@@ -9725,11 +9666,8 @@ namespace internal
 
                                 // load correct vertices of cell
                                 auto new_cell_vertices = new_cells_vertices[c];
-                                // std::cout<<"fix orientation of face"<<face->index()<<"with vertices: ";
                                 // for (auto vertex: new_cell_vertices){
-                                //   std::cout<<vertex<<" ";
                                 // }
-                                // std::cout<<std::endl;
                                 // Load correct indices of vertices of face `f`
                                 std::array<unsigned int, 4> vertices_0,
                                   vertices_1;
@@ -9762,24 +9700,17 @@ namespace internal
                                     // `vertex_indices`.
                                     vertices_0[face_vertex_no] = vertex_indices
                                       [new_cell_vertices[cell_vertex_no]];
-                                    // std::cout<<"face "<<f<<" with facevertex "<<face_vertex_no<<"has cell vertex "<<cell_vertex_no<<"and global vertex"<< vertices_0[face_vertex_no] <<std::endl;
                                   }
 
                                 // max 4 vertices (if face is quad)
                                 for (const auto i : face->vertex_indices())
                                   vertices_1[i] = face->vertex_index(i);
 
-                                // std::cout<<"vertices_0: ";
                                 // for(const auto i: face->vertex_indices()){
-                                //   std::cout <<vertices_0[i]<<" ";
                                 // }
-                                // std::cout<<std::endl;
 
-                                // std::cout<<"vertices_1: ";
                                 // for(const auto i: face->vertex_indices()){
-                                //   std::cout <<vertices_1[i]<<" ";
                                 // }
-                                // std::cout<<std::endl;
 
                                 // Calculate combined orientation as permutation
                                 // of desired face vertex indices an actual
@@ -9794,7 +9725,6 @@ namespace internal
                                       make_array_view(vertices_1.cbegin(),
                                                       vertices_1.cbegin() +
                                                         face->n_vertices())));
-				// std::cout<<"set face orientation of face "<<face->index()<<" to "<<(int) new_cell->combined_face_orientation(f)<<std::endl;
                               }
                           }
                       }
@@ -14436,14 +14366,6 @@ namespace internal
                         for (unsigned int c = 0; c < 2; ++c)
                           {
                             if(line->child(c)->has_children()){
-                              debug_out<<"line "<<line->index()<<" from cell "<<cell->id()<<" is not balanced!"<<std::endl;
-                              debug_out<<"because child "<< c<<" line "<<line->child(c)<<" has children "<< line->child(c)->child(0)<<" and "<<line->child(c)->child(1)<<std::endl;
-                              debug_out<<"vertices:"<<std::endl;
-                              debug_out<<cell->vertex(0)<<std::endl;
-                              debug_out<<cell->vertex(1)<<std::endl;
-                              debug_out<<cell->vertex(2)<<std::endl;
-                              debug_out<<cell->vertex(3)<<std::endl;
-                              debug_out<<"internal structures"<<std::endl;
                               triangulation.print_internal_structures();
                             }
                             Assert(line->child(c)->has_children() == false,
@@ -15164,7 +15086,6 @@ namespace internal
                     for (unsigned int child = 0; child < quad->n_children();
                          ++child){
                            quads_to_delete.push_back(quad->child(child));
-  //                         std::cout<<"added quad "<<quads_to_delete.back()->index()<<" to deleted list as child of outer face"<<std::endl;
                          }
                     quad->clear_children();
                     quad->clear_refinement_case();
@@ -15229,7 +15150,6 @@ namespace internal
               endline = lines_to_delete.end();
             for (; line != endline; ++line)
               {
-//		                std::cout<<"line "<<(*line)->index()<<" about to be deleted"<<std::endl;
                 (*line)->clear_user_data();
                 (*line)->clear_user_flag();
                 (*line)->clear_used_flag();
@@ -15241,7 +15161,6 @@ namespace internal
               endquad = quads_to_delete.end();
             for (; quad != endquad; ++quad)
               {
-                              //  std::cout<<"quad "<<(*quad)->index()<<" about to be deleted"<<std::endl;
  (*quad)->clear_user_data();
                 (*quad)->clear_children();
                 (*quad)->clear_refinement_case();
@@ -19986,7 +19905,6 @@ void Triangulation<dim, spacedim>::fix_coarsen_flags()
 
           // flag the children for coarsening again if all children were
           // flagged and if the policy allows it
-          // std::cout << "flagged children " << flagged_children << " of n
           // children" << n_children << std::endl;
           if (flagged_children == n_children &&
               this->policy->coarsening_allowed(cell))
@@ -20286,46 +20204,17 @@ DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
 void Triangulation<dim, spacedim>::print_internal_structures()
 {
   
-  debug_out<<"Internal structures:"<<std::endl;
-  debug_out<<"global cells"<<std::endl;
-  for (auto &cell: active_cell_iterators()){
-    debug_out<<"cell "<<cell->id()<<" with faces: "<<std::endl;
-    for (auto face: cell->face_indices()){
-      debug_out<<cell->face(face)->index()<<" ";
-    }
-    debug_out<<" and lines: "<<std::endl;
-    for (auto line: cell->line_indices()){
-      debug_out<<cell->line(line)->index()<<" ";
-    }
-    debug_out<<" and vertices: "<<std::endl;
-    for (auto vertex: cell->vertex_indices()){
-      debug_out<<cell->vertex(vertex)<<std::endl;
-    }
-    debug_out<<std::endl;
-  }
 
 
 
-  debug_out<<"global vertices"<<std::endl;
   int counter;
 
   counter=0;
-  for (auto &vertex : get_vertices()){
-    debug_out<<counter++<<": "<<vertex<<std::endl;
-  }
   if constexpr (dim > 1){
     counter=0;
-    debug_out<<"global lines"<<std::endl;
-    for (auto line = this->begin_raw_line(); line != this->end_line(); line++){
-      debug_out<<counter++<<": "<<line->vertex_index(0)<<" "<<line->vertex_index(1)<<std::endl;
-    }
   }
   if constexpr (dim > 2){
     counter=0;
-    debug_out<<"global faces"<<std::endl;
-    for (auto quad = this->begin_raw_quad(); quad != this->end_quad(); quad++){
-      debug_out<<counter++<<": "<<quad->vertex_index(0)<<" "<<quad->vertex_index(1)<<" "<<quad->vertex_index(2)<<std::endl;
-    }
   }
 }
 

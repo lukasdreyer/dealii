@@ -22,7 +22,6 @@
 #include <deal.II/distributed/amr.h>
 #include <deal.II/distributed/tria.h>
 
-#include "deal.II/grid/grid_out.h"
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/tria_accessor.h>
@@ -31,7 +30,6 @@
 #include <mpi.h>
 
 #include <algorithm>
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -39,35 +37,6 @@
 #include <string>
 
 
-// Debug output of the t8code coupling, discarded without formatting the
-// arguments (a std::ostream without buffer would still format them, which
-// cost about 8% of the refinement on hybrid meshes because of the output of
-// the transferred data in execute_transfer). Replace the definition by
-//   static std::ostream &debug_out = std::cout;
-// to print it again.
-namespace
-{
-  struct DiscardingStream
-  {
-    template <typename T>
-    DiscardingStream &
-    operator<<(const T &)
-    {
-      return *this;
-    }
-
-    DiscardingStream &
-    operator<<(std::ostream &(*)(std::ostream &))
-    {
-      return *this;
-    }
-  };
-} // namespace
-static DiscardingStream debug_out;
-// Whether to write the debug vtk files of the t8code coupling (t8_grid_*, grid-*),
-// set by the environment variable DEAL_II_T8CODE_DEBUG_OUTPUT
-static const bool write_debug_output =
-  std::getenv("DEAL_II_T8CODE_DEBUG_OUTPUT") != nullptr;
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -1507,7 +1476,6 @@ namespace parallel
       , parallel_forest(nullptr)
     {
       parallel_ghost = nullptr;
-      debug_out<<"constructed triangulation with settings "<<settings<<std::endl;
     }
 
 
@@ -1612,15 +1580,12 @@ namespace parallel
 
       if (parallel_forest != nullptr)
         {
-          debug_out << "try to destroy forest" << &parallel_forest << std::endl;
           dealii::internal::amr::forest_destroy<dim>(&parallel_forest);
           parallel_forest = nullptr;
         }
 
       if (connectivity != nullptr)
         {
-          debug_out << "try to destroy connectivity" << &connectivity
-                    << std::endl;
           dealii::internal::amr::functions<dim>::connectivity_destroy(
             connectivity);
           connectivity = nullptr;
@@ -1819,8 +1784,6 @@ namespace parallel
                         MPI_INT,
                         MPI_MAX,
                         MPI_COMM_WORLD);
-          debug_out << "Max data size: " << max_data_size
-                    << ", loc: " << max_data_size_loc << std::endl;
 
           sc_array_t src_data_padded, dest_data_padded;
           sc_array_init_count(&src_data_padded,
@@ -1831,20 +1794,12 @@ namespace parallel
                               parallel_forest->local_num_leaf_elements);
 
 
-          debug_out << "src representation:" << std::endl;
-          for (const auto &char_rep : this->data_serializer.src_data_variable)
-            {
-              debug_out << (int)char_rep << " ";
-            }
-          debug_out << std::endl;
 
           // memcpy src_data_variable in padded
           size_t cumulative_index = 0;
           for (int idata = 0; idata < old_forest->local_num_leaf_elements;
                idata++)
             {
-              debug_out << "memcpy to, idata " << idata << ", cumulative_index "
-                        << cumulative_index << std::endl;
               if (this->data_serializer.src_sizes_variable[idata])
                 {
                   memcpy(sc_array_index_int(&src_data_padded, idata),
@@ -1870,9 +1825,6 @@ namespace parallel
           for (int idata = 0; idata < parallel_forest->local_num_leaf_elements;
                idata++)
             {
-              debug_out << "memcpy from, idata " << idata
-                        << ", cumulative_index " << cumulative_index
-                        << std::endl;
               if (this->data_serializer.dest_sizes_variable[idata])
                 {
                   memcpy(&(this->data_serializer
@@ -1883,12 +1835,6 @@ namespace parallel
               cumulative_index +=
                 this->data_serializer.dest_sizes_variable[idata];
             }
-          debug_out << "dest representation:" << std::endl;
-          for (const auto &char_rep : this->data_serializer.dest_data_variable)
-            {
-              debug_out << (int)char_rep << " ";
-            }
-          debug_out << std::endl;
 
 
           // Release memory of padded data
@@ -2488,9 +2434,6 @@ namespace parallel
       t8_forest_set_user_data(parallel_forest, this);
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
       // parallel_ghost= parallel_forest->ghosts;
-      debug_out << "subdomain" << this->my_subdomain << ", set ghost to "
-                << parallel_ghost << "with locally active:"
-                << this->n_locally_owned_active_cells() << std::endl;
       // TODO      Assert(this->n_subdomains==1U ||
       // this->n_locally_owned_active_cells()==0 || (parallel_ghost!=nullptr),
       // ExcInternalError());
@@ -2743,19 +2686,6 @@ namespace parallel
     DEAL_II_CXX20_REQUIRES((concepts::is_valid_dim_spacedim<dim, spacedim>))
     void Triangulation<dim, spacedim>::copy_local_forest_to_triangulation()
     {
-      static unsigned int global_cycle=0;
-      debug_out<<"settings for global_cycle "<<std::to_string(global_cycle)<<":"<<std::to_string(settings)<<"/"<<settings<<std::endl;
-      // std::cout<<"beginning of copy"<<std::endl;
-      // for(const auto &cell: this->active_cell_iterators())
-      // {
-      //   std::cout << "Refine flag: " << int(cell->refine_flag_set()) << ",
-      //   coarsen flag: " << int(cell->coarsen_flag_set()) << std::endl;
-      // }
-      if (write_debug_output)
-        {
-          std::string t8_file = "t8_grid_" + std::to_string(global_cycle);
-          dealii::internal::amr::vtk_write_file<dim>(parallel_forest,t8_file.c_str());
-        }
       // Disable mesh smoothing for recreating the deal.II triangulation,
       // otherwise we might not be able to reproduce the p4est mesh
       // exactly. We restore the original smoothing at the end of this
@@ -2798,7 +2728,6 @@ namespace parallel
       if (settings & mesh_reconstruction_after_repartitioning)
         while (this->n_levels() > 1)
           {
-            debug_out<<"still "<<this->n_levels()<<"remaining"<<std::endl;
             // Instead of marking all active cells, we slice off the finest
             // level, one level at a time. This takes the same number of
             // iterations but solves an issue where not all cells on a
@@ -2822,27 +2751,15 @@ namespace parallel
                 DEAL_II_ASSERT_UNREACHABLE();
               }
           }
-      // std::cout<<"after mesh reconstruction:"<<std::endl;
-      // for(const auto &cell: this->active_cell_iterators())
-      // {
-      //   std::cout << "Refine flag: " << int(cell->refine_flag_set()) << ",
-      //   coarsen flag: " << int(cell->coarsen_flag_set()) << std::endl;
-      // }
 
 
       // query p4est for the ghost cells
       if (parallel_ghost != nullptr)
         {
-          debug_out << "reset parallel ghost" << std::endl;
           dealii::internal::amr::ghost_destroy<dim>(&parallel_ghost);
           parallel_ghost = nullptr;
         }
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
-      debug_out << "set parallel ghost to adress" << parallel_ghost
-                << std::endl;
-      debug_out << "subdomain" << this->my_subdomain << ", set ghost to "
-                << parallel_ghost << "with locally active:"
-                << this->n_locally_owned_active_cells() << std::endl;
 
       // TODO      Assert(this->n_subdomains == 1  ||
       // this->n_locally_owned_active_cells()==0 || parallel_ghost,
@@ -2854,7 +2771,6 @@ namespace parallel
       for (const auto &cell : this->cell_iterators_on_level(0))
         cell->recursively_set_subdomain_id(numbers::artificial_subdomain_id);
 
-      unsigned int mesh_loop_counter=0;
       do
         {
           for (const auto &cell : this->cell_iterators_on_level(0))
@@ -2864,7 +2780,6 @@ namespace parallel
               typename dealii::internal::amr::types<dim>::locidx ltreeid =
                 dealii::internal::amr::global_to_local_tree<dim>(
                   parallel_forest, gtreeid);
-              // std::cout <<"consider dealii cell "<<cell->id()<<" with index
               // "<<cell->index()<<" with global "<<gtreeid<<"and
               // local"<<ltreeid<<std::endl; if this processor stores no part of
               // the forest that comes out of this coarse grid cell, then we
@@ -2998,13 +2913,6 @@ namespace parallel
                   }
 
 
-                // std::cout<<"before fixing"<<std::endl;
-                // for(const auto &cell: this->active_cell_iterators())
-                // {
-                //   std::cout << "Refine flag: " <<
-                //   int(cell->refine_flag_set()) << ", coarsen flag: " <<
-                //   int(cell->coarsen_flag_set()) << std::endl;
-                // }
 
 
 
@@ -3072,17 +2980,6 @@ namespace parallel
                   {
                     dealii::Triangulation<dim, spacedim>::
                       execute_coarsening_and_refinement();
-              if (write_debug_output)
-                {
-              std::string filename = "grid-cycle_" + std::to_string(global_cycle) + "_loop_" + std::to_string(mesh_loop_counter++) + "_proc_" + std::to_string(this->my_subdomain) +
-                                ".vtk";
-              std::ofstream out(filename);
-              GridOut       grid_out;
-              //      grid_out.write_mesh_per_processor_as_vtu(*this, "grid",
-              //      false, true);
-              grid_out.write_vtk(*this, out);
-              debug_out << filename << std::endl;
-                }
                     }
                 catch (
                   const typename Triangulation<dim, spacedim>::DistortedCellList
@@ -3287,19 +3184,7 @@ namespace parallel
                     DEAL_II_ASSERT_UNREACHABLE();
                 }
 
-              if (write_debug_output)
-                {
-              std::string end_file = "grid-" + std::to_string(global_cycle) + "_p_" + std::to_string(this->my_subdomain) +
-                                ".vtk";
-              std::ofstream out(end_file);
-              GridOut       grid_out;
-              //      grid_out.write_mesh_per_processor_as_vtu(*this, "grid",
-              //      false, true);
-              grid_out.write_vtk(*this, out);
-              debug_out << "Grid written to "<< end_file << std::endl;
-                }
 
-              global_cycle++;
 
             }
 

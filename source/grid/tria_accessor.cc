@@ -32,8 +32,6 @@
 #include <limits>
 
 // Debug output of the t8code coupling, discarded by a stream without buffer.
-// Replace debug_out by std::cout to print it again.
-static std::ostream debug_out(nullptr);
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -3477,13 +3475,9 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
 
               const auto neighbor_child_here = neighbor->child(child_index);
               {
-                // std::cout << "face, face index and vertices: " << face << ", " << this->face(face)->index() << "; " << this->face(face)->vertex(0) << ", " << this->face(face)->vertex(1) << ", " << this->face(face)->vertex(2) << std::endl;
-                // std::cout << "subface, subface index and vertices: " << subface << ", " << this->face(face)->child(subface)->index() << "; " << this->face(face)->child(subface)->vertex(0) << ", " << this->face(face)->child(subface)->vertex(1) << ", " << this->face(face)->child(subface)->vertex(2) << std::endl;
                 
                 // const auto neighbor_face_it = neighbor->face(neighbor_face);
-                // std::cout << "neighbor face, face index and vertices: " << neighbor_face << ", " << neighbor_face_it->index() << "; " << neighbor_face_it->vertex(0) << ", " << neighbor_face_it->vertex(1) << ", " << neighbor_face_it->vertex(2) << std::endl;
                 // if constexpr(dim == 3)
-                // std::cout << "neighbor child, child index and vertices: " << subface << ", " << neighbor_child_here->index() << "; " << neighbor_child_here->vertex(0) << ", " << neighbor_child_here->vertex(1) << ", " << neighbor_child_here->vertex(2) << ", " << neighbor_child_here->vertex(3) << std::endl;
                 if constexpr(dim == 3)
                 {
                   bool found_all_points = true;
@@ -3497,16 +3491,6 @@ CellAccessor<dim, spacedim>::neighbor_child_on_subface(
 
                     if(found_point == false)
                       found_all_points = false;
-                  }
-                  if(found_all_points == false)
-                  {
-                     debug_out << "face " << this->face(face)->index() << " in orientations " << int(this->combined_face_orientation(face)) << " and " << int(neighbor->combined_face_orientation(neighbor_face)) << std::endl;
-                debug_out << "subface vertices: " << subface << ", " << this->face(face)->child(subface)->vertex(0) << ", " << this->face(face)->child(subface)->vertex(1) << ", " << this->face(face)->child(subface)->vertex(2) << std::endl;
-                
-                const auto neighbor_face_it = neighbor->face(neighbor_face);
-                if constexpr(dim == 3)
-                debug_out << "neighbor child vertices: " << neighbor_child_here->vertex(0) << ", " << neighbor_child_here->vertex(1) << ", " << neighbor_child_here->vertex(2) << ", " << neighbor_child_here->vertex(3) << std::endl;
-               
                   }
                   Assert(found_all_points, ExcInternalError());
                 }

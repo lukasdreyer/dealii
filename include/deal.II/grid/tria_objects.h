@@ -621,11 +621,8 @@ namespace internal
 
       
       int pos = next_free_single, last = used.size() - 1;
-      // std::cout<<"into next_free_single<"<<dim<< "> with "<<pos<<", reverse_order:"<< reverse_order_next_free_single << "and used: ";
       // for (const auto &el: used){
-      //   std::cout<<(int)el<<" ";
       // }
-//      std::cout<<std::endl;
 
       if (!reverse_order_next_free_single)
         {
@@ -641,7 +638,6 @@ namespace internal
                 }
           if (pos >= last)
             {
-              // std::cout<<"search from back in next iteration"<<std::endl;
               reverse_order_next_free_single = true;
               next_free_single               = used.size() - 1;
               pos                            = used.size() - 1;
@@ -681,11 +677,8 @@ namespace internal
       AssertDimension(structdim_, this->structdim);
 
       int pos = next_free_pair, last = used.size() - 1;
-      // std::cout<<"into next_free_pair<"<<structdim_<< "> with "<<pos<<"and used: ";
       // for (const auto &el: used){
-      //   std::cout<<(int)el<<" ";
       // }
-      // std::cout<<std::endl;
 
       for (; pos < last; ++pos)
         if (!used[pos])
