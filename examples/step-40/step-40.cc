@@ -640,15 +640,15 @@ namespace Step40
           << " on " << Utilities::MPI::n_mpi_processes(mpi_communicator)
           << " MPI rank(s)..." << std::endl;
 
-    const unsigned int n_cycles = 5;
+    const unsigned int n_cycles = 8;
     for (unsigned int cycle = 0; cycle < n_cycles; ++cycle)
       {
         pcout << "Cycle " << cycle << ':' << std::endl;
 
         if (cycle == 0)
           {
-            GridGenerator::subdivided_hyper_cube(triangulation, 3);
-            triangulation.refine_global(1);
+            GridGenerator::hyper_cube(triangulation);
+            triangulation.refine_global(5);
           }
         else
           refine_grid();
