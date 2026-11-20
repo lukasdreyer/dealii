@@ -534,9 +534,6 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                                                      adapt_list);
         }
 
-      // size:"<<triangulation->n_active_cells()<<std::endl; for (const auto
-      // &entry: adapt_list){
-      // }
 
       t8_forest_t new_forest;
 
@@ -544,7 +541,6 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       t8_forest_set_adapt(new_forest, parallel_forest, adapt_from_vec, false);
       t8_forest_set_ghost(new_forest, true, T8_GHOST_VERTICES);
       t8_forest_commit(new_forest);
-      //      "<<parallel_forest->rc.refcount<<std::endl;
 
 
       // reset the pointer

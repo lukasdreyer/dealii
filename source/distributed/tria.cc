@@ -2819,8 +2819,7 @@ namespace parallel
               typename dealii::internal::amr::types<dim>::locidx ltreeid =
                 dealii::internal::amr::global_to_local_tree<dim>(
                   parallel_forest, gtreeid);
-              // "<<cell->index()<<" with global "<<gtreeid<<"and
-              // local"<<ltreeid<<std::endl; if this processor stores no part of
+              // if this processor stores no part of
               // the forest that comes out of this coarse grid cell, then we
               // need to delete all children of this cell (the coarse grid cell
               // remains)

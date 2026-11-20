@@ -56,7 +56,6 @@
 #include <vector>
 
 
-// Debug output of the t8code coupling, discarded by a stream without buffer.
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -7257,9 +7256,6 @@ namespace internal
                   child->set_boundary_id_internal(boundary_id);
                   child->set_manifold_id(manifold_id);
                 }
-            //  <<"("<< children[0]->vertex_index(0) <<", " << children[0]->vertex_index(1) <<") and"<<children[1]->index()
-            //  <<"("<< children[1]->vertex_index(0) <<", " << children[1]->vertex_index(1) <<")"
-            //  <<"and midpoint"<< children[0]->vertex_index(1)<<"/"<<children[1]->vertex_index(0) <<std::endl;
 
               line->clear_user_flag();
             }
@@ -7335,17 +7331,6 @@ namespace internal
 
                   face->set_children(2 * f, new_faces[2 * f]->index());
                 }
-              //   new_faces[0]<<" "<<
-              //   new_faces[1]<<" "<<
-              //   new_faces[2]<<" "<<
-              //   new_faces[3]<<" "<<std::endl;
-              //   face->vertex_index(0)<<" "<<
-              //   face->vertex_index(1)<<" "<<
-              //   face->vertex_index(2)<<std::endl;
-              //   face->line(0)->child(0)->vertex_index(1)<<" "<<
-              //   face->line(1)->child(0)->vertex_index(1)<<" "<<
-              //   face->line(2)->child(0)->vertex_index(1)<<std::endl;
-                
               // Tell the original face that is has been isotropically refined.
               face->set_refinement_case(RefinementCase<2>::cut_xy);
 
@@ -19903,7 +19888,6 @@ void Triangulation<dim, spacedim>::fix_coarsen_flags()
 
           // flag the children for coarsening again if all children were
           // flagged and if the policy allows it
-          // children" << n_children << std::endl;
           if (flagged_children == n_children &&
               this->policy->coarsening_allowed(cell))
             for (unsigned int c = 0; c < n_children; ++c)
