@@ -574,11 +574,17 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
 
     template <int dim>
     typename types<dim>::forest *
-    partition(typename types<dim>::forest *forest, typename types<dim>::weight)
+    partition(typename types<dim>::forest *forest,
+              typename types<dim>::weight  weight_callback)
     {
       t8_forest_t new_forest;
       t8_forest_init(&new_forest);
       t8_forest_set_partition(new_forest, forest, 1);
+      // t8code calls the weights with the old forest, a local tree and the
+      // index of an element in it; with partition for coarsening, it moves
+      // the weighted boundaries behind families that would be split
+      if (weight_callback != nullptr)
+        t8_forest_set_partition_weight_function(new_forest, weight_callback);
       t8_forest_set_ghost(new_forest, 1, T8_GHOST_VERTICES);
       t8_forest_set_user_data(new_forest, t8_forest_get_user_data(forest));
       t8_forest_commit(new_forest);

@@ -45,9 +45,6 @@ namespace internal
 {
   namespace t8code
   {
-    using t8code_weight_dummy_t = int (*)(t8_forest_t   forest,
-                                          long          local_tree, // TODO
-                                          t8_element_t *element);
     template <int dim>
     struct types
     {
@@ -85,7 +82,7 @@ namespace internal
       using ghost             = struct t8_forest_ghost;
       using ghost_type        = t8_ghost_type_t;
       using balance_type      = t8_ghost_type_t;
-      using weight            = t8code_weight_dummy_t;
+      using weight            = t8_weight_fcn_t *;
       using element_array     = t8_element_array_t *;
     };
 

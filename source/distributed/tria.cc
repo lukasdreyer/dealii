@@ -1199,7 +1199,6 @@ namespace
 #  endif
 
 #  ifdef DEAL_II_WITH_P4EST
-  // TODO
   /**
    * A data structure that we use to store the weights of all cells to
    * be used upon partitioning. The class stores them in the order in
@@ -1279,6 +1278,47 @@ namespace
                       "the maximum value represented as a 'signed int'."));
     return static_cast<int>(weight);
   }
+#  endif
+
+#  ifdef DEAL_II_WITH_T8CODE
+  /**
+   * The weights of all locally owned cells for a weighted repartitioning with
+   * t8code, in the order of the leaf elements of the forest (which is the
+   * order of local_cell_relations). t8code asks for the weight of an element
+   * by its local tree and its index in that tree, so the list needs no
+   * running position as for p4est.
+   */
+  template <int dim, int spacedim>
+  class PartitionWeights
+  {
+  public:
+    explicit PartitionWeights(const std::vector<unsigned int> &cell_weights)
+      : cell_weights_list(cell_weights)
+    {}
+
+    /**
+     * The callback for t8_forest_set_partition_weight_function(). The forest
+     * is the one being partitioned, whose user pointer points to this object
+     * during the partitioning.
+     */
+    static double
+    cell_weight(t8_forest_t forest,
+                t8_locidx_t local_tree,
+                t8_locidx_t element_in_tree)
+    {
+      const auto *this_object =
+        static_cast<const PartitionWeights<dim, spacedim> *>(
+          dealii::internal::amr::forest_get_user_pointer<dim>(forest));
+      const std::size_t index =
+        t8_forest_get_tree_element_offset(forest, local_tree) +
+        element_in_tree;
+      AssertIndexRange(index, this_object->cell_weights_list.size());
+      return this_object->cell_weights_list[index];
+    }
+
+  private:
+    std::vector<unsigned int> cell_weights_list;
+  };
 #  endif
 
   template <int dim, int spacedim>
@@ -3462,6 +3502,39 @@ namespace parallel
                     // release data
                     dealii::internal::amr::forest_set_user_pointer<dim>(
                       parallel_forest, nullptr);
+#  elif defined(DEAL_II_WITH_T8CODE)
+                    // get cell weights for a weighted repartitioning, in the order of
+                    // the elements of the forest
+                    const std::vector<unsigned int> cell_weights = get_cell_weights();
+
+                    // verify that the global sum of weights is larger than 0
+                    Assert(Utilities::MPI::sum(std::accumulate(cell_weights.begin(),
+                                                               cell_weights.end(),
+                                                               std::uint64_t(0)),
+                                               this->mpi_communicator) > 0,
+                           ExcMessage(
+                             "The global sum of weights over all active cells "
+                             "is zero. Please verify how you generate weights."));
+
+                    PartitionWeights<dim, spacedim> partition_weights(cell_weights);
+
+                    // attach (temporarily) a pointer to the cell weights through the
+                    // user pointer of the forest that is partitioned
+                    Assert(dealii::internal::amr::forest_get_user_pointer<dim>(
+                             parallel_forest) == this,
+                           ExcInternalError());
+                    dealii::internal::amr::forest_set_user_pointer<dim>(
+                      parallel_forest, &partition_weights);
+
+                    parallel_forest = dealii::internal::amr::partition<dim>(
+                      parallel_forest,
+                      /* weight_callback */
+                      &PartitionWeights<dim, spacedim>::cell_weight);
+
+                    // the new forest took over the user pointer of the old one: point
+                    // it to the triangulation again
+                    dealii::internal::amr::forest_set_user_pointer<dim>(
+                      parallel_forest, this);
 #  else
           DEAL_II_NOT_IMPLEMENTED();
 #  endif
@@ -3643,7 +3716,6 @@ namespace parallel
             else
               {
 #  ifdef DEAL_II_WITH_P4EST
-                // TODO
                 //  get cell weights for a weighted repartitioning.
                 const std::vector<unsigned int> cell_weights =
                   get_cell_weights();
@@ -3673,6 +3745,39 @@ namespace parallel
                   &PartitionWeights<dim, spacedim>::cell_weight);
 
                 // reset the user pointer to its previous state
+                dealii::internal::amr::forest_set_user_pointer<dim>(
+                  parallel_forest, this);
+#  elif defined(DEAL_II_WITH_T8CODE)
+                // get cell weights for a weighted repartitioning, in the order of
+                // the elements of the forest
+                const std::vector<unsigned int> cell_weights = get_cell_weights();
+
+                // verify that the global sum of weights is larger than 0
+                Assert(Utilities::MPI::sum(std::accumulate(cell_weights.begin(),
+                                                           cell_weights.end(),
+                                                           std::uint64_t(0)),
+                                           this->mpi_communicator) > 0,
+                       ExcMessage(
+                         "The global sum of weights over all active cells "
+                         "is zero. Please verify how you generate weights."));
+
+                PartitionWeights<dim, spacedim> partition_weights(cell_weights);
+
+                // attach (temporarily) a pointer to the cell weights through the
+                // user pointer of the forest that is partitioned
+                Assert(dealii::internal::amr::forest_get_user_pointer<dim>(
+                         parallel_forest) == this,
+                       ExcInternalError());
+                dealii::internal::amr::forest_set_user_pointer<dim>(
+                  parallel_forest, &partition_weights);
+
+                parallel_forest = dealii::internal::amr::partition<dim>(
+                  parallel_forest,
+                  /* weight_callback */
+                  &PartitionWeights<dim, spacedim>::cell_weight);
+
+                // the new forest took over the user pointer of the old one: point
+                // it to the triangulation again
                 dealii::internal::amr::forest_set_user_pointer<dim>(
                   parallel_forest, this);
 #  else
