@@ -3422,10 +3422,14 @@ namespace parallel
             // across vertices if requested by the mesh smoothing (always for
             // multigrid, see the constructor); p4est always balances across
             // vertices
+            // With t8code, the forest needs a ghost layer for
+            // copy_local_forest_to_triangulation; the partition below builds
+            // one, so the balance only does without repartitioning.
             parallel_forest = dealii::internal::amr::balance_full<dim>(
               parallel_forest,
               this->smooth_grid & dealii::Triangulation<dim, spacedim>::
-                                    limit_level_difference_at_vertices);
+                                    limit_level_difference_at_vertices,
+              (settings & no_automatic_repartitioning) != 0);
 
             // since refinement and/or coarsening on the parallel forest
             // has happened, we need to update the element cell relations

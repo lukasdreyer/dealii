@@ -1346,8 +1346,10 @@ namespace internal
     template <int dim>
     typename types<dim>::forest *
     balance_full(typename types<dim>::forest *forest,
-                 const bool /*balance_vertices*/)
+                 const bool /*balance_vertices*/,
+                 const bool /*with_ghost_layer*/)
     {
+      // p4est builds its ghost layer separately (ghost_new)
       // p4est always balances across faces, edges and corners, as deal.II
       // always did. Balancing across vertices is only needed with
       // limit_level_difference_at_vertices (and for multigrid), otherwise

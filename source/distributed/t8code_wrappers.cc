@@ -552,7 +552,8 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
     template <int dim>
     typename types<dim>::forest *
     balance_full(typename types<dim>::forest *forest,
-                 const bool                   balance_vertices)
+                 const bool                   balance_vertices,
+                 const bool                   with_ghost_layer)
     {
       t8_forest_t new_forest;
       t8_forest_init(&new_forest);
@@ -563,6 +564,9 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       t8_forest_set_balance_type(new_forest,
                                  balance_vertices ? T8_GHOST_VERTICES :
                                                     T8_GHOST_EDGES);
+      // the ghost layer, if no partition (which builds one) follows
+      if (with_ghost_layer)
+        t8_forest_set_ghost(new_forest, 1, T8_GHOST_VERTICES);
       t8_forest_set_user_data(new_forest, t8_forest_get_user_data(forest));
       t8_forest_commit(new_forest);
       return new_forest;

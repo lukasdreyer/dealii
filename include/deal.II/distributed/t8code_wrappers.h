@@ -281,7 +281,8 @@ namespace internal
     template <int dim>
     types<dim>::forest *
     balance_full(typename types<dim>::forest *forest,
-                 const bool                   balance_vertices);
+                 const bool                   balance_vertices,
+                 const bool                   with_ghost_layer);
 
     template <int dim>
     void
