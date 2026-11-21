@@ -41,7 +41,10 @@ void
 test(std::ostream & /*out*/)
 {
   {
-    parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
+    // vertex smoothing, so that the mesh does not depend on whether the
+    // backend balances across vertices anyway (p4est) or not (t8code)
+    parallel::distributed::Triangulation<dim> tr(
+      MPI_COMM_WORLD, Triangulation<dim>::limit_level_difference_at_vertices);
 
     GridGenerator::hyper_cube(tr);
     tr.begin_active()->set_refine_flag();
@@ -64,7 +67,10 @@ test(std::ostream & /*out*/)
     Assert(tr.n_active_cells() == 120, ExcInternalError());
   }
   {
-    parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
+    // vertex smoothing, so that the mesh does not depend on whether the
+    // backend balances across vertices anyway (p4est) or not (t8code)
+    parallel::distributed::Triangulation<dim> tr(
+      MPI_COMM_WORLD, Triangulation<dim>::limit_level_difference_at_vertices);
 
     GridGenerator::subdivided_hyper_cube(tr, 2);
     tr.begin_active()->set_refine_flag();

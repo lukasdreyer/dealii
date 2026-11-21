@@ -16,6 +16,7 @@
 
 #include <deal.II/base/tensor.h>
 
+#include <deal.II/distributed/amr.h>
 #include <deal.II/distributed/p4est_wrappers.h>
 #include <deal.II/distributed/tria.h>
 
@@ -41,7 +42,7 @@ test(std::ostream & /*out*/)
 
 
   const unsigned int max_level =
-    internal::p4est::functions<dim>::get_max_level(tr.get_p4est());
+    internal::amr::functions<dim>::get_max_level(tr.get_p4est());
 
   deallog << "The maximal level of p4est refinements is " << max_level
           << std::endl;

@@ -39,7 +39,10 @@ template <int dim>
 void
 test(std::ostream & /*out*/)
 {
-  parallel::distributed::Triangulation<dim> tr(MPI_COMM_WORLD);
+  // vertex smoothing, so that the mesh does not depend on whether the
+  // backend balances across vertices anyway (p4est) or not (t8code)
+  parallel::distributed::Triangulation<dim> tr(
+    MPI_COMM_WORLD, Triangulation<dim>::limit_level_difference_at_vertices);
   Triangulation<dim>                        tr2(
     Triangulation<dim>::limit_level_difference_at_vertices);
 
