@@ -22,6 +22,9 @@
 //
 // this also doesn't work correctly right now: with 3 processors, it
 // stores 0/84/172 cells in 2d, rather than the expected 4/126/126
+//
+// with t8code (prefix sum of the weights against the share of each process,
+// then moved behind families): 0/88/168 cells in 2d, see the .output.t8code file
 
 #include <deal.II/base/tensor.h>
 #include <deal.II/base/utilities.h>

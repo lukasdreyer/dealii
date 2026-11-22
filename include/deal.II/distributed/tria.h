@@ -713,6 +713,33 @@ namespace parallel
       get_p4est() const;
 
       /**
+       * Wall clock times (in seconds, on this process) of the phases of the
+       * last call of execute_coarsening_and_refinement(): the adaptation of
+       * the forest, its 2:1 balance, the partition (including the update of
+       * the cell relations and the packing of attached data), and the copy
+       * of the forest into this triangulation
+       * (copy_local_forest_to_triangulation). Meant for benchmarks that
+       * separate the cost of the backend from that of deal.II.
+       */
+      struct RefinementTimes
+      {
+        double adapt     = 0;
+        double balance   = 0;
+        double partition = 0;
+        double copy      = 0;
+      };
+
+      /**
+       * The times of the last execute_coarsening_and_refinement(), see
+       * RefinementTimes.
+       */
+      const RefinementTimes &
+      get_refinement_times() const
+      {
+        return refinement_times;
+      }
+
+      /**
        * In addition to the action in the base class Triangulation, this
        * function joins faces in the p4est forest for periodic boundary
        * conditions. As a result, each pair of faces will differ by at most one
@@ -738,6 +765,11 @@ namespace parallel
 
 
     private:
+      /**
+       * The times of the last execute_coarsening_and_refinement().
+       */
+      RefinementTimes refinement_times;
+
       /**
        * store the Settings.
        */

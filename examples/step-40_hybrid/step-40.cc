@@ -22,7 +22,9 @@
  * Environment variables: HYBRID_POLYNOMIAL=k (polynomial exact solution, see
  * below), HYBRID_IRREGULAR=1 (irregular refinement), HYBRID_SMOOTHING=none
  * (no limit_level_difference_at_vertices, so that the mesh is balanced only
- * across faces and edges).
+ * across faces and edges), HYBRID_SOLVER_TOLERANCE=tol (relative tolerance of
+ * CG, default 1e-12; the polynomial solutions need it that small, large
+ * problems of high degree may not reach it).
  */
 
 #include <deal.II/base/conditional_ostream.h>
@@ -492,8 +494,12 @@ namespace Step40Hybrid
     LA::MPI::Vector completely_distributed_solution(locally_owned_dofs,
                                                     mpi_communicator);
 
+    const double tolerance =
+      std::getenv("HYBRID_SOLVER_TOLERANCE") ?
+        std::atof(std::getenv("HYBRID_SOLVER_TOLERANCE")) :
+        1e-12;
     SolverControl solver_control(dof_handler.n_dofs(),
-                                 1e-12 * system_rhs.l2_norm());
+                                 tolerance * system_rhs.l2_norm());
     LA::SolverCG  solver(solver_control);
 
     LA::MPI::PreconditionAMG::AdditionalData data;

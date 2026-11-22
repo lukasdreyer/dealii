@@ -3414,8 +3414,10 @@ namespace parallel
                 parallel_ghost = nullptr;
               }
 
+            const double time_start = MPI_Wtime();
             parallel_forest =
               dealii::internal::amr::adapt<dim>(parallel_forest, this);
+            const double time_adapted = MPI_Wtime();
 
 
             // enforce 2:1 hanging node condition across faces and edges, and
@@ -3430,6 +3432,7 @@ namespace parallel
               this->smooth_grid & dealii::Triangulation<dim, spacedim>::
                                     limit_level_difference_at_vertices,
               (settings & no_automatic_repartitioning) != 0);
+            const double time_balanced = MPI_Wtime();
 
             // since refinement and/or coarsening on the parallel forest
             // has happened, we need to update the element cell relations
@@ -3567,6 +3570,7 @@ namespace parallel
                 cell->clear_coarsen_flag();
               }
 
+            const double time_partitioned = MPI_Wtime();
             try
               {
                 copy_local_forest_to_triangulation();
@@ -3577,6 +3581,10 @@ namespace parallel
                 // distorted cells
                 DEAL_II_ASSERT_UNREACHABLE();
               }
+            refinement_times.adapt     = time_adapted - time_start;
+            refinement_times.balance   = time_balanced - time_adapted;
+            refinement_times.partition = time_partitioned - time_balanced;
+            refinement_times.copy      = MPI_Wtime() - time_partitioned;
 
             // transfer data after triangulation got updated
             if (this->cell_attached_data.n_attached_data_sets > 0)

@@ -1,0 +1,21 @@
+
+DEAL:2d::processor 0: 0 locally owned active cells
+DEAL:2d::processor 1: 0 locally owned active cells
+DEAL:2d::processor 2: 51 locally owned active cells
+DEAL:2d::processor 3: 102 locally owned active cells
+DEAL:2d::processor 4: 103 locally owned active cells
+DEAL:2d::processor 0: 0 weight
+DEAL:2d::processor 1: 0 weight
+DEAL:2d::processor 2: 307 weight
+DEAL:2d::processor 3: 102 weight
+DEAL:2d::processor 4: 103 weight
+DEAL:3d::processor 0: 0 locally owned active cells
+DEAL:3d::processor 1: 0 locally owned active cells
+DEAL:3d::processor 2: 819 locally owned active cells
+DEAL:3d::processor 3: 1638 locally owned active cells
+DEAL:3d::processor 4: 1639 locally owned active cells
+DEAL:3d::processor 0: 0 weight
+DEAL:3d::processor 1: 0 weight
+DEAL:3d::processor 2: 4915 weight
+DEAL:3d::processor 3: 1638 weight
+DEAL:3d::processor 4: 1639 weight

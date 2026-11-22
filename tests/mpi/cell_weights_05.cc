@@ -25,6 +25,11 @@
 // remaining ones should be split equally among the other processors;
 // at present, however, the remaining processors do not split the
 // remaining cells even close to equally
+//
+// with t8code, the partition starts a process at the first cell whose prefix
+// sum of the weights exceeds its share; since the heavy cell comes first, the
+// first processes stay empty and the heavy cell shares a process with other
+// cells (see the .output.t8code files)
 
 #include <deal.II/base/tensor.h>
 #include <deal.II/base/utilities.h>

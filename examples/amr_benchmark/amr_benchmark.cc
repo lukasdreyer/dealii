@@ -12,13 +12,30 @@
  * a few global refinements of a coarse mesh, then cycles of refinement around
  * a point moving through the domain and coarsening behind it, each with
  * SolutionTransfer, DoF distribution, constraints, assembly and the solution
- * of a Poisson problem with CG and AMG. Every phase is timed separately; the
+ * of a Poisson problem with CG and AMG. Every phase is timed separately, and
+ * the refinement also in its parts: the adaptation, balance and partition of
+ * the forest and the copy into the deal.II triangulation (refine: ...); the
  * minimum, average and maximum over the processes of each phase and cycle
  * are written to a CSV file, and a summary table to the screen.
  *
  * Usage: mpirun -np N ./amr_benchmark [key=value ...]
- *   mesh=hex|hybrid   hexahedra (n^3 cells) or the hybrid mesh of
- *                     step-40_hybrid (n x n columns, 5 layers; t8code only)
+ *   mesh=hex|hybrid|brick|hybrid4
+ *                     hexahedra (n^3 cells), the hybrid mesh of step-40_hybrid
+ *                     (n x n columns, 5 layers; t8code only), or the meshes of
+ *                     the PASC benchmark (t8_time_amr_cycle): the brick of
+ *                     2 x 2 x 2 hexahedra, or the hybrid cube of 21 cells in the
+ *                     octants of side 0.5 (6 tetrahedra at the origin, 2 prisms
+ *                     in each of its face neighbors, 6 pyramids in the octant
+ *                     [0.5,1]^3, hexahedra elsewhere; t8code only)
+ *   refinement=point  point: refine around a moving point (path=...);
+ *                     shell: the cycle of the PASC benchmark, the cells whose
+ *                     center is closer to a sphere of radius 0.25 than
+ *                     sqrt(3)/2 h are refined up to max_level, the others
+ *                     coarsened down to global, the center starts at
+ *                     (0.45, 0.47, 0.49) and moves in every coordinate by the
+ *                     size of a cell of max_level per cycle; the setup refines
+ *                     globally to the level global and then level by level at
+ *                     the shell up to max_level
  *   n=4               coarse mesh size
  *   degree=2          polynomial degree
  *   global=2          global refinements before the adaptive cycles
@@ -85,7 +102,9 @@
 #include <deal.II/numerics/solution_transfer.h>
 #include <deal.II/numerics/vector_tools.h>
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -114,6 +133,7 @@ namespace AMRBenchmark
   struct Parameters
   {
     std::string  mesh      = "hex";
+    std::string  refinement = "point";
     unsigned int n         = 4;
     unsigned int degree    = 2;
     unsigned int global    = 2;
@@ -140,6 +160,8 @@ namespace AMRBenchmark
           const std::string key = arg.substr(0, eq), value = arg.substr(eq + 1);
           if (key == "mesh")
             mesh = value;
+          else if (key == "refinement")
+            refinement = value;
           else if (key == "n")
             n = std::stoi(value);
           else if (key == "degree")
@@ -169,8 +191,11 @@ namespace AMRBenchmark
           else
             AssertThrow(false, ExcMessage("Unknown argument " + key));
         }
-      AssertThrow(mesh == "hex" || mesh == "hybrid",
-                  ExcMessage("mesh must be hex or hybrid"));
+      AssertThrow(mesh == "hex" || mesh == "hybrid" || mesh == "brick" ||
+                    mesh == "hybrid4",
+                  ExcMessage("mesh must be hex, hybrid, brick or hybrid4"));
+      AssertThrow(refinement == "point" || refinement == "shell",
+                  ExcMessage("refinement must be point or shell"));
       AssertThrow(smoothing == "vertices" || smoothing == "none",
                   ExcMessage("smoothing must be vertices or none"));
       AssertThrow(path == "helix" || path == "cut",
@@ -319,6 +344,143 @@ namespace AMRBenchmark
 
 
 
+  // The hybrid cube of the PASC benchmark (hybrid4 of t8_time_amr_cycle): the
+  // octants of side 0.5 of the unit cube with 6 tetrahedra in the octant at the
+  // origin (the Kuhn subdivision along its diagonal), 2 prisms in each of its
+  // face neighbors (split along the face diagonals of the tetrahedra), 6
+  // pyramids with the apex at the center in the octant [0.5,1]^3, and hexahedra
+  // in the other three octants.
+  void
+  make_hybrid4_mesh(Triangulation<dim> &tria)
+  {
+    std::vector<Point<dim>> vertices;
+    for (unsigned int z = 0; z <= 2; ++z)
+      for (unsigned int y = 0; y <= 2; ++y)
+        for (unsigned int x = 0; x <= 2; ++x)
+          vertices.emplace_back(0.5 * x, 0.5 * y, 0.5 * z);
+    const unsigned int apex = vertices.size();
+    vertices.emplace_back(0.75, 0.75, 0.75);
+    const auto volume = [&](const unsigned int a,
+                            const unsigned int b,
+                            const unsigned int c,
+                            const unsigned int d) {
+      return cross_product_3d(vertices[b] - vertices[a],
+                              vertices[c] - vertices[a]) *
+             (vertices[d] - vertices[a]);
+    };
+    std::vector<CellData<dim>> cells;
+    const auto add_cell = [&](const std::vector<unsigned int> &v) {
+      CellData<dim> cell(v.size());
+      for (unsigned int i = 0; i < v.size(); ++i)
+        cell.vertices[i] = v[i];
+      cells.push_back(cell);
+    };
+    // the faces of a cube in the vertex order of the faces of a hexahedron
+    static const unsigned int cube_faces[6][4] = {{0, 2, 4, 6},
+                                                  {1, 3, 5, 7},
+                                                  {0, 4, 1, 5},
+                                                  {2, 6, 3, 7},
+                                                  {0, 1, 2, 3},
+                                                  {4, 5, 6, 7}};
+    for (unsigned int oz = 0; oz < 2; ++oz)
+      for (unsigned int oy = 0; oy < 2; ++oy)
+        for (unsigned int ox = 0; ox < 2; ++ox)
+          {
+            // the vertex of the octant at the local corner (i, j, k)
+            const auto corner = [&](const unsigned int i,
+                                    const unsigned int j,
+                                    const unsigned int k) {
+              return (ox + i) + 3 * ((oy + j) + 3 * (oz + k));
+            };
+            std::array<unsigned int, 8> cube;
+            for (unsigned int v = 0; v < 8; ++v)
+              cube[v] = corner(v & 1, (v >> 1) & 1, v >> 2);
+            const unsigned int n_offsets = ox + oy + oz;
+            if (n_offsets == 0)
+              {
+                std::array<unsigned int, 3> directions = {{0, 1, 2}};
+                do
+                  {
+                    const unsigned int v1 = 1u << directions[0];
+                    const unsigned int v2 = v1 | (1u << directions[1]);
+                    std::vector<unsigned int> t = {cube[0], cube[v1], cube[v2], cube[7]};
+                    if (volume(t[0], t[1], t[2], t[3]) < 0)
+                      std::swap(t[2], t[3]);
+                    add_cell(t);
+                  }
+                while (
+                  std::next_permutation(directions.begin(), directions.end()));
+              }
+            else if (n_offsets == 1)
+              {
+                // the axis a of the offset, the other axes b and c; the face
+                // at the tetrahedra is split along the diagonal from (b, c) =
+                // (0, 0) to (1, 1), like the faces of the Kuhn tetrahedra
+                const unsigned int a = ox ? 0 : (oy ? 1 : 2);
+                const unsigned int b = (a + 1) % 3, c = (a + 2) % 3;
+                const auto local = [&](const unsigned int ia,
+                                       const unsigned int ib,
+                                       const unsigned int ic) {
+                  unsigned int idx[3];
+                  idx[a] = ia;
+                  idx[b] = ib;
+                  idx[c] = ic;
+                  return corner(idx[0], idx[1], idx[2]);
+                };
+                const unsigned int triangles[2][3][2] = {
+                  {{0, 0}, {1, 0}, {1, 1}}, {{0, 0}, {1, 1}, {0, 1}}};
+                for (const auto &t : triangles)
+                  {
+                    std::vector<unsigned int> w(6);
+                    for (unsigned int i = 0; i < 3; ++i)
+                      {
+                        w[i]     = local(0, t[i][0], t[i][1]);
+                        w[i + 3] = local(1, t[i][0], t[i][1]);
+                      }
+                    if (volume(w[0], w[1], w[2], w[3]) < 0)
+                      {
+                        std::swap(w[1], w[2]);
+                        std::swap(w[4], w[5]);
+                      }
+                    add_cell(w);
+                  }
+              }
+            else if (n_offsets == 3)
+              for (unsigned int f = 0; f < 6; ++f)
+                {
+                  std::vector<unsigned int> base = {cube[cube_faces[f][0]],
+                                                    cube[cube_faces[f][1]],
+                                                    cube[cube_faces[f][2]],
+                                                    cube[cube_faces[f][3]],
+                                                    apex};
+                  if (volume(base[0], base[1], base[2], apex) < 0)
+                    std::swap(base[1], base[2]);
+                  add_cell(base);
+                }
+            else
+              add_cell({cube.begin(), cube.end()});
+          }
+    tria.create_triangulation(vertices, cells, SubCellData());
+  }
+
+
+
+  // The shell of the PASC benchmark (t8_time_amr_cycle): whether a cell of
+  // the given level with center x touches the sphere of the given center and
+  // radius, for coarse cells of side tree_size
+  bool
+  touches_shell(const Point<dim>  &x,
+                const unsigned int level,
+                const Point<dim>  &center,
+                const double       radius,
+                const double       tree_size)
+  {
+    const double h = tree_size * std::ldexp(1.0, -static_cast<int>(level));
+    return std::fabs(x.distance(center) - radius) < 0.5 * std::sqrt(3.0) * h;
+  }
+
+
+
 
   // the point around which the mesh is refined in cycle k
   Point<dim>
@@ -360,6 +522,16 @@ namespace AMRBenchmark
     solve();
     void
     mark_cells(const unsigned int cycle);
+    // the side of the coarse cells
+    double
+    tree_size() const
+    {
+      return parameters.mesh == "hex" ? 1.0 / parameters.n :
+             parameters.mesh == "hybrid" ? 1.0 / parameters.n : 0.5;
+    }
+    // add the parts of the last execute_coarsening_and_refinement()
+    void
+    record_refinement_parts();
     void
     output_results(const unsigned int cycle) const;
 
@@ -405,7 +577,7 @@ namespace AMRBenchmark
     , dof_handler(triangulation)
   {
     const unsigned int p = parameters.degree;
-    if (parameters.mesh == "hex")
+    if (parameters.mesh == "hex" || parameters.mesh == "brick")
       {
         fe.push_back(FE_Q<dim>(p));
         mapping.push_back(MappingQ<dim>(1));
@@ -449,6 +621,24 @@ namespace AMRBenchmark
     if (std::find(phases.begin(), phases.end(), phase) == phases.end())
       phases.push_back(phase);
     cycle_times[phase] += timer.wall_time();
+  }
+
+
+
+  void
+  Benchmark::record_refinement_parts()
+  {
+    const auto &t = triangulation.get_refinement_times();
+    for (const auto &[phase, value] :
+         std::vector<std::pair<std::string, double>>{{"refine: adapt", t.adapt},
+                                                     {"refine: balance", t.balance},
+                                                     {"refine: partition", t.partition},
+                                                     {"refine: copy", t.copy}})
+      {
+        if (std::find(phases.begin(), phases.end(), phase) == phases.end())
+          phases.push_back(phase);
+        cycle_times[phase] += value;
+      }
   }
 
 
@@ -629,6 +819,30 @@ namespace AMRBenchmark
   void
   Benchmark::mark_cells(const unsigned int cycle)
   {
+    if (parameters.refinement == "shell")
+      {
+        // refine the cells touching the shell, coarsen the others; the
+        // center moves in every coordinate by the size of a cell of the
+        // maximal level per cycle
+        const double velocity =
+          tree_size() * std::ldexp(1.0, -static_cast<int>(parameters.max_level));
+        const Point<dim> center(0.45 + cycle * velocity,
+                                0.47 + cycle * velocity,
+                                0.49 + cycle * velocity);
+        for (const auto &cell : triangulation.active_cell_iterators())
+          if (cell->is_locally_owned())
+            {
+              const unsigned int level = cell->level();
+              if (touches_shell(cell->center(), level, center, 0.25, tree_size()))
+                {
+                  if (level < parameters.max_level)
+                    cell->set_refine_flag();
+                }
+              else if (parameters.coarsen && level > parameters.global)
+                cell->set_coarsen_flag();
+            }
+        return;
+      }
     // refine around the moving point, coarsen behind it
     const Point<dim> center =
       refinement_center(cycle,
@@ -695,17 +909,36 @@ namespace AMRBenchmark
           << "p4est"
 #endif
           << ", " << Utilities::MPI::n_mpi_processes(mpi_communicator)
-          << " processes, mesh " << parameters.mesh << ", n " << parameters.n
+          << " processes, mesh " << parameters.mesh << ", refinement "
+          << parameters.refinement << ", n " << parameters.n
           << ", degree " << parameters.degree << ", smoothing "
           << parameters.smoothing << std::endl;
 
     time("coarse mesh", [&]() {
       if (parameters.mesh == "hex")
         GridGenerator::subdivided_hyper_cube(triangulation, parameters.n);
+      else if (parameters.mesh == "brick")
+        GridGenerator::subdivided_hyper_cube(triangulation, 2);
+      else if (parameters.mesh == "hybrid4")
+        make_hybrid4_mesh(triangulation);
       else
         make_hybrid_mesh(triangulation, parameters.n);
     });
     time("refine", [&]() { triangulation.refine_global(parameters.global); });
+    if (parameters.refinement == "shell")
+      // the setup of the PASC benchmark: level by level at the shell
+      time("refine", [&]() {
+        const Point<dim> center(0.45, 0.47, 0.49);
+        for (unsigned int l = parameters.global; l < parameters.max_level; ++l)
+          {
+            for (const auto &cell : triangulation.active_cell_iterators())
+              if (cell->is_locally_owned() &&
+                  static_cast<unsigned int>(cell->level()) < parameters.max_level &&
+                  touches_shell(cell->center(), cell->level(), center, 0.25, tree_size()))
+                cell->set_refine_flag();
+            triangulation.execute_coarsening_and_refinement();
+          }
+      });
     setup_dofs();
     solution.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
     assemble(0);
@@ -724,6 +957,7 @@ namespace AMRBenchmark
         time("refine", [&]() {
           triangulation.execute_coarsening_and_refinement();
         });
+        record_refinement_parts();
         setup_dofs();
         time("transfer", [&]() {
           LA::MPI::Vector transferred(locally_owned_dofs, mpi_communicator);
