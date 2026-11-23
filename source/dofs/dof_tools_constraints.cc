@@ -3257,6 +3257,18 @@ namespace DoFTools
             return line->dof_index(0, line->nth_active_fe_index(0));
           };
 
+          // Lines that belong only to artificial cells have no valid DoF
+          // indices (they may even carry the index of another line), so only
+          // the lines of locally owned and ghost cells are constrained. The
+          // lines of a hanging face itself belong to the coarse cell, which
+          // is not artificial.
+          std::vector<bool> line_has_valid_dof(
+            dof_handler.get_triangulation().n_raw_lines(), false);
+          for (const auto &cell : dof_handler.active_cell_iterators())
+            if (cell->is_artificial() == false)
+              for (unsigned int l = 0; l < cell->n_lines(); ++l)
+                line_has_valid_dof[cell->line(l)->index()] = true;
+
           std::vector<std::pair<unsigned int, Point<facedim>>> positions;
           std::vector<typename DoFHandler<dim, spacedim>::line_iterator>
             parent_lines, child_lines;
@@ -3361,6 +3373,8 @@ namespace DoFTools
 
                   for (const auto &child_line : child_lines)
                     {
+                      if (line_has_valid_dof[child_line->index()] == false)
+                        continue;
                       const types::global_dof_index dof = line_dof(child_line);
                       if (constraints.is_constrained(dof) ||
                           constraints.can_store_line(dof) == false)
