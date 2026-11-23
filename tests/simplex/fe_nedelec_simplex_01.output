@@ -1,0 +1,9 @@
+
+DEAL::dim=2 refinements=0 cells=8 flipped lines seen by cells=8/24
+DEAL::  duality OK, gradient reproduction OK, curl OK
+DEAL::dim=2 refinements=1 cells=32 flipped lines seen by cells=40/96
+DEAL::  duality OK, gradient reproduction OK, curl OK
+DEAL::dim=3 refinements=0 cells=40 flipped lines seen by cells=48/240
+DEAL::  duality OK, gradient reproduction OK, curl OK
+DEAL::dim=3 refinements=1 cells=320 flipped lines seen by cells=778/1920
+DEAL::  duality OK, gradient reproduction OK, curl OK

@@ -1,0 +1,185 @@
+// -----------------------------------------------------------------------------
+//
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception OR LGPL-2.1-or-later
+// Copyright (C) 2015 - 2026 by the deal.II authors
+//
+// This file is part of the deal.II library.
+//
+// Detailed license information governing the source code and contributions
+// can be found in LICENSE.md and CONTRIBUTING.md at the top level directory.
+//
+// -----------------------------------------------------------------------------
+
+
+// check the correctness of fe_values.shape_gradient for FE_Nedelec by
+// comparing the integral of all shape gradients with the flux over the
+// boundary by the divergence theorem
+
+#include <deal.II/base/function.h>
+#include <deal.II/base/quadrature_lib.h>
+
+#include <deal.II/dofs/dof_handler.h>
+
+#include "deal.II/fe/fe_simplex_p.h"
+#include <deal.II/fe/fe_dgq.h>
+#include <deal.II/fe/fe_nedelec_simplex.h>
+#include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/fe_values.h>
+#include <deal.II/fe/mapping_fe.h>
+
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/manifold_lib.h>
+
+#include <deal.II/lac/vector.h>
+
+#include <sstream>
+
+#include "../tests.h"
+
+
+
+template <int dim>
+Tensor<1, dim>
+ones()
+{
+  Tensor<1, dim> result;
+  for (unsigned int i = 0; i < dim; ++i)
+    result[i] = 1.0;
+  return result;
+}
+
+template <int dim>
+void
+test(const Triangulation<dim> &tr,
+     const FiniteElement<dim> &fe,
+     const double              tolerance)
+{
+  MappingFE<dim, dim> mapping(FE_SimplexP<dim>(1));
+  DoFHandler<dim> dof(tr);
+  dof.distribute_dofs(fe);
+
+  std::stringstream ss;
+
+  deallog << "FE=" << fe.get_name() << std::endl;
+
+  const QGaussSimplex<dim> quadrature(4);
+  FEValues<dim>     fe_values(mapping,
+                          fe,
+                          quadrature,
+                          update_gradients | update_quadrature_points |
+                            update_JxW_values);
+
+  const QGaussSimplex<dim - 1> face_quadrature(4);
+  FEFaceValues<dim>     fe_face_values(mapping,
+                                   fe,
+                                   face_quadrature,
+                                   update_values | update_quadrature_points |
+                                     update_normal_vectors | update_JxW_values);
+
+  Table<2, Tensor<1, dim>> boundary_integrals(fe.n_components(),
+                                              fe.dofs_per_cell);
+
+  for (typename DoFHandler<dim>::active_cell_iterator cell = dof.begin_active();
+       cell != dof.end();
+       ++cell)
+    {
+      fe_values.reinit(cell);
+
+      deallog << "Cell nodes:" << std::endl;
+      for (const unsigned int i : cell->reference_cell().vertex_indices())
+        {
+          deallog << i << ": ( ";
+          for (unsigned int d = 0; d < dim; ++d)
+            deallog << cell->vertex(i)[d] << ' ';
+          deallog << ')' << std::endl;
+        }
+
+      // Precompute boundary integrals to avoid frequent
+      // fe_face_values.reinit() calls
+      boundary_integrals.fill(Tensor<1, dim>());
+      for (const unsigned int face : cell->reference_cell().face_indices())
+        {
+          fe_face_values.reinit(cell, face);
+          for (unsigned int c = 0; c < fe.n_components(); ++c)
+            {
+              const FEValuesExtractors::Scalar single_component(c);
+              for (unsigned int i = 0; i < fe_values.dofs_per_cell; ++i)
+                for (const auto q : fe_face_values.quadrature_point_indices())
+                  boundary_integrals(c, i) +=
+                    fe_face_values[single_component].value(i, q) *
+                    fe_face_values.normal_vector(q) * fe_face_values.JxW(q);
+            }
+        }
+
+      bool cell_ok = true;
+
+      for (unsigned int c = 0; c < fe.n_components(); ++c)
+        {
+          const FEValuesExtractors::Scalar single_component(c);
+
+          for (unsigned int i = 0; i < fe_values.dofs_per_cell; ++i)
+            {
+              ss << "component=" << c << ", dof=" << i << std::endl;
+
+              Tensor<1, dim> bulk_integral;
+              for (const auto q : fe_values.quadrature_point_indices())
+                {
+                  bulk_integral += fe_values[single_component].gradient(i, q) *
+                                   fe_values.JxW(q);
+                }
+
+              const Tensor<1, dim> boundary_integral = boundary_integrals(c, i);
+
+              if ((bulk_integral - boundary_integral).norm_square() >
+                  tolerance * (bulk_integral.norm() + boundary_integral.norm()))
+                {
+                  deallog << "Failed:" << std::endl;
+                  deallog << ss.str() << std::endl;
+                  deallog << "    bulk integral=" << bulk_integral << std::endl;
+                  deallog << "boundary integral=" << boundary_integral
+                          << std::endl;
+                  deallog
+                    << "Error! difference between bulk and surface integrals is greater than "
+                    << tolerance << "!\n\n"
+                    << std::endl;
+                  cell_ok = false;
+                }
+
+              ss.str("");
+            }
+        }
+
+      deallog << (cell_ok ? "OK: cell bulk and boundary integrals match...\n" :
+                            "Failed divergence test...\n")
+              << std::endl;
+    }
+}
+
+
+
+template <int dim>
+void
+test_hyper_ball(const double tolerance)
+{
+  Triangulation<dim> tr;
+  // GridGenerator::hyper_ball(tr);
+  GridGenerator::subdivided_hyper_cube_with_simplices(tr, 1,0.0,1.0);
+  tr.refine_global(1);
+
+  FE_NedelecSimplex<dim> fe(0);
+  test(tr, fe, tolerance);
+}
+
+
+int
+main()
+{
+  initlog();
+  deallog << std::setprecision(8);
+
+  test_hyper_ball<2>(1e-6);
+  test_hyper_ball<3>(1e-6);
+
+  deallog << "done..." << std::endl;
+}

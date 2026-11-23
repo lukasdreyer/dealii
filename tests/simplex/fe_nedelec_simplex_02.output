@@ -1,0 +1,9 @@
+
+DEAL::dim=2 cells=8 dofs=16
+DEAL::dim=2 cells=32 dofs=56 rate_u=0.77 rate_curl=1.01
+DEAL::dim=2 cells=128 dofs=208 rate_u=0.91 rate_curl=1.00
+DEAL::dim=2 cells=512 dofs=800 rate_u=0.97 rate_curl=1.00
+DEAL::dim=2 cells=2048 dofs=3136 rate_u=0.99 rate_curl=1.00
+DEAL::dim=3 cells=40 dofs=90
+DEAL::dim=3 cells=320 dofs=532 rate_u=0.60 rate_curl=0.86
+DEAL::dim=3 cells=2560 dofs=3592 rate_u=0.80 rate_curl=0.96
