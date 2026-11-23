@@ -1,0 +1,5 @@
+
+DEAL:0::dim=2 cells=165 dofs=298 hanging faces=54 constraints=54
+DEAL:0::  consistent OK, exactness OK, tangential continuity OK, same number of constraints as serial OK
+DEAL:0::dim=3 cells=1108 dofs=1923 hanging faces=400 constraints=638
+DEAL:0::  consistent OK, exactness OK, tangential continuity OK, same number of constraints as serial OK
