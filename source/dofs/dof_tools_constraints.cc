@@ -3138,6 +3138,259 @@ namespace DoFTools
               }
         }
     }
+
+
+
+    /**
+     * Whether @p fe is a lowest-order edge element that
+     * make_hanging_node_constraints_edge_elements() can handle: one DoF per
+     * line and none elsewhere, H(curl) conforming, and the DoF of a line
+     * refers to the direction of the line object (from line->vertex(0) to
+     * line->vertex(1)), as for FE_NedelecSimplex. Only simplex elements are
+     * accepted for now; quadrilateral faces are implemented below, but the
+     * hypercube elements keep their own constraints until this is tested.
+     */
+    template <int dim, int spacedim>
+    bool
+    is_line_oriented_edge_element(const FiniteElement<dim, spacedim> &fe)
+    {
+      return dim > 1 && fe.reference_cell().is_simplex() &&
+             fe.conforms(FiniteElementData<dim>::Hcurl) &&
+             fe.n_dofs_per_vertex() == 0 && fe.n_dofs_per_line() == 1 &&
+             fe.n_dofs_per_cell() == fe.reference_cell().n_lines();
+    }
+
+
+
+    template <int dim, int spacedim>
+    bool
+    all_line_oriented_edge_elements(
+      const hp::FECollection<dim, spacedim> &fe_collection)
+    {
+      for (unsigned int i = 0; i < fe_collection.size(); ++i)
+        if (is_line_oriented_edge_element(fe_collection[i]) == false)
+          return false;
+      return fe_collection.size() > 0;
+    }
+
+
+
+    /**
+     * Line integral along the straight segment from @p p to @p q (in the
+     * reference coordinates of a face of type @p face_type) of the
+     * lowest-order edge function of the face line from face vertex @p a to
+     * face vertex @p b: the Whitney function lambda_a grad lambda_b -
+     * lambda_b grad lambda_a on triangles, and (N_a + N_b) (v_b - v_a) /
+     * |v_b - v_a|^2 with the d-linear vertex functions N on lines and
+     * quadrilaterals. Both have line integral one along their own line and
+     * zero along the other lines of the face, and both are linear along
+     * straight segments, so the integral is the value at the midpoint times
+     * (q - p).
+     */
+    template <int facedim>
+    double
+    edge_function_line_integral(const ReferenceCell  &face_type,
+                                const unsigned int    a,
+                                const unsigned int    b,
+                                const Point<facedim> &p,
+                                const Point<facedim> &q)
+    {
+      const Point<facedim>     mid = p + 0.5 * (q - p);
+      const Tensor<1, facedim> pq  = q - p;
+      if (facedim == 2 && face_type.is_simplex())
+        {
+          const Tensor<1, facedim> value =
+            face_type.d_linear_shape_function(mid, a) *
+              face_type.d_linear_shape_function_gradient(mid, b) -
+            face_type.d_linear_shape_function(mid, b) *
+              face_type.d_linear_shape_function_gradient(mid, a);
+          return value * pq;
+        }
+      else
+        {
+          const Tensor<1, facedim> ab =
+            face_type.template vertex<facedim>(b) -
+            face_type.template vertex<facedim>(a);
+          return (face_type.d_linear_shape_function(mid, a) +
+                  face_type.d_linear_shape_function(mid, b)) *
+                 (ab * pq) / ab.norm_square();
+        }
+    }
+
+
+
+    /**
+     * Hanging node constraints for lowest-order edge elements whose line DoFs
+     * refer to the direction of the line objects (see
+     * is_line_oriented_edge_element()). Every hanging face F is handled on
+     * its own, from its lines and the lines of its children, without looking
+     * at neighbors or parent cells: the DoF of a child line from P to Q (in
+     * the direction of the line object) is the line integral of the
+     * tangential trace on F of the coarse function, sum_L u_L int_P^Q phi_L,
+     * where L runs over the lines of F, u_L is the DoF of L and phi_L the
+     * edge function of L in the direction of the line object L. The
+     * positions of P and Q in the reference coordinates of F follow from the
+     * topology: a vertex of F, the midpoint of a line of F, or the center of
+     * a quadrilateral F. Child lines on a line L of F inherit its direction,
+     * so their DoF is u_L / 2. The covariant mapping keeps line integrals, so
+     * the computation on the reference face is exact for any cell mapping
+     * that maps the children of F onto the reference children.
+     */
+    template <int dim, int spacedim, typename number>
+    void
+    make_hanging_node_constraints_edge_elements(
+      const DoFHandler<dim, spacedim> &dof_handler,
+      AffineConstraints<number>       &constraints)
+    {
+      if constexpr (dim == 1)
+        {
+          (void)dof_handler;
+          (void)constraints;
+        }
+      else
+        {
+          constexpr int facedim = dim - 1;
+
+          // the only DoF of a line, for the one element active on it
+          const auto line_dof = [](const auto &line) {
+            Assert(line->n_active_fe_indices() == 1, ExcNotImplemented());
+            return line->dof_index(0, line->nth_active_fe_index(0));
+          };
+
+          std::vector<std::pair<unsigned int, Point<facedim>>> positions;
+          std::vector<typename DoFHandler<dim, spacedim>::line_iterator>
+            parent_lines, child_lines;
+          boost::container::small_vector<
+            std::pair<typename AffineConstraints<number>::size_type, number>,
+            4>
+            entries;
+
+          for (const auto &cell : dof_handler.active_cell_iterators())
+            {
+              if (cell->is_artificial())
+                continue;
+
+              for (const unsigned int f : cell->face_indices())
+                {
+                  if (cell->at_boundary(f) ||
+                      cell->face(f)->has_children() == false)
+                    continue;
+
+                  const auto          face      = cell->face(f);
+                  const ReferenceCell face_type = face->reference_cell();
+
+                  // reference positions of the vertices of the face
+                  positions.clear();
+                  for (const unsigned int v : face->vertex_indices())
+                    positions.emplace_back(
+                      face->vertex_index(v),
+                      face_type.template vertex<facedim>(v));
+                  const auto position_of = [&](const unsigned int vertex) {
+                    for (const auto &[index, position] : positions)
+                      if (index == vertex)
+                        return position;
+                    DEAL_II_ASSERT_UNREACHABLE();
+                    return Point<facedim>();
+                  };
+
+                  // face-local number of a vertex of the face
+                  const auto local_vertex = [&](const unsigned int vertex) {
+                    for (const unsigned int v : face->vertex_indices())
+                      if (face->vertex_index(v) == vertex)
+                        return v;
+                    DEAL_II_ASSERT_UNREACHABLE();
+                    return numbers::invalid_unsigned_int;
+                  };
+
+                  // the lines of the face and the lines of its children
+                  parent_lines.clear();
+                  child_lines.clear();
+                  if constexpr (dim == 2)
+                    {
+                      parent_lines.push_back(face);
+                      for (unsigned int c = 0; c < face->n_children(); ++c)
+                        child_lines.push_back(face->child(c));
+                    }
+                  else
+                    {
+                      for (const unsigned int l : face->line_indices())
+                        parent_lines.push_back(face->line(l));
+                      for (unsigned int c = 0; c < face->n_children(); ++c)
+                        for (const unsigned int l :
+                             face->child(c)->line_indices())
+                          {
+                            const auto line = face->child(c)->line(l);
+                            if (std::find(child_lines.begin(),
+                                          child_lines.end(),
+                                          line) == child_lines.end())
+                              child_lines.push_back(line);
+                          }
+                    }
+
+                  // midpoints of the lines of the face
+                  for (const auto &line : parent_lines)
+                    {
+                      Assert(line->has_children(), ExcInternalError());
+                      const Point<facedim> p0 =
+                        position_of(line->vertex_index(0));
+                      const Point<facedim> p1 =
+                        position_of(line->vertex_index(1));
+                      positions.emplace_back(line->child(0)->vertex_index(1),
+                                             p0 + 0.5 * (p1 - p0));
+                    }
+
+                  // the center of a quadrilateral face, which is the only
+                  // vertex of a child line not yet known
+                  if (face_type == ReferenceCells::Quadrilateral)
+                    {
+                      Point<facedim> center;
+                      for (const unsigned int v : face->vertex_indices())
+                        center += face_type.template vertex<facedim>(v);
+                      center /= face->n_vertices();
+                      for (const auto &line : child_lines)
+                        for (unsigned int v = 0; v < 2; ++v)
+                          if (std::none_of(positions.begin(),
+                                           positions.end(),
+                                           [&](const auto &entry) {
+                                             return entry.first ==
+                                                    line->vertex_index(v);
+                                           }))
+                            positions.emplace_back(line->vertex_index(v),
+                                                   center);
+                    }
+
+                  for (const auto &child_line : child_lines)
+                    {
+                      const types::global_dof_index dof = line_dof(child_line);
+                      if (constraints.is_constrained(dof) ||
+                          constraints.can_store_line(dof) == false)
+                        continue;
+
+                      const Point<facedim> p =
+                        position_of(child_line->vertex_index(0));
+                      const Point<facedim> q =
+                        position_of(child_line->vertex_index(1));
+
+                      entries.clear();
+                      for (const auto &parent_line : parent_lines)
+                        {
+                          const double weight =
+                            edge_function_line_integral<facedim>(
+                              face_type,
+                              local_vertex(parent_line->vertex_index(0)),
+                              local_vertex(parent_line->vertex_index(1)),
+                              p,
+                              q);
+                          if (std::abs(weight) > 1e-12)
+                            entries.emplace_back(line_dof(parent_line),
+                                                 number(weight));
+                        }
+                      constraints.add_constraint(dof, entries, 0.);
+                    }
+                }
+            }
+        }
+    }
   } // namespace internal
 
 
@@ -3161,6 +3414,10 @@ namespace DoFTools
         std::string::npos)
       internal::make_hanging_node_constraints_nedelec(
         dof_handler, constraints, std::integral_constant<int, dim>());
+    else if (internal::all_line_oriented_edge_elements(
+               dof_handler.get_fe_collection()))
+      internal::make_hanging_node_constraints_edge_elements(dof_handler,
+                                                            constraints);
     else if (dof_handler.get_fe_collection().hp_constraints_are_implemented())
       internal::make_hp_hanging_node_constraints(dof_handler, constraints);
     else
