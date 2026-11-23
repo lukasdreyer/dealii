@@ -1,0 +1,23 @@
+
+DEAL:0::dim=2 cells=165 edges=298 vertices=107 constrained edges=54 constrained vertices=27
+DEAL:0::  constrained rows zero, G p = grad p_h OK
+DEAL:0::dim=3 cells=1108 edges=1923 vertices=362 constrained edges=638 constrained vertices=169
+DEAL:0::  constrained rows zero, G p = grad p_h OK
+
+DEAL:1::dim=2 cells=165 edges=298 vertices=107 constrained edges=54 constrained vertices=27
+DEAL:1::  constrained rows zero, G p = grad p_h OK
+DEAL:1::dim=3 cells=1108 edges=1923 vertices=362 constrained edges=638 constrained vertices=169
+DEAL:1::  constrained rows zero, G p = grad p_h OK
+
+
+DEAL:2::dim=2 cells=165 edges=298 vertices=107 constrained edges=54 constrained vertices=27
+DEAL:2::  constrained rows zero, G p = grad p_h OK
+DEAL:2::dim=3 cells=1108 edges=1923 vertices=362 constrained edges=638 constrained vertices=169
+DEAL:2::  constrained rows zero, G p = grad p_h OK
+
+
+DEAL:3::dim=2 cells=165 edges=298 vertices=107 constrained edges=54 constrained vertices=27
+DEAL:3::  constrained rows zero, G p = grad p_h OK
+DEAL:3::dim=3 cells=1108 edges=1923 vertices=362 constrained edges=638 constrained vertices=169
+DEAL:3::  constrained rows zero, G p = grad p_h OK
+
