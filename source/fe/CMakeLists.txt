@@ -29,6 +29,7 @@ set(_unity_include_src
   fe_hermite.cc
   fe_nedelec.cc
   fe_nedelec_nodal.cc
+  fe_nedelec_simplex.cc
   fe_nedelec_sz.cc
   fe_nothing.cc
   fe_poly.cc
@@ -103,6 +104,7 @@ set(_inst
   fe_hermite.inst.in
   fe_nedelec.inst.in
   fe_nedelec_nodal.inst.in
+  fe_nedelec_simplex.inst.in
   fe_nedelec_sz.inst.in
   fe_nothing.inst.in
   fe_poly.inst.in
