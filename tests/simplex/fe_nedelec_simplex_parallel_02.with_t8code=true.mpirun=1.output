@@ -1,0 +1,9 @@
+
+DEAL:0::dim=2 cells=14 dofs=29 constraints=4
+DEAL:0::dim=2 cells=56 dofs=100 constraints=8 rate_u=0.85 rate_curl=1.00
+DEAL:0::dim=2 cells=224 dofs=368 constraints=16 rate_u=0.93 rate_curl=1.00
+DEAL:0::dim=2 cells=896 dofs=1408 constraints=32 rate_u=0.98 rate_curl=1.00
+DEAL:0::dim=2 cells=3584 dofs=5504 constraints=64 rate_u=0.99 rate_curl=1.00
+DEAL:0::dim=3 cells=54 dofs=128 constraints=21
+DEAL:0::dim=3 cells=432 dofs=742 constraints=78 rate_u=0.62 rate_curl=0.86
+DEAL:0::dim=3 cells=3456 dofs=4940 constraints=300 rate_u=0.81 rate_curl=0.96
