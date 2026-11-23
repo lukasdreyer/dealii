@@ -1,0 +1,47 @@
+
+DEAL:0::dim=2 omega=8.00000 sigma=1.00000 dofs=58 L2 errors 0.399 0.328
+DEAL:0::dim=2 omega=8.00000 sigma=1.00000 dofs=200 L2 errors 0.195 0.0933
+DEAL:0::dim=2 omega=8.00000 sigma=1.00000 dofs=736 L2 errors 0.0935 0.0464
+DEAL:0::dim=2 omega=8.00000 sigma=1.00000 dofs=2816 L2 errors 0.0464 0.0232
+DEAL:0::dim=2 omega=8.00000 sigma=1.00000 dofs=11008 L2 errors 0.0232 0.0116
+DEAL:0::  at most 500 iterations: OK
+DEAL:0::dim=3 omega=8.00000 sigma=1.00000 dofs=256 L2 errors 0.483 0.336
+DEAL:0::dim=3 omega=8.00000 sigma=1.00000 dofs=1484 L2 errors 0.334 0.152
+DEAL:0::dim=3 omega=8.00000 sigma=1.00000 dofs=9880 L2 errors 0.146 0.0730
+DEAL:0::  at most 500 iterations: OK
+
+DEAL:1::dim=2 omega=8.00000 sigma=1.00000 dofs=58 L2 errors 0.399 0.328
+DEAL:1::dim=2 omega=8.00000 sigma=1.00000 dofs=200 L2 errors 0.195 0.0933
+DEAL:1::dim=2 omega=8.00000 sigma=1.00000 dofs=736 L2 errors 0.0935 0.0464
+DEAL:1::dim=2 omega=8.00000 sigma=1.00000 dofs=2816 L2 errors 0.0464 0.0232
+DEAL:1::dim=2 omega=8.00000 sigma=1.00000 dofs=11008 L2 errors 0.0232 0.0116
+DEAL:1::  at most 500 iterations: OK
+DEAL:1::dim=3 omega=8.00000 sigma=1.00000 dofs=256 L2 errors 0.483 0.336
+DEAL:1::dim=3 omega=8.00000 sigma=1.00000 dofs=1484 L2 errors 0.334 0.152
+DEAL:1::dim=3 omega=8.00000 sigma=1.00000 dofs=9880 L2 errors 0.146 0.0730
+DEAL:1::  at most 500 iterations: OK
+
+
+DEAL:2::dim=2 omega=8.00000 sigma=1.00000 dofs=58 L2 errors 0.399 0.328
+DEAL:2::dim=2 omega=8.00000 sigma=1.00000 dofs=200 L2 errors 0.195 0.0933
+DEAL:2::dim=2 omega=8.00000 sigma=1.00000 dofs=736 L2 errors 0.0935 0.0464
+DEAL:2::dim=2 omega=8.00000 sigma=1.00000 dofs=2816 L2 errors 0.0464 0.0232
+DEAL:2::dim=2 omega=8.00000 sigma=1.00000 dofs=11008 L2 errors 0.0232 0.0116
+DEAL:2::  at most 500 iterations: OK
+DEAL:2::dim=3 omega=8.00000 sigma=1.00000 dofs=256 L2 errors 0.483 0.336
+DEAL:2::dim=3 omega=8.00000 sigma=1.00000 dofs=1484 L2 errors 0.334 0.152
+DEAL:2::dim=3 omega=8.00000 sigma=1.00000 dofs=9880 L2 errors 0.146 0.0730
+DEAL:2::  at most 500 iterations: OK
+
+
+DEAL:3::dim=2 omega=8.00000 sigma=1.00000 dofs=58 L2 errors 0.399 0.328
+DEAL:3::dim=2 omega=8.00000 sigma=1.00000 dofs=200 L2 errors 0.195 0.0933
+DEAL:3::dim=2 omega=8.00000 sigma=1.00000 dofs=736 L2 errors 0.0935 0.0464
+DEAL:3::dim=2 omega=8.00000 sigma=1.00000 dofs=2816 L2 errors 0.0464 0.0232
+DEAL:3::dim=2 omega=8.00000 sigma=1.00000 dofs=11008 L2 errors 0.0232 0.0116
+DEAL:3::  at most 500 iterations: OK
+DEAL:3::dim=3 omega=8.00000 sigma=1.00000 dofs=256 L2 errors 0.483 0.336
+DEAL:3::dim=3 omega=8.00000 sigma=1.00000 dofs=1484 L2 errors 0.334 0.152
+DEAL:3::dim=3 omega=8.00000 sigma=1.00000 dofs=9880 L2 errors 0.146 0.0730
+DEAL:3::  at most 500 iterations: OK
+
