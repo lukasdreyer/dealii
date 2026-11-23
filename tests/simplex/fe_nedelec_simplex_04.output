@@ -1,0 +1,5 @@
+
+DEAL::dim=2 cells=35 hanging faces=12 constraints=12
+DEAL::  exactness OK, tangential continuity OK
+DEAL::dim=3 cells=138 hanging faces=44 constraints=81
+DEAL::  exactness OK, tangential continuity OK
