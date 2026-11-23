@@ -1,0 +1,3 @@
+
+DEAL::distorted: cells=48 flipped lines seen by cells=32/384, duality OK
+DEAL::affine: cells=48, a + b x x OK, curl OK, grad p OK, Stokes OK
