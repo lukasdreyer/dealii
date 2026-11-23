@@ -1,0 +1,31 @@
+
+DEAL:0::hex cycle 0: line directions agree, line_orientation flags OK
+DEAL:0::hex cycle 1: line directions agree, line_orientation flags OK
+DEAL:0::hex cycle 2: line directions agree, line_orientation flags OK
+DEAL:0::hex cycle 3: line directions agree, line_orientation flags OK
+DEAL:0::tet cycle 0: line directions agree, line_orientation flags OK
+DEAL:0::tet cycle 1: line directions agree, line_orientation flags OK
+DEAL:0::tet cycle 2: line directions agree, line_orientation flags OK
+DEAL:0::tet cycle 3: line directions agree, line_orientation flags OK
+DEAL:0::wedge cycle 0: line directions agree, line_orientation flags OK
+DEAL:0::wedge cycle 1: line directions agree, line_orientation flags OK
+DEAL:0::wedge cycle 2: line directions agree, line_orientation flags OK
+DEAL:0::wedge cycle 3: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 0 cycle 0: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 0 cycle 1: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 0 cycle 2: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 0 cycle 3: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 1 cycle 0: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 1 cycle 1: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 1 cycle 2: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 1 cycle 3: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 2 cycle 0: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 2 cycle 1: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 2 cycle 2: line directions agree, line_orientation flags OK
+DEAL:0::pyramid mesh 2 cycle 3: line directions agree, line_orientation flags OK
+
+
+
+
+
+
