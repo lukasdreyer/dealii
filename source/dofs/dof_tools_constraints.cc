@@ -3146,17 +3146,15 @@ namespace DoFTools
      * make_hanging_node_constraints_edge_elements() can handle: one DoF per
      * line and none elsewhere, H(curl) conforming, and the DoF of a line
      * refers to the direction of the line object (from line->vertex(0) to
-     * line->vertex(1)), as for FE_NedelecSimplex and FE_NedelecWedge. Only
-     * simplex and wedge elements are accepted for now; the hypercube elements
+     * line->vertex(1)), as for FE_NedelecSimplex, FE_NedelecWedge and
+     * FE_NedelecPyramid. Hypercube elements are not accepted for now; they
      * keep their own constraints until this is tested for them.
      */
     template <int dim, int spacedim>
     bool
     is_line_oriented_edge_element(const FiniteElement<dim, spacedim> &fe)
     {
-      return dim > 1 &&
-             (fe.reference_cell().is_simplex() ||
-              fe.reference_cell() == ReferenceCells::Wedge) &&
+      return dim > 1 && !fe.reference_cell().is_hyper_cube() &&
              fe.conforms(FiniteElementData<dim>::Hcurl) &&
              fe.n_dofs_per_vertex() == 0 && fe.n_dofs_per_line() == 1 &&
              fe.n_dofs_per_cell() == fe.reference_cell().n_lines();

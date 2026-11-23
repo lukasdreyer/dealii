@@ -39,8 +39,8 @@ DEAL_II_NAMESPACE_OPEN
 /**
  * Tools for lowest-order edge elements whose line DoFs refer to the
  * direction of the line objects (from line->vertex(0) to line->vertex(1)),
- * such as FE_NedelecSimplex(0) and FE_NedelecWedge(0): the DoF of a line is
- * the line integral of
+ * such as FE_NedelecSimplex(0), FE_NedelecWedge(0) and FE_NedelecPyramid(0):
+ * the DoF of a line is the line integral of
  * the tangential component along the line object.
  */
 namespace internal
@@ -52,15 +52,15 @@ namespace internal
     assert_line_oriented_edge_element(const FiniteElement<dim, spacedim> &fe)
     {
       (void)fe;
-      Assert((fe.reference_cell().is_simplex() ||
-              fe.reference_cell() == ReferenceCells::Wedge) &&
+      Assert(!fe.reference_cell().is_hyper_cube() &&
                fe.n_dofs_per_vertex() == 0 &&
                fe.n_dofs_per_line() == 1 &&
                fe.n_dofs_per_cell() == fe.reference_cell().n_lines(),
              ExcMessage("This function is only implemented for lowest-order "
-                        "edge elements on simplices and wedges whose DoFs "
-                        "refer to the direction of the line objects "
-                        "(FE_NedelecSimplex, FE_NedelecWedge)."));
+                        "edge elements on simplices, wedges and pyramids "
+                        "whose DoFs refer to the direction of the line "
+                        "objects (FE_NedelecSimplex, FE_NedelecWedge, "
+                        "FE_NedelecPyramid)."));
     }
 
 

@@ -30,6 +30,7 @@ set(_unity_include_src
   fe_nedelec.cc
   fe_nedelec_nodal.cc
   fe_nedelec_lowest_order.cc
+  fe_nedelec_pyramid.cc
   fe_nedelec_simplex.cc
   fe_nedelec_wedge.cc
   fe_nedelec_sz.cc
