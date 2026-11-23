@@ -1,0 +1,5 @@
+
+DEAL::distorted, refined 0: cells=16 flipped lines seen by cells=32/144, duality OK
+DEAL::distorted, refined 1: cells=128 flipped lines seen by cells=320/1152, duality OK
+DEAL::affine, refined 0: cells=16, a + b x x OK, curl OK, grad p OK, curl grad p OK
+DEAL::affine, refined 1: cells=128, a + b x x OK, curl OK, grad p OK, curl grad p OK

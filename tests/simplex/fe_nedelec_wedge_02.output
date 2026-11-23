@@ -1,0 +1,6 @@
+
+DEAL::constraints: cells=523 hanging triangles=176 hanging quadrilaterals=164 constraints=630
+DEAL::  exactness OK, tangential continuity OK
+DEAL::convergence: cells=23 dofs=102 constraints=19
+DEAL::convergence: cells=184 dofs=570 constraints=66 rate_u=0.91 rate_curl=0.97
+DEAL::convergence: cells=1472 dofs=3708 constraints=244 rate_u=0.95 rate_curl=0.99
