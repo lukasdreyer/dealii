@@ -182,6 +182,35 @@ public:
    */
   std::string
   get_name() const override;
+
+  /**
+   * A discontinuous element has no requirements on vertices, lines and faces;
+   * on cells, elements of the same kind are compared by their degree.
+   */
+  FiniteElementDomination::Domination
+  compare_for_domination(const FiniteElement<dim, spacedim> &fe_other,
+                         const unsigned int codim) const override;
+
+  /**
+   * No DoF identities: the element is discontinuous.
+   */
+  std::vector<std::pair<unsigned int, unsigned int>>
+  hp_vertex_dof_identities(
+    const FiniteElement<dim, spacedim> &fe_other) const override;
+
+  /**
+   * No DoF identities: the element is discontinuous.
+   */
+  std::vector<std::pair<unsigned int, unsigned int>>
+  hp_line_dof_identities(
+    const FiniteElement<dim, spacedim> &fe_other) const override;
+
+  /**
+   * No DoF identities: the element is discontinuous.
+   */
+  std::vector<std::pair<unsigned int, unsigned int>>
+  hp_quad_dof_identities(const FiniteElement<dim, spacedim> &fe_other,
+                         const unsigned int face_no = 0) const override;
 };
 
 DEAL_II_NAMESPACE_CLOSE

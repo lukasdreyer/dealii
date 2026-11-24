@@ -700,6 +700,76 @@ FE_PyramidDGP<dim, spacedim>::get_name() const
   return namebuf.str();
 }
 
+
+
+template <int dim, int spacedim>
+FiniteElementDomination::Domination
+FE_PyramidDGP<dim, spacedim>::compare_for_domination(
+  const FiniteElement<dim, spacedim> &fe_other,
+  const unsigned int                  codim) const
+{
+  Assert(codim <= dim, ExcImpossibleInDim(dim));
+
+  // vertex/line/face domination: this is a discontinuous element, so there
+  // are no constraints wherever it comes together with any other element
+  if (codim > 0)
+    return FiniteElementDomination::no_requirements;
+
+  // cell domination
+  if (const FE_PyramidDGP<dim, spacedim> *fe_dgp_other =
+        dynamic_cast<const FE_PyramidDGP<dim, spacedim> *>(&fe_other))
+    {
+      if (this->degree < fe_dgp_other->degree)
+        return FiniteElementDomination::this_element_dominates;
+      else if (this->degree == fe_dgp_other->degree)
+        return FiniteElementDomination::either_element_can_dominate;
+      else
+        return FiniteElementDomination::other_element_dominates;
+    }
+  else if (const FE_Nothing<dim, spacedim> *fe_nothing =
+             dynamic_cast<const FE_Nothing<dim, spacedim> *>(&fe_other))
+    {
+      if (fe_nothing->is_dominating())
+        return FiniteElementDomination::other_element_dominates;
+      else
+        return FiniteElementDomination::no_requirements;
+    }
+
+  DEAL_II_NOT_IMPLEMENTED();
+  return FiniteElementDomination::neither_element_dominates;
+}
+
+
+
+template <int dim, int spacedim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_PyramidDGP<dim, spacedim>::hp_vertex_dof_identities(
+  const FiniteElement<dim, spacedim> &) const
+{
+  return {};
+}
+
+
+
+template <int dim, int spacedim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_PyramidDGP<dim, spacedim>::hp_line_dof_identities(
+  const FiniteElement<dim, spacedim> &) const
+{
+  return {};
+}
+
+
+
+template <int dim, int spacedim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_PyramidDGP<dim, spacedim>::hp_quad_dof_identities(
+  const FiniteElement<dim, spacedim> &,
+  const unsigned int) const
+{
+  return {};
+}
+
 // explicit instantiations
 #include "fe/fe_pyramid_p.inst"
 
