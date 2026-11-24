@@ -16,13 +16,17 @@
 // Geometric multigrid for curl curl u + beta u = f with FE_NedelecSimplex(0)
 // on a sequence of meshes (each one the previous one refined once), with
 // the prolongation of DoFTools::make_edge_element_prolongation() and
-// Hiptmair's hybrid smoother: a symmetric Gauss-Seidel step on the edge
-// operator A, one on the nodal operator G^T A G (G the discrete gradient of
-// DoFTools::make_discrete_gradient()), corrected by G, and again one on A.
+// Hiptmair's hybrid smoother (MGSmootherHiptmair with PreconditionSSOR): a
+// symmetric Gauss-Seidel step on the edge operator A, one on the nodal
+// operator G^T A G (G the discrete gradient of
+// DoFTools::make_discrete_gradient(), G^T A G from
+// MGTools::make_hiptmair_nodal_matrix()), corrected by G, and again one on
+// A.
 // CG with one V(1,1) cycle as preconditioner; the iteration counts should
 // be bounded independently of the number of levels and of beta. For
-// comparison, the same multigrid with only the Gauss-Seidel steps on A,
-// which does not damp the gradients (the kernel of curl) for small beta.
+// comparison, the same multigrid with one symmetric Gauss-Seidel step on A
+// (MGSmootherPrecondition), which does not damp the gradients (the kernel
+// of curl).
 //
 // Optional arguments (for runs outside the test suite):
 //   dim n_levels beta
@@ -54,6 +58,9 @@
 #include <deal.II/lac/vector.h>
 
 #include <deal.II/multigrid/mg_base.h>
+#include <deal.II/multigrid/mg_matrix.h>
+#include <deal.II/multigrid/mg_smoother.h>
+#include <deal.II/multigrid/mg_smoother_hiptmair.h>
 #include <deal.II/multigrid/multigrid.h>
 
 #include <deal.II/numerics/vector_tools.h>
@@ -95,7 +102,8 @@ public:
 
 
 
-// everything that lives on one mesh of the sequence
+// everything that lives on one mesh of the sequence (the matrices are in
+// MGLevelObjects)
 template <int dim>
 struct Level
 {
@@ -105,14 +113,8 @@ struct Level
   AffineConstraints<double> edge_constraints;
   AffineConstraints<double> nodal_constraints;
 
-  SparsityPattern      sparsity_a, sparsity_g, sparsity_ag, sparsity_s,
-    sparsity_p;
-  SparseMatrix<double> a;  // edge operator
-  SparseMatrix<double> g;  // discrete gradient
-  SparseMatrix<double> ag; // a * g
-  SparseMatrix<double> s;  // nodal operator g^T a g
-  SparseMatrix<double> p;  // prolongation from the next coarser level
-  Vector<double>       rhs;
+  SparsityPattern sparsity_a, sparsity_g, sparsity_s, sparsity_p;
+  Vector<double>  rhs;
 };
 
 
@@ -122,70 +124,13 @@ using Levels = std::vector<std::unique_ptr<Level<dim>>>;
 
 
 
-template <int dim>
-class LevelMatrix : public MGMatrixBase<Vector<double>>
-{
-public:
-  LevelMatrix(const Levels<dim> &levels)
-    : levels(levels)
-  {}
-
-  void
-  vmult(const unsigned int    level,
-        Vector<double>       &dst,
-        const Vector<double> &src) const override
-  {
-    levels[level]->a.vmult(dst, src);
-  }
-
-  void
-  vmult_add(const unsigned int    level,
-            Vector<double>       &dst,
-            const Vector<double> &src) const override
-  {
-    levels[level]->a.vmult_add(dst, src);
-  }
-
-  void
-  Tvmult(const unsigned int    level,
-         Vector<double>       &dst,
-         const Vector<double> &src) const override
-  {
-    levels[level]->a.Tvmult(dst, src);
-  }
-
-  void
-  Tvmult_add(const unsigned int    level,
-             Vector<double>       &dst,
-             const Vector<double> &src) const override
-  {
-    levels[level]->a.Tvmult_add(dst, src);
-  }
-
-  unsigned int
-  get_minlevel() const override
-  {
-    return 0;
-  }
-
-  unsigned int
-  get_maxlevel() const override
-  {
-    return levels.size() - 1;
-  }
-
-private:
-  const Levels<dim> &levels;
-};
-
-
-
-template <int dim>
+// the transfer with the prolongation matrices (prolongations[l] from
+// level l - 1 to level l)
 class EdgeTransfer : public MGTransferBase<Vector<double>>
 {
 public:
-  EdgeTransfer(const Levels<dim> &levels)
-    : levels(levels)
+  EdgeTransfer(const MGLevelObject<SparseMatrix<double>> &prolongations)
+    : prolongations(prolongations)
   {}
 
   void
@@ -193,7 +138,7 @@ public:
              Vector<double>       &dst,
              const Vector<double> &src) const override
   {
-    levels[to_level]->p.vmult(dst, src);
+    prolongations[to_level].vmult(dst, src);
   }
 
   void
@@ -201,7 +146,7 @@ public:
                      Vector<double>       &dst,
                      const Vector<double> &src) const override
   {
-    levels[to_level]->p.vmult_add(dst, src);
+    prolongations[to_level].vmult_add(dst, src);
   }
 
   void
@@ -209,69 +154,15 @@ public:
                    Vector<double>       &dst,
                    const Vector<double> &src) const override
   {
-    levels[from_level]->p.Tvmult_add(dst, src);
+    prolongations[from_level].Tvmult_add(dst, src);
   }
 
 private:
-  const Levels<dim> &levels;
+  const MGLevelObject<SparseMatrix<double>> &prolongations;
 };
 
 
 
-// Hiptmair's hybrid smoother: symmetric Gauss-Seidel on A, then on the
-// nodal operator G^T A G for the residual G^T (f - A u), corrected by G,
-// then again symmetric Gauss-Seidel on A (so the smoother is symmetric).
-// Without the nodal step, only symmetric Gauss-Seidel on A.
-template <int dim>
-class HiptmairSmoother : public MGSmootherBase<Vector<double>>
-{
-public:
-  HiptmairSmoother(const Levels<dim> &levels, const bool nodal_step)
-    : levels(levels)
-    , nodal_step(nodal_step)
-  {}
-
-  void
-  clear() override
-  {}
-
-  void
-  smooth(const unsigned int    level,
-         Vector<double>       &u,
-         const Vector<double> &rhs) const override
-  {
-    const Level<dim> &l = *levels[level];
-    l.a.SSOR_step(u, rhs);
-    if (nodal_step)
-      {
-        Vector<double> residual(u.size());
-        l.a.residual(residual, u, rhs);
-        Vector<double> nodal_rhs(l.nodal_dh.n_dofs());
-        l.g.Tvmult(nodal_rhs, residual);
-        Vector<double> nodal_correction(l.nodal_dh.n_dofs());
-        l.s.SSOR_step(nodal_correction, nodal_rhs);
-        l.g.vmult_add(u, nodal_correction);
-        l.a.SSOR_step(u, rhs);
-      }
-  }
-
-  void
-  apply(const unsigned int    level,
-        Vector<double>       &u,
-        const Vector<double> &rhs) const override
-  {
-    u = 0;
-    smooth(level, u, rhs);
-  }
-
-private:
-  const Levels<dim> &levels;
-  const bool         nodal_step;
-};
-
-
-
-template <int dim>
 class CoarseSolver : public MGCoarseGridBase<Vector<double>>
 {
 public:
@@ -325,7 +216,11 @@ private:
 
 template <int dim>
 void
-setup_level(Level<dim> &l, const double beta)
+setup_level(Level<dim>           &l,
+            const double          beta,
+            SparseMatrix<double> &a,
+            SparseMatrix<double> &g,
+            SparseMatrix<double> &s)
 {
   const FE_NedelecSimplex<dim> fe(0);
   const FE_SimplexP<dim>       nodal_fe(1);
@@ -352,7 +247,7 @@ setup_level(Level<dim> &l, const double beta)
     DynamicSparsityPattern dsp(l.edge_dh.n_dofs());
     DoFTools::make_sparsity_pattern(l.edge_dh, dsp, l.edge_constraints, false);
     l.sparsity_a.copy_from(dsp);
-    l.a.reinit(l.sparsity_a);
+    a.reinit(l.sparsity_a);
     l.rhs.reinit(l.edge_dh.n_dofs());
 
     FEValues<dim> fe_values(mapping,
@@ -388,7 +283,7 @@ setup_level(Level<dim> &l, const double beta)
           }
         cell->get_dof_indices(dof_indices);
         l.edge_constraints.distribute_local_to_global(
-          cell_matrix, cell_rhs, dof_indices, l.a, l.rhs);
+          cell_matrix, cell_rhs, dof_indices, a, l.rhs);
       }
   }
 
@@ -398,19 +293,10 @@ setup_level(Level<dim> &l, const double beta)
     DoFTools::make_discrete_gradient_sparsity_pattern(
       l.edge_dh, l.edge_constraints, l.nodal_dh, l.nodal_constraints, dsp);
     l.sparsity_g.copy_from(dsp);
-    l.g.reinit(l.sparsity_g);
+    g.reinit(l.sparsity_g);
     DoFTools::make_discrete_gradient(
-      l.edge_dh, l.edge_constraints, l.nodal_dh, l.nodal_constraints, l.g);
-
-    l.ag.reinit(l.sparsity_ag);
-    l.a.mmult(l.ag, l.g);
-    l.s.reinit(l.sparsity_s);
-    l.g.Tmmult(l.s, l.ag);
-    // the constrained nodal DoFs have empty rows; give them a unit diagonal
-    // (their right-hand side G^T r is zero, so they stay zero)
-    for (unsigned int i = 0; i < l.s.m(); ++i)
-      if (l.s.diag_element(i) == 0)
-        l.s.diag_element(i) = 1;
+      l.edge_dh, l.edge_constraints, l.nodal_dh, l.nodal_constraints, g);
+    MGTools::make_hiptmair_nodal_matrix(a, g, l.sparsity_s, s);
   }
 }
 
@@ -418,7 +304,9 @@ setup_level(Level<dim> &l, const double beta)
 
 template <int dim>
 void
-setup_prolongation(const Level<dim> &coarse, Level<dim> &fine)
+setup_prolongation(const Level<dim>     &coarse,
+                   Level<dim>           &fine,
+                   SparseMatrix<double> &p)
 {
   DynamicSparsityPattern dsp(fine.edge_dh.n_dofs(), coarse.edge_dh.n_dofs());
   DoFTools::make_edge_element_prolongation_sparsity_pattern(
@@ -428,12 +316,12 @@ setup_prolongation(const Level<dim> &coarse, Level<dim> &fine)
     fine.edge_constraints,
     dsp);
   fine.sparsity_p.copy_from(dsp);
-  fine.p.reinit(fine.sparsity_p);
+  p.reinit(fine.sparsity_p);
   DoFTools::make_edge_element_prolongation(coarse.edge_dh,
                                            coarse.edge_constraints,
                                            fine.edge_dh,
                                            fine.edge_constraints,
-                                           fine.p);
+                                           p);
 }
 
 
@@ -444,7 +332,9 @@ template <int dim>
 std::pair<unsigned int, unsigned int>
 test(const unsigned int n_levels, const double beta, const bool verbose)
 {
-  Levels<dim> levels;
+  Levels<dim>                         levels;
+  MGLevelObject<SparseMatrix<double>> a(0, n_levels - 1), g(0, n_levels - 1),
+    s(0, n_levels - 1), p(0, n_levels - 1);
   for (unsigned int l = 0; l < n_levels; ++l)
     {
       levels.push_back(std::make_unique<Level<dim>>());
@@ -459,21 +349,32 @@ test(const unsigned int n_levels, const double beta, const bool verbose)
           levels[l]->tria.copy_triangulation(levels[l - 1]->tria);
           levels[l]->tria.refine_global(1);
         }
-      setup_level(*levels[l], beta);
+      setup_level(*levels[l], beta, a[l], g[l], s[l]);
       if (l > 0)
-        setup_prolongation(*levels[l - 1], *levels[l]);
+        setup_prolongation(*levels[l - 1], *levels[l], p[l]);
     }
 
-  const Level<dim> &fine = *levels.back();
+  const Level<dim>            &fine = *levels.back();
+  const SparseMatrix<double>  &fine_matrix = a[n_levels - 1];
+  mg::Matrix<Vector<double>>   matrix(a);
+  EdgeTransfer                 transfer(p);
+  CoarseSolver                 coarse(a[0]);
 
-  LevelMatrix<dim>  matrix(levels);
-  EdgeTransfer<dim> transfer(levels);
-  CoarseSolver<dim> coarse(levels[0]->a);
+  using Relaxation = PreconditionSSOR<SparseMatrix<double>>;
+  MGSmootherHiptmair<Vector<double>, SparseMatrix<double>, Relaxation>
+    hiptmair;
+  hiptmair.initialize(a, g, s);
+  MGSmootherPrecondition<SparseMatrix<double>, Relaxation, Vector<double>>
+    edge_only;
+  edge_only.initialize(a);
 
   std::pair<unsigned int, unsigned int> iterations;
   for (const bool nodal_step : {true, false})
     {
-      HiptmairSmoother<dim>     smoother(levels, nodal_step);
+      const MGSmootherBase<Vector<double>> &smoother =
+        nodal_step ?
+          static_cast<const MGSmootherBase<Vector<double>> &>(hiptmair) :
+          static_cast<const MGSmootherBase<Vector<double>> &>(edge_only);
       Multigrid<Vector<double>> mg(
         matrix, coarse, transfer, smoother, smoother, 0, n_levels - 1);
       PreconditionVCycle<dim> preconditioner(levels, mg);
@@ -483,7 +384,7 @@ test(const unsigned int n_levels, const double beta, const bool verbose)
       SolverCG<Vector<double>> cg(control);
       try
         {
-          cg.solve(fine.a, solution, fine.rhs, preconditioner);
+          cg.solve(fine_matrix, solution, fine.rhs, preconditioner);
         }
       catch (const SolverControl::NoConvergence &)
         {}
