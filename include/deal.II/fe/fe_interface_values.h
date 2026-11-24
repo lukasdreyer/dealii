@@ -2476,6 +2476,19 @@ FEInterfaceValues<dim, spacedim>::reinit(
       unsigned int used_q_index       = q_index;
       unsigned int used_mapping_index = mapping_index;
 
+      // Cells of different reference cells (hybrid meshes) need different
+      // mappings: if none was specified and there is one mapping per
+      // element, each side uses the mapping of its own element.
+      unsigned int used_mapping_index_neighbor = numbers::invalid_unsigned_int;
+      if (mapping_index == numbers::invalid_unsigned_int &&
+          cell->reference_cell() != cell_neighbor->reference_cell() &&
+          internal_hp_fe_face_values->get_mapping_collection().size() ==
+            internal_hp_fe_face_values->get_fe_collection().size())
+        {
+          used_mapping_index          = active_fe_index;
+          used_mapping_index_neighbor = active_fe_index_neighbor;
+        }
+
       // First check. If there is only one element in a collection, and if none
       // had been specified explicitly, then that's clearly the one to take:
       if (used_q_index == numbers::invalid_unsigned_int)
@@ -2537,6 +2550,9 @@ FEInterfaceValues<dim, spacedim>::reinit(
             }
         }
 
+      if (used_mapping_index_neighbor == numbers::invalid_unsigned_int)
+        used_mapping_index_neighbor = used_mapping_index;
+
       // Same as if above, but when hp is enabled.
       if (sub_face_no == numbers::invalid_unsigned_int)
         {
@@ -2562,7 +2578,7 @@ FEInterfaceValues<dim, spacedim>::reinit(
           internal_hp_fe_face_values_neighbor->reinit(cell_neighbor,
                                                       face_no_neighbor,
                                                       used_q_index,
-                                                      used_mapping_index,
+                                                      used_mapping_index_neighbor,
                                                       active_fe_index_neighbor);
 
           fe_face_values_neighbor = &const_cast<FEFaceValues<dim, spacedim> &>(
@@ -2575,7 +2591,7 @@ FEInterfaceValues<dim, spacedim>::reinit(
             face_no_neighbor,
             sub_face_no_neighbor,
             used_q_index,
-            used_mapping_index,
+            used_mapping_index_neighbor,
             active_fe_index_neighbor);
 
           fe_face_values_neighbor =
