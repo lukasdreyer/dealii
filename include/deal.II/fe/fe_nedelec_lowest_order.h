@@ -62,6 +62,19 @@ public:
                         const unsigned int component) const override;
 
   /**
+   * The values of all reference shape functions at all points @p points of
+   * the reference cell, indexed [shape function][point] (directed as
+   * described at get_shape_values()). Much cheaper than
+   * shape_value_component() for many functions and points, since all
+   * functions are computed together.
+   */
+  std::vector<std::vector<Tensor<1, dim>>>
+  reference_shape_values(const std::vector<Point<dim>> &points) const
+  {
+    return get_shape_values(points);
+  }
+
+  /**
    * With another lowest-order edge element derived from this class (on
    * another reference cell), the single DoF of a line is identical, since
    * both refer to the direction of the line object. This makes the DoFs of

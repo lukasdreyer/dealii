@@ -437,6 +437,11 @@ namespace internal
 
       std::map<unsigned int, Point<dim>> reference_points;
       std::vector<active_cell_iterator>  fine_cells;
+      // per coarse cell: the rows to fill (pointers into rows, whose nodes
+      // do not move), the tangents of their lines, the quadrature points
+      std::vector<std::map<types::global_dof_index, number> *> rows_of_cell;
+      std::vector<Tensor<1, dim>>                              tangents;
+      std::vector<Point<dim>>                                  points;
 
       for (const auto &[coarse_id, data] : coarse_data)
         {
@@ -524,6 +529,11 @@ namespace internal
               add_centers(fine_cell, fine_cells);
             }
 
+          // the fine lines that need a row here, with the quadrature points
+          // along them in reference coordinates of K
+          rows_of_cell.clear();
+          tangents.clear();
+          points.clear();
           for (const auto &child : fine_cells)
             {
               if (child->is_artificial())
@@ -545,37 +555,45 @@ namespace internal
                     reference_point(line->vertex_index(0));
                   const Tensor<1, dim> tangent =
                     reference_point(line->vertex_index(1)) - start;
-
-                  for (unsigned int L = 0; L < fine_cell->n_lines(); ++L)
-                    {
-                      double value = 0;
-                      for (unsigned int q = 0; q < line_quadrature.size(); ++q)
-                        {
-                          const Point<dim> x =
-                            start + line_quadrature.point(q)[0] * tangent;
-                          for (unsigned int d = 0; d < dim; ++d)
-                            value += line_quadrature.weight(q) *
-                                     fe.shape_value_component(L, x, d) *
-                                     tangent[d];
-                        }
-                      // the coarse cell has the line directions of K in the
-                      // fine triangulation
-                      if (fine_cell->line_orientation(L) !=
-                          numbers::default_geometric_orientation)
-                        value = -value;
-                      if (std::abs(value) < 1e-12)
-                        continue;
-
-                      if (data.constrained[L])
-                        {
-                          for (const auto &[dof, weight] : data.entries[L])
-                            row[dof] += value * weight;
-                        }
-                      else
-                        row[data.dofs[L]] += value;
-                    }
+                  rows_of_cell.push_back(&row);
+                  tangents.push_back(tangent);
+                  for (unsigned int q = 0; q < line_quadrature.size(); ++q)
+                    points.push_back(start +
+                                     line_quadrature.point(q)[0] * tangent);
                 }
             }
+          if (rows_of_cell.empty())
+            continue;
+
+          // all coarse shape functions at all these points at once
+          const std::vector<std::vector<Tensor<1, dim>>> values =
+            fe.reference_shape_values(points);
+
+          for (unsigned int k = 0; k < rows_of_cell.size(); ++k)
+            for (unsigned int L = 0; L < fine_cell->n_lines(); ++L)
+              {
+                double value = 0;
+                for (unsigned int q = 0; q < line_quadrature.size(); ++q)
+                  value += line_quadrature.weight(q) *
+                           (values[L][k * line_quadrature.size() + q] *
+                            tangents[k]);
+                // the coarse cell has the line directions of K in the fine
+                // triangulation
+                if (fine_cell->line_orientation(L) !=
+                    numbers::default_geometric_orientation)
+                  value = -value;
+                if (std::abs(value) < 1e-12)
+                  continue;
+
+                auto &row = *rows_of_cell[k];
+                if (data.constrained[L])
+                  {
+                    for (const auto &[dof, weight] : data.entries[L])
+                      row[dof] += value * weight;
+                  }
+                else
+                  row[data.dofs[L]] += value;
+              }
         }
 
       // every locally owned fine DoF is a line of a locally owned fine cell
