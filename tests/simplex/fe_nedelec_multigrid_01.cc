@@ -15,7 +15,8 @@
 
 // Geometric multigrid for curl curl u + beta u = f with FE_NedelecSimplex(0)
 // on a sequence of meshes (each one the previous one refined once), with
-// the prolongation of DoFTools::make_edge_element_prolongation() and
+// the prolongation of DoFTools::make_edge_element_prolongation() (in
+// MGTransferMatrices, with PreconditionMG) and
 // Hiptmair's hybrid smoother (MGSmootherHiptmair with PreconditionSSOR): a
 // symmetric Gauss-Seidel step on the edge operator A, one on the nodal
 // operator G^T A G (G the discrete gradient of
@@ -61,6 +62,7 @@
 #include <deal.II/multigrid/mg_matrix.h>
 #include <deal.II/multigrid/mg_smoother.h>
 #include <deal.II/multigrid/mg_smoother_hiptmair.h>
+#include <deal.II/multigrid/mg_transfer_matrices.h>
 #include <deal.II/multigrid/multigrid.h>
 
 #include <deal.II/numerics/vector_tools.h>
@@ -124,45 +126,6 @@ using Levels = std::vector<std::unique_ptr<Level<dim>>>;
 
 
 
-// the transfer with the prolongation matrices (prolongations[l] from
-// level l - 1 to level l)
-class EdgeTransfer : public MGTransferBase<Vector<double>>
-{
-public:
-  EdgeTransfer(const MGLevelObject<SparseMatrix<double>> &prolongations)
-    : prolongations(prolongations)
-  {}
-
-  void
-  prolongate(const unsigned int    to_level,
-             Vector<double>       &dst,
-             const Vector<double> &src) const override
-  {
-    prolongations[to_level].vmult(dst, src);
-  }
-
-  void
-  prolongate_and_add(const unsigned int    to_level,
-                     Vector<double>       &dst,
-                     const Vector<double> &src) const override
-  {
-    prolongations[to_level].vmult_add(dst, src);
-  }
-
-  void
-  restrict_and_add(const unsigned int    from_level,
-                   Vector<double>       &dst,
-                   const Vector<double> &src) const override
-  {
-    prolongations[from_level].Tvmult_add(dst, src);
-  }
-
-private:
-  const MGLevelObject<SparseMatrix<double>> &prolongations;
-};
-
-
-
 class CoarseSolver : public MGCoarseGridBase<Vector<double>>
 {
 public:
@@ -181,35 +144,6 @@ public:
 
 private:
   SparseDirectUMFPACK direct;
-};
-
-
-
-// one V-cycle as a preconditioner
-template <int dim>
-class PreconditionVCycle
-{
-public:
-  PreconditionVCycle(const Levels<dim> &levels, Multigrid<Vector<double>> &mg)
-    : levels(levels)
-    , mg(mg)
-  {}
-
-  void
-  vmult(Vector<double> &dst, const Vector<double> &src) const
-  {
-    const unsigned int max_level = levels.size() - 1;
-    mg.defect.resize(0, max_level);
-    for (unsigned int l = 0; l < max_level; ++l)
-      mg.defect[l].reinit(levels[l]->edge_dh.n_dofs());
-    mg.defect[max_level] = src;
-    mg.cycle();
-    dst = mg.solution[max_level];
-  }
-
-private:
-  const Levels<dim>         &levels;
-  Multigrid<Vector<double>> &mg;
 };
 
 
@@ -357,7 +291,8 @@ test(const unsigned int n_levels, const double beta, const bool verbose)
   const Level<dim>            &fine = *levels.back();
   const SparseMatrix<double>  &fine_matrix = a[n_levels - 1];
   mg::Matrix<Vector<double>>   matrix(a);
-  EdgeTransfer                 transfer(p);
+  MGTransferMatrices<Vector<double>, SparseMatrix<double>> transfer;
+  transfer.initialize(p);
   CoarseSolver                 coarse(a[0]);
 
   using Relaxation = PreconditionSSOR<SparseMatrix<double>>;
@@ -377,7 +312,10 @@ test(const unsigned int n_levels, const double beta, const bool verbose)
           static_cast<const MGSmootherBase<Vector<double>> &>(edge_only);
       Multigrid<Vector<double>> mg(
         matrix, coarse, transfer, smoother, smoother, 0, n_levels - 1);
-      PreconditionVCycle<dim> preconditioner(levels, mg);
+      PreconditionMG<dim,
+                     Vector<double>,
+                     MGTransferMatrices<Vector<double>, SparseMatrix<double>>>
+        preconditioner(fine.edge_dh, mg, transfer);
 
       Vector<double> solution(fine.edge_dh.n_dofs());
       SolverControl  control(1000, 1e-10 * fine.rhs.l2_norm(), false, false);

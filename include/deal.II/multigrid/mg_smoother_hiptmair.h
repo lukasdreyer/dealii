@@ -25,8 +25,7 @@
 #include <deal.II/lac/vector.h>
 
 #include <deal.II/multigrid/mg_base.h>
-
-#include <type_traits>
+#include <deal.II/multigrid/mg_transfer_matrices.h>
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -248,12 +247,7 @@ void
 MGSmootherHiptmair<VectorType, MatrixType, PreconditionerType>::
   reinit_nodal_vector(const unsigned int level, VectorType &v) const
 {
-  if constexpr (std::is_same_v<VectorType,
-                               Vector<typename VectorType::value_type>>)
-    v.reinit(gradients[level]->n());
-  else
-    v.reinit(gradients[level]->locally_owned_domain_indices(),
-             gradients[level]->get_mpi_communicator());
+  internal::MGTransferMatrices::reinit_vector(*gradients[level], true, v);
 }
 
 
