@@ -14,7 +14,8 @@
 
 
 // The lowest-order Nedelec elements on hybrid meshes (FE_NedelecSimplex,
-// FE_NedelecWedge, FE_NedelecPyramid in one hp::FECollection) with hanging
+// FE_NedelecWedge, FE_NedelecPyramid, FE_NedelecHypercube in one
+// hp::FECollection) with hanging
 // nodes, on a mesh of pyramids (whose refinement creates tetrahedra), of
 // pyramids and tetrahedra, and of wedges and tetrahedra:
 // 1. exactness: the DoFs of u = a + b x x (affine meshes) satisfy the
@@ -33,10 +34,12 @@
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/dofs/edge_element_tools.h>
 
+#include <deal.II/fe/fe_nedelec_hypercube.h>
 #include <deal.II/fe/fe_nedelec_pyramid.h>
 #include <deal.II/fe/fe_nedelec_simplex.h>
 #include <deal.II/fe/fe_nedelec_wedge.h>
 #include <deal.II/fe/fe_pyramid_p.h>
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_simplex_p.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_wedge_p.h>
@@ -70,13 +73,16 @@ struct Collections
 {
   hp::FECollection<3>      fe{FE_NedelecSimplex<3>(0),
                          FE_NedelecWedge<3>(0),
-                         FE_NedelecPyramid<3>(0)};
+                         FE_NedelecPyramid<3>(0),
+                         FE_NedelecHypercube<3>(0)};
   hp::MappingCollection<3> mapping{MappingFE<3>(FE_SimplexP<3>(1)),
                                    MappingFE<3>(FE_WedgeP<3>(1)),
-                                   MappingFE<3>(FE_PyramidP<3>(1))};
+                                   MappingFE<3>(FE_PyramidP<3>(1)),
+                                   MappingFE<3>(FE_Q<3>(1))};
   hp::QCollection<3>       quadrature{QGaussSimplex<3>(3),
                                 QGaussWedge<3>(3),
-                                QGaussPyramid<3>(4)};
+                                QGaussPyramid<3>(4),
+                                QGauss<3>(3)};
 
   static unsigned int
   fe_index(const ReferenceCell &reference_cell)
@@ -85,8 +91,10 @@ struct Collections
       return 0;
     if (reference_cell == ReferenceCells::Wedge)
       return 1;
-    Assert(reference_cell == ReferenceCells::Pyramid, ExcNotImplemented());
-    return 2;
+    if (reference_cell == ReferenceCells::Pyramid)
+      return 2;
+    Assert(reference_cell == ReferenceCells::Hexahedron, ExcNotImplemented());
+    return 3;
   }
 
   void
@@ -270,11 +278,11 @@ check_constraints(Triangulation<3> &tria, const std::string &name)
           }
       }
 
-  unsigned int n_types[3] = {0, 0, 0};
+  unsigned int n_types[4] = {0, 0, 0, 0};
   for (const auto &cell : tria.active_cell_iterators())
     ++n_types[Collections::fe_index(cell->reference_cell())];
   deallog << name << ": tetrahedra=" << n_types[0] << " wedges=" << n_types[1]
-          << " pyramids=" << n_types[2]
+          << " pyramids=" << n_types[2] << " hexahedra=" << n_types[3]
           << " hanging triangles=" << n_hanging_triangles
           << " hanging quadrilaterals=" << n_hanging_quads
           << " faces between different cells=" << n_mixed_interfaces
@@ -424,6 +432,10 @@ main()
                [](Triangulation<3> &t, const unsigned int n) {
                  make_pyramid_mesh(t, n, 2);
                }},
+              {"hexahedra and pyramids",
+               [](Triangulation<3> &t, const unsigned int n) {
+                 make_pyramid_mesh(t, n, 1);
+               }},
               {"wedges and tetrahedra",
                [](Triangulation<3> &t, const unsigned int n) {
                  make_wedge_tetrahedron_mesh(t, n);
@@ -439,8 +451,10 @@ main()
     }
   for (const auto &[name, make] : meshes)
     {
+      // with one unit cube, the mesh of hexahedra and pyramids would only
+      // consist of a hexahedron
       Triangulation<3> tria;
-      make(tria, 1);
+      make(tria, name == "hexahedra and pyramids" ? 2 : 1);
       check_convergence(tria, Point<3>(0.2, 0.2, 0.3), name, 3);
     }
 }

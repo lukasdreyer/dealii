@@ -1,0 +1,10 @@
+
+DEAL::dim=2 distorted: duality OK
+DEAL::dim=2 affine: linear field OK, grad p OK
+DEAL::dim=3 distorted: duality OK
+DEAL::dim=3 affine: linear field OK, grad p OK
+DEAL::dim=2 constraints: cells=33 hanging faces=22 constraints=22, exactness OK, tangential continuity OK
+DEAL::dim=3 constraints: cells=132 hanging faces=104 constraints=234, exactness OK, tangential continuity OK
+DEAL::dim=3 convergence: cells=15 dofs=105 constraints=93
+DEAL::dim=3 convergence: cells=120 dofs=576 constraints=366 rate_u=1.99
+DEAL::dim=3 convergence: cells=960 dofs=3696 constraints=1452 rate_u=1.86

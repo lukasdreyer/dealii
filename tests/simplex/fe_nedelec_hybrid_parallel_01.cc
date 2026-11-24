@@ -14,9 +14,11 @@
 
 
 // The lowest-order Nedelec elements on hybrid meshes (FE_NedelecSimplex,
-// FE_NedelecWedge, FE_NedelecPyramid in one hp::FECollection) with hanging
+// FE_NedelecWedge, FE_NedelecPyramid, FE_NedelecHypercube in one
+// hp::FECollection) with hanging
 // nodes in a parallel::distributed::Triangulation, on a mesh of pyramids, of
-// pyramids and tetrahedra, and of wedges and tetrahedra:
+// pyramids and tetrahedra, of hexahedra and pyramids, and of wedges and
+// tetrahedra:
 // 1. the constraints of every locally active line agree on all processes,
 // 2. exactness: the DoFs of u = a + b x x satisfy the constraints,
 // 3. tangential continuity of a random constrained vector across all faces
@@ -32,10 +34,12 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
 
+#include <deal.II/fe/fe_nedelec_hypercube.h>
 #include <deal.II/fe/fe_nedelec_pyramid.h>
 #include <deal.II/fe/fe_nedelec_simplex.h>
 #include <deal.II/fe/fe_nedelec_wedge.h>
 #include <deal.II/fe/fe_pyramid_p.h>
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_simplex_p.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_wedge_p.h>
@@ -59,11 +63,13 @@
 
 const hp::FECollection<3>      fe_collection{FE_NedelecSimplex<3>(0),
                                         FE_NedelecWedge<3>(0),
-                                        FE_NedelecPyramid<3>(0)};
+                                        FE_NedelecPyramid<3>(0),
+                                        FE_NedelecHypercube<3>(0)};
 const hp::MappingCollection<3> mapping_collection{
   MappingFE<3>(FE_SimplexP<3>(1)),
   MappingFE<3>(FE_WedgeP<3>(1)),
-  MappingFE<3>(FE_PyramidP<3>(1))};
+  MappingFE<3>(FE_PyramidP<3>(1)),
+  MappingFE<3>(FE_Q<3>(1))};
 
 unsigned int
 fe_index(const ReferenceCell &reference_cell)
@@ -72,7 +78,9 @@ fe_index(const ReferenceCell &reference_cell)
     return 0;
   if (reference_cell == ReferenceCells::Wedge)
     return 1;
-  return 2;
+  if (reference_cell == ReferenceCells::Pyramid)
+    return 2;
+  return 3;
 }
 
 Tensor<1, 3>
@@ -285,6 +293,8 @@ main(int argc, char *argv[])
   test("pyramids", [](Triangulation<3> &t) { make_pyramid_mesh(t, 2, 0); });
   test("pyramids and tetrahedra",
        [](Triangulation<3> &t) { make_pyramid_mesh(t, 2, 2); });
+  test("hexahedra and pyramids",
+       [](Triangulation<3> &t) { make_pyramid_mesh(t, 2, 1); });
   test("wedges and tetrahedra",
        [](Triangulation<3> &t) { make_wedge_tetrahedron_mesh(t, 2); });
 }
