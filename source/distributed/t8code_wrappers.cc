@@ -488,7 +488,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
                    const t8_eclass_t,
                    t8_locidx_t lelement_id,
                    const t8_scheme_c *,
-                   const int,
+                   const int is_family,
                    const int,
                    t8_element_t *[])
     {
@@ -497,6 +497,11 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       const int idata =
         t8_forest_get_tree_element_offset(forest_from, which_tree) +
         lelement_id;
+      // A family that is not complete on this process (split by the
+      // partition, as possible without repartitioning for coarsening) cannot
+      // be coarsened; p4est does not offer such families for coarsening.
+      if ((*adapt_vec)[idata] == -1 && !is_family)
+        return 0;
       return (*adapt_vec)[idata];
     }
 

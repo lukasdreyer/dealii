@@ -143,13 +143,23 @@ namespace internal
           const_cast<types<dim>::forest *>(parallel_forest));
       };
 
+      /**
+       * A copy of @p input with the same partition and a ghost layer (as all
+       * forests of the triangulation). The copy shares the cmesh with
+       * @p input; @p input stays valid. There is no user data to copy.
+       */
       static types<dim>::forest *
       copy_forest(types<dim>::forest *input, int copy_data)
       {
-        (void)input;
         (void)copy_data;
-        DEAL_II_NOT_IMPLEMENTED();
-        return input;
+        // t8_forest_set_copy takes ownership of the source forest
+        t8_forest_ref(input);
+        t8_forest_t new_forest;
+        t8_forest_init(&new_forest);
+        t8_forest_set_copy(new_forest, input);
+        t8_forest_set_ghost(new_forest, 1, T8_GHOST_VERTICES);
+        t8_forest_commit(new_forest);
+        return new_forest;
       };
     }; // struct functions
 
@@ -366,8 +376,10 @@ namespace internal
     typename types<dim>::connectivity *
     copy_connectivity(const typename types<dim>::connectivity *connectivity)
     {
-      (void)connectivity;
-      DEAL_II_NOT_IMPLEMENTED();
+      // With t8code, the coarse mesh (cmesh) is owned by the forest and
+      // shared by its copies (see copy_forest()); the triangulation does not
+      // store a separate connectivity.
+      Assert(connectivity == nullptr, ExcNotImplemented());
       return const_cast<typename types<dim>::connectivity *>(connectivity);
     };
 
