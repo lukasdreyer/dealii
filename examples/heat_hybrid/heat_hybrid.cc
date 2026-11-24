@@ -825,7 +825,7 @@ namespace HeatHybrid
       const auto         flags_marked = count_flags();
       // families whose children are all active, locally owned and flagged for
       // coarsening (these can be coarsened), per reference cell of the parent
-      unsigned int complete[2] = {0, 0};
+      unsigned int complete[4] = {0, 0, 0, 0}; // per fe_index: quad/hex, tri/tet, wedge, pyramid
       for (const auto &cell : triangulation.cell_iterators())
         if (cell->has_children())
           {
@@ -856,8 +856,8 @@ namespace HeatHybrid
         pcout << "  adapt: " << cells_before << " -> " << triangulation.n_global_active_cells()
               << " cells; flags refine/coarsen marked " << flags_marked.first << "/"
               << flags_marked.second << ", after smoothing " << flags_prepared.first << "/"
-              << flags_prepared.second << "; complete families (quad/tri) " << complete[0] << "/"
-              << complete[1] << std::endl;
+              << flags_prepared.second << "; complete families (per fe index) " << complete[0] << "/"
+              << complete[1] << "/" << complete[2] << "/" << complete[3] << std::endl;
       setup_system();
       LA::MPI::Vector transferred(locally_owned_dofs, mpi_communicator);
       transfer.interpolate(transferred);
