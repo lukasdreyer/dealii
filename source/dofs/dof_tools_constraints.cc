@@ -20,6 +20,7 @@
 #include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/fe.h>
+#include <deal.II/fe/fe_nedelec_lowest_order.h>
 #include <deal.II/fe/fe_tools.h>
 #include <deal.II/fe/fe_values.h>
 
@@ -3143,21 +3144,26 @@ namespace DoFTools
 
     /**
      * Whether @p fe is a lowest-order edge element that
-     * make_hanging_node_constraints_edge_elements() can handle: one DoF per
-     * line and none elsewhere, H(curl) conforming, and the DoF of a line
-     * refers to the direction of the line object (from line->vertex(0) to
-     * line->vertex(1)), as for FE_NedelecSimplex, FE_NedelecWedge and
-     * FE_NedelecPyramid. Hypercube elements are not accepted for now; they
-     * keep their own constraints until this is tested for them.
+     * make_hanging_node_constraints_edge_elements() can handle: an element
+     * derived from FE_NedelecLowestOrderBase (FE_NedelecSimplex,
+     * FE_NedelecWedge, FE_NedelecPyramid, FE_NedelecHypercube), with one DoF
+     * per line that refers to the direction of the line object (from
+     * line->vertex(0) to line->vertex(1)). FE_Nedelec keeps its own
+     * constraints.
      */
     template <int dim, int spacedim>
     bool
     is_line_oriented_edge_element(const FiniteElement<dim, spacedim> &fe)
     {
-      return dim > 1 && !fe.reference_cell().is_hyper_cube() &&
-             fe.conforms(FiniteElementData<dim>::Hcurl) &&
-             fe.n_dofs_per_vertex() == 0 && fe.n_dofs_per_line() == 1 &&
-             fe.n_dofs_per_cell() == fe.reference_cell().n_lines();
+      // the edge elements are only defined for dim == spacedim > 1
+      if constexpr (dim == spacedim && dim > 1)
+        return dynamic_cast<const FE_NedelecLowestOrderBase<dim, dim> *>(
+                 &fe) != nullptr;
+      else
+        {
+          (void)fe;
+          return false;
+        }
     }
 
 
