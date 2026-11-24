@@ -611,6 +611,14 @@ namespace AdvectionHybrid
       triangulation.prepare_coarsening_and_refinement();
       transfer.prepare_for_coarsening_and_refinement(ghosted);
       triangulation.execute_coarsening_and_refinement();
+      // the parts of the refinement in the backend (t8code): adapt, balance, partition, copy
+      {
+        const auto &rt = triangulation.get_refinement_times();
+        times["refine: adapt"] += rt.adapt;
+        times["refine: balance"] += rt.balance;
+        times["refine: partition"] += rt.partition;
+        times["refine: copy"] += rt.copy;
+      }
       setup_system();
       transfer.interpolate(solution);
     });
@@ -729,15 +737,21 @@ namespace AdvectionHybrid
     if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
       {
         csv.open(parameters.csv);
-        csv << "step,time,cells,dofs,cells_min,cells_max,l2_error,mass,time_step,adapt,assembly\n";
+        csv << "step,time,cells,dofs,cells_min,cells_max,l2_error,mass,time_step,adapt,assembly,"
+               "refine_adapt,refine_balance,refine_partition,refine_copy\n";
       }
     const double mass0 = mass();
     update_ghosted();
     output_results(0, 0.0);
+    // the phase times summed over the output intervals (maxima over the processes per interval)
+    std::map<std::string, double> total_times;
+    double                        sum_cells  = 0;
+    const double                  wall_start = MPI_Wtime();
     for (unsigned int step = 1; step <= n_steps; ++step)
       {
         const double t = step * dt;
         time_step(dt);
+        sum_cells += triangulation.n_global_active_cells();
         if (step % parameters.output_every == 0 || step == n_steps)
           {
             const double error = l2_error(t);
@@ -745,15 +759,25 @@ namespace AdvectionHybrid
             const auto   cells = Utilities::MPI::min_max_avg(
               1.0 * triangulation.n_locally_owned_active_cells(), mpi_communicator);
             std::map<std::string, double> t_max;
-            for (const std::string phase : {"time step", "adapt", "assembly"})
-              t_max[phase] = Utilities::MPI::max(times[phase], mpi_communicator);
+            for (const std::string phase : {"time step",
+                                            "adapt",
+                                            "assembly",
+                                            "refine: adapt",
+                                            "refine: balance",
+                                            "refine: partition",
+                                            "refine: copy"})
+              {
+                t_max[phase] = Utilities::MPI::max(times[phase], mpi_communicator);
+                total_times[phase] += t_max[phase];
+              }
             times.clear();
             if (csv.is_open())
               csv << step << ',' << t << ',' << triangulation.n_global_active_cells() << ','
                   << dof_handler.n_dofs() << ',' << cells.min << ',' << cells.max << ','
                   << std::setprecision(10) << error << ',' << m << ',' << std::setprecision(6)
                   << t_max["time step"] << ',' << t_max["adapt"] << ',' << t_max["assembly"]
-                  << '\n';
+                  << ',' << t_max["refine: adapt"] << ',' << t_max["refine: balance"] << ','
+                  << t_max["refine: partition"] << ',' << t_max["refine: copy"] << '\n';
             pcout << "step " << step << ", t " << t << ": " << triangulation.n_global_active_cells()
                   << " cells, " << dof_handler.n_dofs() << " dofs, L2 error " << error
                   << ", mass change " << (m - mass0) / mass0 << std::endl;
@@ -762,8 +786,15 @@ namespace AdvectionHybrid
         if (parameters.adapt && step % parameters.adapt_every == 0 && step < n_steps)
           adapt_mesh();
       }
+    const double wall = MPI_Wtime() - wall_start;
     pcout << "final L2 error " << l2_error(n_steps * dt) << ", mass change "
           << (mass() - mass0) / mass0 << std::endl;
+    pcout << "summary: steps " << n_steps << ", sum cells " << sum_cells << ", wall time " << wall
+          << " s (time steps " << total_times["time step"] << ", adapt " << total_times["adapt"]
+          << ", assembly " << total_times["assembly"] << "; in adapt: refine adapt "
+          << total_times["refine: adapt"] << ", balance " << total_times["refine: balance"]
+          << ", partition " << total_times["refine: partition"] << ", copy "
+          << total_times["refine: copy"] << ")" << std::endl;
   }
 } // namespace AdvectionHybrid
 
