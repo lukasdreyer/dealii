@@ -19,14 +19,16 @@
  * are written to a CSV file, and a summary table to the screen.
  *
  * Usage: mpirun -np N ./amr_benchmark [key=value ...]
- *   mesh=hex|hybrid|brick|hybrid4
+ *   mesh=hex|hybrid|brick|hybrid4|hybrid16
  *                     hexahedra (n^3 cells), the hybrid mesh of step-40_hybrid
  *                     (n x n columns, 5 layers; t8code only), or the meshes of
  *                     the PASC benchmark (t8_time_amr_cycle): the brick of
  *                     2 x 2 x 2 hexahedra, or the hybrid cube of 21 cells in the
  *                     octants of side 0.5 (6 tetrahedra at the origin, 2 prisms
  *                     in each of its face neighbors, 6 pyramids in the octant
- *                     [0.5,1]^3, hexahedra elsewhere; t8code only)
+ *                     [0.5,1]^3, hexahedra elsewhere; t8code only), or
+ *                     hybrid16: hybrid4 with one hexahedron instead of the 6
+ *                     pyramids (no pyramids; t8code only)
  *   refinement=point  point: refine around a moving point (path=...);
  *                     shell: the cycle of the PASC benchmark, the cells whose
  *                     center is closer to a sphere of radius 0.25 than
@@ -47,6 +49,12 @@
  *                     vertices, balance across vertices) or none (balance
  *                     across faces and edges only)
  *   csv=timings.csv   output file
+ *   dump=             directory for the locally owned active cells of every
+ *                     cycle, one file per process (c<cycle>_r<rank>.txt: shape
+ *                     0 hexahedron, 1 tetrahedron, 2 wedge, 3 pyramid, level,
+ *                     number of vertices and their coordinates, in the vertex
+ *                     order of MFEM), for the partition metrics; empty for none
+ *   dump_every=1      dump only the cycles that are multiples of this
  *   output=           directory for VTU output of every cycle (cell type,
  *                     subdomain, level, solution; not timed), empty for none
  *   path=helix        path of the refinement point: helix (half a turn around
@@ -106,6 +114,7 @@
 #include <array>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <string>
@@ -144,6 +153,8 @@ namespace AMRBenchmark
     std::string  smoothing = "vertices";
     std::string  csv       = "timings.csv";
     std::string  output    = "";
+    std::string  dump      = "";
+    unsigned int dump_every = 1;
     std::string  path      = "helix";
     std::string  rhs       = "constant";
     unsigned int period    = 0;
@@ -182,6 +193,10 @@ namespace AMRBenchmark
             csv = value;
           else if (key == "output")
             output = value;
+          else if (key == "dump")
+            dump = value;
+          else if (key == "dump_every")
+            dump_every = std::stoi(value);
           else if (key == "path")
             path = value;
           else if (key == "rhs")
@@ -192,8 +207,8 @@ namespace AMRBenchmark
             AssertThrow(false, ExcMessage("Unknown argument " + key));
         }
       AssertThrow(mesh == "hex" || mesh == "hybrid" || mesh == "brick" ||
-                    mesh == "hybrid4",
-                  ExcMessage("mesh must be hex, hybrid, brick or hybrid4"));
+                    mesh == "hybrid4" || mesh == "hybrid16",
+                  ExcMessage("mesh must be hex, hybrid, brick, hybrid4 or hybrid16"));
       AssertThrow(refinement == "point" || refinement == "shell",
                   ExcMessage("refinement must be point or shell"));
       AssertThrow(smoothing == "vertices" || smoothing == "none",
@@ -350,8 +365,11 @@ namespace AMRBenchmark
   // face neighbors (split along the face diagonals of the tetrahedra), 6
   // pyramids with the apex at the center in the octant [0.5,1]^3, and hexahedra
   // in the other three octants.
+  //
+  // Without pyramids (hybrid16), the octant [0.5,1]^3 is one hexahedron, at the
+  // same position in the order of the coarse cells.
   void
-  make_hybrid4_mesh(Triangulation<dim> &tria)
+  make_hybrid4_mesh(Triangulation<dim> &tria, const bool pyramids = true)
   {
     std::vector<Point<dim>> vertices;
     for (unsigned int z = 0; z <= 2; ++z)
@@ -359,7 +377,8 @@ namespace AMRBenchmark
         for (unsigned int x = 0; x <= 2; ++x)
           vertices.emplace_back(0.5 * x, 0.5 * y, 0.5 * z);
     const unsigned int apex = vertices.size();
-    vertices.emplace_back(0.75, 0.75, 0.75);
+    if (pyramids)
+      vertices.emplace_back(0.75, 0.75, 0.75);
     const auto volume = [&](const unsigned int a,
                             const unsigned int b,
                             const unsigned int c,
@@ -445,7 +464,7 @@ namespace AMRBenchmark
                     add_cell(w);
                   }
               }
-            else if (n_offsets == 3)
+            else if (n_offsets == 3 && pyramids)
               for (unsigned int f = 0; f < 6; ++f)
                 {
                   std::vector<unsigned int> base = {cube[cube_faces[f][0]],
@@ -534,6 +553,8 @@ namespace AMRBenchmark
     record_refinement_parts();
     void
     output_results(const unsigned int cycle) const;
+    void
+    dump_cells(const unsigned int cycle) const;
 
     // time a phase: the wall time of each process for each cycle
     template <typename F>
@@ -900,6 +921,42 @@ namespace AMRBenchmark
 
 
   void
+  Benchmark::dump_cells(const unsigned int cycle) const
+  {
+    if (parameters.dump.empty() || cycle % parameters.dump_every != 0)
+      return;
+    std::ofstream out(parameters.dump + "/c" + std::to_string(cycle) + "_r" +
+                      std::to_string(Utilities::MPI::this_mpi_process(
+                        mpi_communicator)) +
+                      ".txt");
+    out << std::setprecision(17);
+    // the vertices in the order of MFEM: hexahedron and pyramid base
+    // counterclockwise instead of lexicographic
+    static const unsigned int hex_order[8] = {0, 1, 3, 2, 4, 5, 7, 6};
+    static const unsigned int pyr_order[5] = {0, 1, 3, 2, 4};
+    for (const auto &cell : triangulation.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          const auto         r     = cell->reference_cell();
+          const unsigned int shape = r == ReferenceCells::Hexahedron  ? 0 :
+                                     r == ReferenceCells::Tetrahedron ? 1 :
+                                     r == ReferenceCells::Wedge       ? 2 :
+                                                                        3;
+          out << shape << ' ' << cell->level() << ' ' << cell->n_vertices();
+          for (const unsigned int i : cell->vertex_indices())
+            {
+              const unsigned int v = shape == 0 ? hex_order[i] :
+                                     shape == 3 ? pyr_order[i] :
+                                                  i;
+              out << ' ' << cell->vertex(v);
+            }
+          out << '\n';
+        }
+  }
+
+
+
+  void
   Benchmark::run()
   {
     pcout << "amr_benchmark: "
@@ -921,6 +978,8 @@ namespace AMRBenchmark
         GridGenerator::subdivided_hyper_cube(triangulation, 2);
       else if (parameters.mesh == "hybrid4")
         make_hybrid4_mesh(triangulation);
+      else if (parameters.mesh == "hybrid16")
+        make_hybrid4_mesh(triangulation, false);
       else
         make_hybrid_mesh(triangulation, parameters.n);
     });
@@ -945,6 +1004,7 @@ namespace AMRBenchmark
     const unsigned int iterations = parameters.solve ? solve() : 0;
     record_cycle(0, iterations);
     output_results(0);
+    dump_cells(0);
 
     for (unsigned int cycle = 1; cycle <= parameters.cycles; ++cycle)
       {
@@ -972,6 +1032,7 @@ namespace AMRBenchmark
         const unsigned int iterations = parameters.solve ? solve() : 0;
         record_cycle(cycle, iterations);
         output_results(cycle);
+        dump_cells(cycle);
       }
 
     // the summary: the sums over the cycles of the maxima over the processes
