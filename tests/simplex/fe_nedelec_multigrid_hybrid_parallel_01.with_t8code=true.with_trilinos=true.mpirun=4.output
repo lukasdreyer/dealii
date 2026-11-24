@@ -1,0 +1,175 @@
+
+DEAL:0::tetrahedra: levels=3
+DEAL:0::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
+DEAL:0::  level 1: cells 47, edge DoFs 112, |G|_F 4.242640687, |P|_F 4.242640687
+DEAL:0::  level 2: cells 376, edge DoFs 646, |G|_F 17.08800749, |P|_F 5.678908346
+DEAL:0::  hiptmair: iterations 10
+DEAL:0::  edge only: iterations 49
+DEAL:0::wedges: levels=3
+DEAL:0::  level 0: cells 16, edge DoFs 66, |G|_F 2.828427125
+DEAL:0::  level 1: cells 23, edge DoFs 102, |G|_F 2.828427125, |P|_F 3.169680583
+DEAL:0::  level 2: cells 184, edge DoFs 570, |G|_F 17.08069085, |P|_F 4.126420210
+DEAL:0::  hiptmair: iterations 9
+DEAL:0::  edge only: iterations 69
+DEAL:0::hexahedra: levels=3
+DEAL:0::  level 0: cells 8, edge DoFs 54, |G|_F 2.449489743
+DEAL:0::  level 1: cells 15, edge DoFs 105, |G|_F 3.491060011, |P|_F 2.468552207
+DEAL:0::  level 2: cells 120, edge DoFs 576, |G|_F 18.00520758, |P|_F 3.702828311
+DEAL:0::  hiptmair: iterations 9
+DEAL:0::  edge only: iterations 72
+DEAL:0::pyramids: levels=3
+DEAL:0::  level 0: cells 6, edge DoFs 20, |G|_F 2.828427125
+DEAL:0::  level 1: cells 15, edge DoFs 56, |G|_F 3.000000000, |P|_F 2.874531087
+DEAL:0::  level 2: cells 134, edge DoFs 316, |G|_F 13.07669683, |P|_F 4.015592739
+DEAL:0::  hiptmair: iterations 10
+DEAL:0::  edge only: iterations 45
+DEAL:0::pyramids and tetrahedra: levels=3
+DEAL:0::  level 0: cells 13, edge DoFs 35, |G|_F 2.828427125
+DEAL:0::  level 1: cells 22, edge DoFs 71, |G|_F 3.000000000, |P|_F 3.203580649
+DEAL:0::  level 2: cells 188, edge DoFs 403, |G|_F 14.17744688, |P|_F 4.442640665
+DEAL:0::  hiptmair: iterations 9
+DEAL:0::  edge only: iterations 48
+DEAL:0::hexahedra and pyramids: levels=3
+DEAL:0::  level 0: cells 28, edge DoFs 86, |G|_F 6.480740698
+DEAL:0::  level 1: cells 35, edge DoFs 137, |G|_F 6.941721688, |P|_F 6.172013448
+DEAL:0::  level 2: cells 328, edge DoFs 856, |G|_F 27.35301629, |P|_F 7.590788354
+DEAL:0::  hiptmair: iterations 11
+DEAL:0::  edge only: iterations 54
+DEAL:0::wedges and tetrahedra: levels=3
+DEAL:0::  level 0: cells 8, edge DoFs 28, |G|_F 0.000000000
+DEAL:0::  level 1: cells 15, edge DoFs 64, |G|_F 0.000000000, |P|_F 1.430690393
+DEAL:0::  level 2: cells 120, edge DoFs 338, |G|_F 10.47616342, |P|_F 2.691856933
+DEAL:0::  hiptmair: iterations 9
+DEAL:0::  edge only: iterations 34
+
+DEAL:1::tetrahedra: levels=3
+DEAL:1::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
+DEAL:1::  level 1: cells 47, edge DoFs 112, |G|_F 4.242640687, |P|_F 4.242640687
+DEAL:1::  level 2: cells 376, edge DoFs 646, |G|_F 17.08800749, |P|_F 5.678908346
+DEAL:1::  hiptmair: iterations 10
+DEAL:1::  edge only: iterations 49
+DEAL:1::wedges: levels=3
+DEAL:1::  level 0: cells 16, edge DoFs 66, |G|_F 2.828427125
+DEAL:1::  level 1: cells 23, edge DoFs 102, |G|_F 2.828427125, |P|_F 3.169680583
+DEAL:1::  level 2: cells 184, edge DoFs 570, |G|_F 17.08069085, |P|_F 4.126420210
+DEAL:1::  hiptmair: iterations 9
+DEAL:1::  edge only: iterations 69
+DEAL:1::hexahedra: levels=3
+DEAL:1::  level 0: cells 8, edge DoFs 54, |G|_F 2.449489743
+DEAL:1::  level 1: cells 15, edge DoFs 105, |G|_F 3.491060011, |P|_F 2.468552207
+DEAL:1::  level 2: cells 120, edge DoFs 576, |G|_F 18.00520758, |P|_F 3.702828311
+DEAL:1::  hiptmair: iterations 9
+DEAL:1::  edge only: iterations 72
+DEAL:1::pyramids: levels=3
+DEAL:1::  level 0: cells 6, edge DoFs 20, |G|_F 2.828427125
+DEAL:1::  level 1: cells 15, edge DoFs 56, |G|_F 3.000000000, |P|_F 2.874531087
+DEAL:1::  level 2: cells 134, edge DoFs 316, |G|_F 13.07669683, |P|_F 4.015592739
+DEAL:1::  hiptmair: iterations 10
+DEAL:1::  edge only: iterations 45
+DEAL:1::pyramids and tetrahedra: levels=3
+DEAL:1::  level 0: cells 13, edge DoFs 35, |G|_F 2.828427125
+DEAL:1::  level 1: cells 22, edge DoFs 71, |G|_F 3.000000000, |P|_F 3.203580649
+DEAL:1::  level 2: cells 188, edge DoFs 403, |G|_F 14.17744688, |P|_F 4.442640665
+DEAL:1::  hiptmair: iterations 9
+DEAL:1::  edge only: iterations 48
+DEAL:1::hexahedra and pyramids: levels=3
+DEAL:1::  level 0: cells 28, edge DoFs 86, |G|_F 6.480740698
+DEAL:1::  level 1: cells 35, edge DoFs 137, |G|_F 6.941721688, |P|_F 6.172013448
+DEAL:1::  level 2: cells 328, edge DoFs 856, |G|_F 27.35301629, |P|_F 7.590788354
+DEAL:1::  hiptmair: iterations 11
+DEAL:1::  edge only: iterations 54
+DEAL:1::wedges and tetrahedra: levels=3
+DEAL:1::  level 0: cells 8, edge DoFs 28, |G|_F 0.000000000
+DEAL:1::  level 1: cells 15, edge DoFs 64, |G|_F 0.000000000, |P|_F 1.430690393
+DEAL:1::  level 2: cells 120, edge DoFs 338, |G|_F 10.47616342, |P|_F 2.691856933
+DEAL:1::  hiptmair: iterations 9
+DEAL:1::  edge only: iterations 34
+
+
+DEAL:2::tetrahedra: levels=3
+DEAL:2::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
+DEAL:2::  level 1: cells 47, edge DoFs 112, |G|_F 4.242640687, |P|_F 4.242640687
+DEAL:2::  level 2: cells 376, edge DoFs 646, |G|_F 17.08800749, |P|_F 5.678908346
+DEAL:2::  hiptmair: iterations 10
+DEAL:2::  edge only: iterations 49
+DEAL:2::wedges: levels=3
+DEAL:2::  level 0: cells 16, edge DoFs 66, |G|_F 2.828427125
+DEAL:2::  level 1: cells 23, edge DoFs 102, |G|_F 2.828427125, |P|_F 3.169680583
+DEAL:2::  level 2: cells 184, edge DoFs 570, |G|_F 17.08069085, |P|_F 4.126420210
+DEAL:2::  hiptmair: iterations 9
+DEAL:2::  edge only: iterations 69
+DEAL:2::hexahedra: levels=3
+DEAL:2::  level 0: cells 8, edge DoFs 54, |G|_F 2.449489743
+DEAL:2::  level 1: cells 15, edge DoFs 105, |G|_F 3.491060011, |P|_F 2.468552207
+DEAL:2::  level 2: cells 120, edge DoFs 576, |G|_F 18.00520758, |P|_F 3.702828311
+DEAL:2::  hiptmair: iterations 9
+DEAL:2::  edge only: iterations 72
+DEAL:2::pyramids: levels=3
+DEAL:2::  level 0: cells 6, edge DoFs 20, |G|_F 2.828427125
+DEAL:2::  level 1: cells 15, edge DoFs 56, |G|_F 3.000000000, |P|_F 2.874531087
+DEAL:2::  level 2: cells 134, edge DoFs 316, |G|_F 13.07669683, |P|_F 4.015592739
+DEAL:2::  hiptmair: iterations 10
+DEAL:2::  edge only: iterations 45
+DEAL:2::pyramids and tetrahedra: levels=3
+DEAL:2::  level 0: cells 13, edge DoFs 35, |G|_F 2.828427125
+DEAL:2::  level 1: cells 22, edge DoFs 71, |G|_F 3.000000000, |P|_F 3.203580649
+DEAL:2::  level 2: cells 188, edge DoFs 403, |G|_F 14.17744688, |P|_F 4.442640665
+DEAL:2::  hiptmair: iterations 9
+DEAL:2::  edge only: iterations 48
+DEAL:2::hexahedra and pyramids: levels=3
+DEAL:2::  level 0: cells 28, edge DoFs 86, |G|_F 6.480740698
+DEAL:2::  level 1: cells 35, edge DoFs 137, |G|_F 6.941721688, |P|_F 6.172013448
+DEAL:2::  level 2: cells 328, edge DoFs 856, |G|_F 27.35301629, |P|_F 7.590788354
+DEAL:2::  hiptmair: iterations 11
+DEAL:2::  edge only: iterations 54
+DEAL:2::wedges and tetrahedra: levels=3
+DEAL:2::  level 0: cells 8, edge DoFs 28, |G|_F 0.000000000
+DEAL:2::  level 1: cells 15, edge DoFs 64, |G|_F 0.000000000, |P|_F 1.430690393
+DEAL:2::  level 2: cells 120, edge DoFs 338, |G|_F 10.47616342, |P|_F 2.691856933
+DEAL:2::  hiptmair: iterations 9
+DEAL:2::  edge only: iterations 34
+
+
+DEAL:3::tetrahedra: levels=3
+DEAL:3::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
+DEAL:3::  level 1: cells 47, edge DoFs 112, |G|_F 4.242640687, |P|_F 4.242640687
+DEAL:3::  level 2: cells 376, edge DoFs 646, |G|_F 17.08800749, |P|_F 5.678908346
+DEAL:3::  hiptmair: iterations 10
+DEAL:3::  edge only: iterations 49
+DEAL:3::wedges: levels=3
+DEAL:3::  level 0: cells 16, edge DoFs 66, |G|_F 2.828427125
+DEAL:3::  level 1: cells 23, edge DoFs 102, |G|_F 2.828427125, |P|_F 3.169680583
+DEAL:3::  level 2: cells 184, edge DoFs 570, |G|_F 17.08069085, |P|_F 4.126420210
+DEAL:3::  hiptmair: iterations 9
+DEAL:3::  edge only: iterations 69
+DEAL:3::hexahedra: levels=3
+DEAL:3::  level 0: cells 8, edge DoFs 54, |G|_F 2.449489743
+DEAL:3::  level 1: cells 15, edge DoFs 105, |G|_F 3.491060011, |P|_F 2.468552207
+DEAL:3::  level 2: cells 120, edge DoFs 576, |G|_F 18.00520758, |P|_F 3.702828311
+DEAL:3::  hiptmair: iterations 9
+DEAL:3::  edge only: iterations 72
+DEAL:3::pyramids: levels=3
+DEAL:3::  level 0: cells 6, edge DoFs 20, |G|_F 2.828427125
+DEAL:3::  level 1: cells 15, edge DoFs 56, |G|_F 3.000000000, |P|_F 2.874531087
+DEAL:3::  level 2: cells 134, edge DoFs 316, |G|_F 13.07669683, |P|_F 4.015592739
+DEAL:3::  hiptmair: iterations 10
+DEAL:3::  edge only: iterations 45
+DEAL:3::pyramids and tetrahedra: levels=3
+DEAL:3::  level 0: cells 13, edge DoFs 35, |G|_F 2.828427125
+DEAL:3::  level 1: cells 22, edge DoFs 71, |G|_F 3.000000000, |P|_F 3.203580649
+DEAL:3::  level 2: cells 188, edge DoFs 403, |G|_F 14.17744688, |P|_F 4.442640665
+DEAL:3::  hiptmair: iterations 9
+DEAL:3::  edge only: iterations 48
+DEAL:3::hexahedra and pyramids: levels=3
+DEAL:3::  level 0: cells 28, edge DoFs 86, |G|_F 6.480740698
+DEAL:3::  level 1: cells 35, edge DoFs 137, |G|_F 6.941721688, |P|_F 6.172013448
+DEAL:3::  level 2: cells 328, edge DoFs 856, |G|_F 27.35301629, |P|_F 7.590788354
+DEAL:3::  hiptmair: iterations 11
+DEAL:3::  edge only: iterations 54
+DEAL:3::wedges and tetrahedra: levels=3
+DEAL:3::  level 0: cells 8, edge DoFs 28, |G|_F 0.000000000
+DEAL:3::  level 1: cells 15, edge DoFs 64, |G|_F 0.000000000, |P|_F 1.430690393
+DEAL:3::  level 2: cells 120, edge DoFs 338, |G|_F 10.47616342, |P|_F 2.691856933
+DEAL:3::  hiptmair: iterations 9
+DEAL:3::  edge only: iterations 34
+
