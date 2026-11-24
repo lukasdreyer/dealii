@@ -57,6 +57,14 @@ DEAL_II_NAMESPACE_OPEN
  * The matrices are stored by reference and must be kept alive by the user.
  * @p PreconditionerType must have a function initialize(matrix,
  * AdditionalData) and vmult(dst, src).
+ *
+ * In parallel, relaxations that work within each process and add up the
+ * corrections of the processes (e.g. TrilinosWrappers::PreconditionSSOR,
+ * which is block Jacobi across processes) can lose their smoothing property
+ * at process boundaries: on a mesh of pyramids and tetrahedra on 4
+ * processes, the iteration counts grew from 13 to 24 over four refinements
+ * without damping, and stayed at 11-14 with omega = 0.8 for both
+ * relaxations, which also lowered the counts on the other cell shapes.
  */
 template <typename VectorType,
           typename MatrixType,
