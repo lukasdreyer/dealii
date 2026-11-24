@@ -936,91 +936,75 @@ namespace DoFTools
       }
 
 
+      // For dim = 2 and 3: the DoFs on the children of refined faces, as seen
+      // from the (non-artificial) finer cells, minus the vertex DoFs of the
+      // refined (coarse) face. With hp collections, the DoF indices are taken
+      // with the active fe_index of the cell they belong to; faces may be
+      // triangles or quadrilaterals.
+      template <int dim, int spacedim>
+      IndexSet
+      extract_hanging_node_dofs_on_faces(
+        const DoFHandler<dim, spacedim> &dof_handler)
+      {
+        IndexSet selected_dofs(dof_handler.n_dofs());
+        IndexSet unconstrained_dofs(dof_handler.n_dofs());
+
+        std::vector<types::global_dof_index> dof_indices;
+        for (const auto &cell : dof_handler.active_cell_iterators())
+          if (!cell->is_artificial())
+            for (const unsigned int f : cell->face_indices())
+              if (cell->face(f)->has_children())
+                {
+                  const auto face = cell->face(f);
+                  for (unsigned int child = 0; child < face->n_children();
+                       ++child)
+                    {
+                      const auto neighbor_child =
+                        cell->neighbor_child_on_subface(f, child);
+                      if (neighbor_child->is_artificial())
+                        continue;
+                      const unsigned int face_no =
+                        neighbor_child->face_iterator_to_index(
+                          face->child(child));
+                      dof_indices.resize(
+                        neighbor_child->get_fe().n_dofs_per_face(face_no));
+                      face->child(child)->get_dof_indices(
+                        dof_indices, neighbor_child->active_fe_index());
+                      selected_dofs.add_indices(dof_indices.begin(),
+                                                dof_indices.end());
+                    }
+
+                  // the DoFs on the vertices of the refined face are not
+                  // constrained
+                  const FiniteElement<dim, spacedim> &fe = cell->get_fe();
+                  for (const unsigned int vertex : face->vertex_indices())
+                    for (unsigned int dof = 0; dof < fe.n_dofs_per_vertex();
+                         ++dof)
+                      unconstrained_dofs.add_index(
+                        face->vertex_dof_index(vertex,
+                                               dof,
+                                               cell->active_fe_index()));
+                }
+        selected_dofs.subtract_set(unconstrained_dofs);
+        return selected_dofs;
+      }
+
+
+
       template <int spacedim>
       IndexSet
       extract_hanging_node_dofs(const DoFHandler<2, spacedim> &dof_handler)
       {
-        const unsigned int dim = 2;
-
-        IndexSet selected_dofs(dof_handler.n_dofs());
-
-        const FiniteElement<dim, spacedim> &fe = dof_handler.get_fe();
-
-        // this function is similar to the make_sparsity_pattern function,
-        // see there for more information
-        for (const auto &cell : dof_handler.active_cell_iterators())
-          if (!cell->is_artificial())
-            {
-              for (const unsigned int face : cell->face_indices())
-                if (cell->face(face)->has_children())
-                  {
-                    const typename DoFHandler<dim, spacedim>::line_iterator
-                      line = cell->face(face);
-
-                    for (unsigned int dof = 0; dof != fe.n_dofs_per_vertex();
-                         ++dof)
-                      selected_dofs.add_index(
-                        line->child(0)->vertex_dof_index(1, dof));
-
-                    for (unsigned int child = 0; child < 2; ++child)
-                      {
-                        if (cell->neighbor_child_on_subface(face, child)
-                              ->is_artificial())
-                          continue;
-                        for (unsigned int dof = 0; dof != fe.n_dofs_per_line();
-                             ++dof)
-                          selected_dofs.add_index(
-                            line->child(child)->dof_index(dof));
-                      }
-                  }
-            }
-
-        selected_dofs.compress();
-        return selected_dofs;
+        return extract_hanging_node_dofs_on_faces(dof_handler);
       }
+
 
 
       template <int spacedim>
       IndexSet
       extract_hanging_node_dofs(const DoFHandler<3, spacedim> &dof_handler)
       {
-        const unsigned int dim = 3;
-
-        IndexSet selected_dofs(dof_handler.n_dofs());
-        IndexSet unconstrained_dofs(dof_handler.n_dofs());
-
-        const FiniteElement<dim, spacedim> &fe = dof_handler.get_fe();
-
-        for (const auto &cell : dof_handler.active_cell_iterators())
-          if (!cell->is_artificial())
-            for (auto f : cell->face_indices())
-              {
-                const typename DoFHandler<dim, spacedim>::face_iterator face =
-                  cell->face(f);
-                if (cell->face(f)->has_children())
-                  {
-                    for (unsigned int child = 0; child < 4; ++child)
-                      if (!cell->neighbor_child_on_subface(f, child)
-                             ->is_artificial())
-                        {
-                          // simply take all DoFs that live on this subface
-                          std::vector<types::global_dof_index> ldi(
-                            fe.n_dofs_per_face(f, child));
-                          face->child(child)->get_dof_indices(ldi);
-                          selected_dofs.add_indices(ldi.begin(), ldi.end());
-                        }
-
-                    // and subtract (in the end) all the indices which a shared
-                    // between this face and its subfaces
-                    for (unsigned int vertex = 0; vertex < 4; ++vertex)
-                      for (unsigned int dof = 0; dof != fe.n_dofs_per_vertex();
-                           ++dof)
-                        unconstrained_dofs.add_index(
-                          face->vertex_dof_index(vertex, dof));
-                  }
-              }
-        selected_dofs.subtract_set(unconstrained_dofs);
-        return selected_dofs;
+        return extract_hanging_node_dofs_on_faces(dof_handler);
       }
     } // namespace
   }   // namespace internal
