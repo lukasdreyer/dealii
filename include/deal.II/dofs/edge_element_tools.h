@@ -18,6 +18,8 @@
 #include <deal.II/base/config.h>
 
 #include <deal.II/base/function.h>
+#include <deal.II/base/index_set.h>
+#include <deal.II/base/mpi.h>
 #include <deal.II/base/quadrature_lib.h>
 
 #include <deal.II/dofs/dof_accessor.h>
@@ -28,14 +30,20 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping.h>
 
+#include <deal.II/grid/cell_id_translator.h>
+
 #include <deal.II/hp/fe_collection.h>
 #include <deal.II/hp/mapping_collection.h>
 
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/vector.h>
 
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/vector.hpp>
+
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 DEAL_II_NAMESPACE_OPEN
@@ -136,6 +144,101 @@ namespace internal
 
 
     /**
+     * What the rows of the prolongation need from an active coarse cell:
+     * its FE index, the DoF indices of its lines, and whether they are
+     * constrained, with their constraint entries.
+     */
+    template <typename number>
+    struct CoarseCellData
+    {
+      unsigned int                         fe_index = 0;
+      std::vector<types::global_dof_index> dofs;
+      std::vector<char>                    constrained;
+      std::vector<std::vector<std::pair<types::global_dof_index, number>>>
+        entries;
+    };
+
+
+
+    template <int dim, int spacedim, typename number>
+    CoarseCellData<number>
+    get_coarse_cell_data(
+      const typename DoFHandler<dim, spacedim>::active_cell_iterator &cell,
+      const dealii::AffineConstraints<number> &constraints)
+    {
+      CoarseCellData<number> data;
+      data.fe_index = cell->active_fe_index();
+      data.dofs.resize(cell->get_fe().n_dofs_per_cell());
+      cell->get_dof_indices(data.dofs);
+      data.constrained.resize(data.dofs.size());
+      data.entries.resize(data.dofs.size());
+      for (unsigned int i = 0; i < data.dofs.size(); ++i)
+        if (constraints.is_constrained(data.dofs[i]))
+          {
+            data.constrained[i] = 1;
+            for (const auto &entry :
+                 *constraints.get_constraint_entries(data.dofs[i]))
+              data.entries[i].emplace_back(entry.first, entry.second);
+          }
+      return data;
+    }
+
+
+
+    // append the data of a coarse cell to an integer and a number buffer
+    template <typename number>
+    void
+    pack_coarse_cell_data(const CoarseCellData<number>         &data,
+                          std::vector<types::global_dof_index> &integers,
+                          std::vector<number>                  &numbers)
+    {
+      integers.push_back(data.fe_index);
+      integers.push_back(data.dofs.size());
+      for (unsigned int i = 0; i < data.dofs.size(); ++i)
+        {
+          integers.push_back(data.dofs[i]);
+          integers.push_back(data.constrained[i]);
+          integers.push_back(data.entries[i].size());
+          for (const auto &[dof, weight] : data.entries[i])
+            {
+              integers.push_back(dof);
+              numbers.push_back(weight);
+            }
+        }
+    }
+
+
+
+    // read the data of a coarse cell from the buffers at the given positions
+    template <typename number>
+    CoarseCellData<number>
+    unpack_coarse_cell_data(
+      const std::vector<types::global_dof_index> &integers,
+      const std::vector<number>                  &numbers,
+      unsigned int                               &integer_position,
+      unsigned int                               &number_position)
+    {
+      CoarseCellData<number> data;
+      data.fe_index            = integers[integer_position++];
+      const unsigned int n_dofs = integers[integer_position++];
+      data.dofs.resize(n_dofs);
+      data.constrained.resize(n_dofs);
+      data.entries.resize(n_dofs);
+      for (unsigned int i = 0; i < n_dofs; ++i)
+        {
+          data.dofs[i]                = integers[integer_position++];
+          data.constrained[i]         = integers[integer_position++];
+          const unsigned int n_entries = integers[integer_position++];
+          for (unsigned int e = 0; e < n_entries; ++e)
+            data.entries[i].emplace_back(integers[integer_position++],
+                                         numbers[number_position++]);
+        }
+      return data;
+    }
+
+
+
+    /**
      * The rows of the prolongation from the edge element space of
      * @p coarse_dof_handler to the one of @p fine_dof_handler, for every
      * locally owned fine DoF: the DoF of a fine line is the line integral of
@@ -157,8 +260,18 @@ namespace internal
      * Constrained coarse DoFs (hanging or Dirichlet) are expressed by their
      * constraints, and the rows of constrained fine DoFs are zero, so that
      * the matrix maps the unknowns of the coarse space to those of the fine
-     * one. @p coarse_constraints must contain the constraints of all coarse
-     * DoFs of the cells that are used.
+     * one.
+     *
+     * In parallel, the two triangulations can be partitioned independently.
+     * The coarse cell K of a locally owned fine cell (the cell itself or its
+     * parent) is taken from the fine triangulation, which contains it with
+     * the same vertices and lines (and so the same line directions); only
+     * the DoF indices of its lines in the coarse space and their constraints
+     * come from the owner of K in the coarse triangulation, if that is
+     * another process. The owner is found with a CellIDTranslator, in which
+     * every process registers its locally owned active coarse cells and
+     * their (potential) children. @p coarse_constraints must contain the
+     * constraints of the DoFs of the locally owned coarse cells.
      */
     template <int dim, int spacedim, typename number>
     std::map<types::global_dof_index,
@@ -169,9 +282,147 @@ namespace internal
       const DoFHandler<dim, spacedim>         &fine_dof_handler,
       const dealii::AffineConstraints<number> &fine_constraints)
     {
-      const auto &fine_tria = fine_dof_handler.get_triangulation();
-      const auto &owned     = fine_dof_handler.locally_owned_dofs();
+      using active_cell_iterator =
+        typename DoFHandler<dim, spacedim>::active_cell_iterator;
 
+      const auto    &coarse_tria = coarse_dof_handler.get_triangulation();
+      const auto    &fine_tria   = fine_dof_handler.get_triangulation();
+      const auto    &owned       = fine_dof_handler.locally_owned_dofs();
+      const MPI_Comm comm        = fine_dof_handler.get_mpi_communicator();
+
+      // the locally owned active coarse cell with this id, if there is one
+      const auto owned_coarse_cell =
+        [&](const CellId &id) -> std::optional<active_cell_iterator> {
+        if (coarse_tria.contains_cell(id) == false)
+          return {};
+        const auto tria_cell = coarse_tria.create_cell_iterator(id);
+        if (tria_cell->is_active() == false ||
+            tria_cell->is_locally_owned() == false)
+          return {};
+        return active_cell_iterator(&coarse_tria,
+                                    tria_cell->level(),
+                                    tria_cell->index(),
+                                    &coarse_dof_handler);
+      };
+
+      // 1. the coarse cells K of the locally owned fine cells: the data of
+      // the locally owned ones, and the fine cells whose K is elsewhere
+      std::map<CellId, CoarseCellData<number>> coarse_data;
+      std::vector<active_cell_iterator>        remote_fine_cells;
+      for (const auto &fine_cell : fine_dof_handler.active_cell_iterators())
+        if (fine_cell->is_locally_owned())
+          {
+            if (const auto coarse_cell = owned_coarse_cell(fine_cell->id()))
+              coarse_data.emplace(fine_cell->id(),
+                                  get_coarse_cell_data<dim, spacedim>(
+                                    *coarse_cell, coarse_constraints));
+            else if (fine_cell->level() > 0 &&
+                     owned_coarse_cell(fine_cell->parent()->id()))
+              coarse_data.emplace(fine_cell->parent()->id(),
+                                  get_coarse_cell_data<dim, spacedim>(
+                                    *owned_coarse_cell(
+                                      fine_cell->parent()->id()),
+                                    coarse_constraints));
+            else
+              remote_fine_cells.push_back(fine_cell);
+          }
+
+      // 2. get the data of the other coarse cells from their owners
+      if (Utilities::MPI::n_mpi_processes(comm) > 1)
+        {
+          const internal::CellIDTranslator<dim> translator(
+            coarse_tria.n_global_coarse_cells(),
+            fine_tria.n_global_levels() + 1);
+
+          IndexSet registered(translator.size());
+          for (const auto &cell : coarse_dof_handler.active_cell_iterators())
+            if (cell->is_locally_owned())
+              {
+                registered.add_index(translator.translate(cell));
+                for (unsigned int c = 0;
+                     c < cell->reference_cell().n_isotropic_children();
+                     ++c)
+                  registered.add_index(translator.translate(cell, c));
+              }
+          registered.compress();
+
+          std::map<types::global_cell_index, active_cell_iterator> lookup;
+          IndexSet lookup_set(translator.size());
+          for (const auto &fine_cell : remote_fine_cells)
+            {
+              lookup.emplace(translator.translate(fine_cell), fine_cell);
+              lookup_set.add_index(translator.translate(fine_cell));
+            }
+          lookup_set.compress();
+          const std::vector<unsigned int> owners =
+            Utilities::MPI::compute_index_owner(registered, lookup_set, comm);
+
+          // requests: the index of the fine cell and of its parent
+          std::map<unsigned int, std::vector<types::global_cell_index>>
+                                                           requests;
+          std::map<unsigned int, std::vector<active_cell_iterator>> requested;
+          {
+            unsigned int i = 0;
+            for (const auto &[index, fine_cell] : lookup)
+              {
+                AssertIndexRange(owners[i], Utilities::MPI::n_mpi_processes(comm));
+                requests[owners[i]].push_back(index);
+                requests[owners[i]].push_back(
+                  fine_cell->level() > 0 ?
+                    translator.translate(fine_cell->parent()) :
+                    index);
+                requested[owners[i]].push_back(fine_cell);
+                ++i;
+              }
+          }
+
+          // answers: for each request, whether the coarse cell is the parent
+          // and its data
+          std::map<unsigned int,
+                   std::pair<std::vector<types::global_dof_index>,
+                             std::vector<number>>>
+            answers;
+          for (const auto &[rank, indices] :
+               Utilities::MPI::some_to_some(comm, requests))
+            {
+              auto &[integers, numbers] = answers[rank];
+              for (unsigned int i = 0; i < indices.size(); i += 2)
+                {
+                  auto coarse_cell =
+                    owned_coarse_cell(translator.to_cell_id(indices[i]));
+                  integers.push_back(coarse_cell ? 0 : 1);
+                  if (!coarse_cell)
+                    coarse_cell =
+                      owned_coarse_cell(translator.to_cell_id(indices[i + 1]));
+                  Assert(coarse_cell, ExcInternalError());
+                  pack_coarse_cell_data(get_coarse_cell_data<dim, spacedim>(
+                                          *coarse_cell, coarse_constraints),
+                                        integers,
+                                        numbers);
+                }
+            }
+
+          for (const auto &[rank, buffers] :
+               Utilities::MPI::some_to_some(comm, answers))
+            {
+              const auto  &[integers, numbers] = buffers;
+              unsigned int integer_position = 0, number_position = 0;
+              for (const auto &fine_cell : requested[rank])
+                {
+                  const bool is_parent = integers[integer_position++];
+                  coarse_data.emplace(is_parent ? fine_cell->parent()->id() :
+                                                  fine_cell->id(),
+                                      unpack_coarse_cell_data(integers,
+                                                              numbers,
+                                                              integer_position,
+                                                              number_position));
+                }
+            }
+        }
+      else
+        AssertThrow(remote_fine_cells.empty(), ExcInternalError());
+
+      // 3. the rows
       // the coarse functions are polynomial along the fine lines on
       // simplices, wedges and hexahedra (degree at most 2), and rational on
       // pyramids, whose pole (the plane of the apex) is at least half a
@@ -185,18 +436,12 @@ namespace internal
         rows;
 
       std::map<unsigned int, Point<dim>> reference_points;
-      std::vector<types::global_dof_index> coarse_dofs;
-      std::vector<typename DoFHandler<dim, spacedim>::active_cell_iterator>
-        fine_cells;
+      std::vector<active_cell_iterator>  fine_cells;
 
-      for (const auto &coarse_cell : coarse_dof_handler.active_cell_iterators())
+      for (const auto &[coarse_id, data] : coarse_data)
         {
-          if (coarse_cell->is_artificial() ||
-              fine_tria.contains_cell(coarse_cell->id()) == false)
-            continue;
-
-          const auto fine_tria_cell =
-            fine_tria.create_cell_iterator(coarse_cell->id());
+          // the coarse cell K in the fine triangulation
+          const auto fine_tria_cell = fine_tria.create_cell_iterator(coarse_id);
           const typename DoFHandler<dim, spacedim>::cell_iterator fine_cell(
             &fine_tria,
             fine_tria_cell->level(),
@@ -217,18 +462,16 @@ namespace internal
 
           const auto &fe =
             dynamic_cast<const FE_NedelecLowestOrderBase<dim, spacedim> &>(
-              coarse_cell->get_fe());
+              coarse_dof_handler.get_fe(data.fe_index));
+          const ReferenceCell reference_cell = fine_cell->reference_cell();
+          Assert(fe.reference_cell() == reference_cell, ExcInternalError());
           const QGauss<1> &line_quadrature =
-            (coarse_cell->reference_cell() == ReferenceCells::Pyramid) ?
+            (reference_cell == ReferenceCells::Pyramid) ?
               rational_line_quadrature :
               polynomial_line_quadrature;
-          coarse_dofs.resize(fe.n_dofs_per_cell());
-          coarse_cell->get_dof_indices(coarse_dofs);
 
           // reference positions of the vertices of the fine cells, keyed by
-          // their vertex index in the fine triangulation (the fine cell has
-          // the vertex numbering of the coarse cell)
-          const ReferenceCell reference_cell = coarse_cell->reference_cell();
+          // their vertex index in the fine triangulation
           reference_points.clear();
           for (const unsigned int v : reference_cell.vertex_indices())
             reference_points[fine_cell->vertex_index(v)] =
@@ -303,7 +546,7 @@ namespace internal
                   const Tensor<1, dim> tangent =
                     reference_point(line->vertex_index(1)) - start;
 
-                  for (unsigned int L = 0; L < coarse_cell->n_lines(); ++L)
+                  for (unsigned int L = 0; L < fine_cell->n_lines(); ++L)
                     {
                       double value = 0;
                       for (unsigned int q = 0; q < line_quadrature.size(); ++q)
@@ -315,27 +558,28 @@ namespace internal
                                      fe.shape_value_component(L, x, d) *
                                      tangent[d];
                         }
-                      if (coarse_cell->line_orientation(L) !=
+                      // the coarse cell has the line directions of K in the
+                      // fine triangulation
+                      if (fine_cell->line_orientation(L) !=
                           numbers::default_geometric_orientation)
                         value = -value;
                       if (std::abs(value) < 1e-12)
                         continue;
 
-                      const types::global_dof_index coarse_dof =
-                        coarse_dofs[L];
-                      if (coarse_constraints.is_constrained(coarse_dof))
+                      if (data.constrained[L])
                         {
-                          for (const auto &[dof, weight] :
-                               *coarse_constraints.get_constraint_entries(
-                                 coarse_dof))
+                          for (const auto &[dof, weight] : data.entries[L])
                             row[dof] += value * weight;
                         }
                       else
-                        row[coarse_dof] += value;
+                        row[data.dofs[L]] += value;
                     }
                 }
             }
         }
+
+      // every locally owned fine DoF is a line of a locally owned fine cell
+      AssertThrow(rows.size() == owned.n_elements(), ExcInternalError());
       return rows;
     }
   } // namespace EdgeElementTools
