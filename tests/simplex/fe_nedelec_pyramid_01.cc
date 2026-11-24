@@ -23,6 +23,12 @@
 // 3. Stokes' theorem on every cell: int_K curl phi_i = int_dK n x phi_i,
 //    which checks the gradients of the rational shape functions and the
 //    quadrature.
+// 4. At the apex (where the rational expressions are 0/0, e.g. in the
+//    patches of DataOut) the values and curls are finite and equal to their
+//    limits along the axis of the pyramid. (The full gradients of the
+//    functions of the apex lines grow like 1/(1 - z) towards the apex, as
+//    N_apex times second derivatives of the base vertex functions; this
+//    part is symmetric and does not enter the curl.)
 
 #include <deal.II/base/quadrature_lib.h>
 
@@ -31,6 +37,7 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping_fe.h>
 
+#include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/tria.h>
 
@@ -222,6 +229,42 @@ check_exactness_and_stokes(const Triangulation<3> &tria)
 
 
 
+void
+check_apex()
+{
+  Triangulation<3> tria;
+  GridGenerator::reference_cell(tria, ReferenceCells::Pyramid);
+  const FE_NedelecPyramid<3> fe(0);
+  const MappingFE<3>         mapping(FE_PyramidP<3>(1));
+  // the apex and a point below it on the axis
+  const std::vector<Point<3>> points = {Point<3>(0, 0, 1),
+                                        Point<3>(0, 0, 1 - 1e-6)};
+  FEValues<3> fe_values(mapping,
+                        fe,
+                        Quadrature<3>(points),
+                        update_values | update_gradients);
+  fe_values.reinit(tria.begin_active());
+  const FEValuesExtractors::Vector E(0);
+  bool   finite = true;
+  double difference = 0, size = 0;
+  for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
+    {
+      const Tensor<1, 3> value = fe_values[E].value(i, 0);
+      const Tensor<1, 3> curl  = fe_values[E].curl(i, 0);
+      for (unsigned int c = 0; c < 3; ++c)
+        finite = finite && std::isfinite(value[c]) && std::isfinite(curl[c]);
+      difference = std::max({difference,
+                             (value - fe_values[E].value(i, 1)).norm(),
+                             (curl - fe_values[E].curl(i, 1)).norm()});
+      size       = std::max({size, value.norm(), curl.norm()});
+    }
+  deallog << "apex: values and curls finite: " << (finite ? "OK" : "FAILED")
+          << ", equal to the limits along the axis: "
+          << (difference < 1e-5 * size ? "OK" : "FAILED") << std::endl;
+}
+
+
+
 int
 main()
 {
@@ -237,4 +280,5 @@ main()
     make_pyramid_mesh(tria, 2, 0);
     check_exactness_and_stokes(tria);
   }
+  check_apex();
 }

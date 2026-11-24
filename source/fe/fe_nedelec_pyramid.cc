@@ -54,7 +54,12 @@ namespace
     const double       b  = v[1];
     const double       x  = p[0];
     const double       y  = p[1];
-    const double       C  = 1. - p[2];
+    // At the apex (C = 0, x = y = 0) the expressions are 0/0. The shape
+    // functions of the element and their gradients are bounded there (the
+    // vertex functions times the gradients and Hessians, as they appear in
+    // theta and its gradient), so a tiny C gives the limit along the axis of
+    // the pyramid; points with C > 1e-12 are not changed.
+    const double       C  = std::max(1. - p[2], 1e-12);
     const double       ab = a * b;
     n.value               = (C + a * x) * (C + b * y) / (4. * C);
     n.grad[0]             = a / 4. + ab * y / (4. * C);
