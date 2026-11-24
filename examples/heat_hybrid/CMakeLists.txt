@@ -60,3 +60,9 @@ deal_ii_initialize_cached_variables()
 set(CLEAN_UP_FILES *.log *.gmv *.gnuplot *.gpl *.eps *.pov *.vtk *.ucd *.d2 *.vtu *.pvtu)
 project(${TARGET})
 deal_ii_invoke_autopilot()
+
+# the same program in 3D (hybrid cube of tetrahedra, wedges, pyramids and
+# hexahedra)
+add_executable(heat_hybrid_3d heat_hybrid.cc)
+deal_ii_setup_target(heat_hybrid_3d)
+target_compile_definitions(heat_hybrid_3d PRIVATE HEAT_DIM=3)

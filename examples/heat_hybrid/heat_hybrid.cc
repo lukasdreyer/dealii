@@ -75,7 +75,9 @@
 #include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_pyramid_p.h>
 #include <deal.II/fe/fe_simplex_p.h>
+#include <deal.II/fe/fe_wedge_p.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping_fe.h>
 #include <deal.II/fe/mapping_q.h>
@@ -102,6 +104,7 @@
 #include <deal.II/numerics/vector_tools.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -113,6 +116,8 @@
 #include <tuple>
 #include <vector>
 
+// Trilinos also when deal.II has PETSc, for comparable results
+#define FORCE_USE_OF_TRILINOS
 namespace LA
 {
 #if defined(DEAL_II_WITH_PETSC) && !defined(DEAL_II_PETSC_WITH_COMPLEX) && \
@@ -131,11 +136,19 @@ namespace HeatHybrid
 {
   using namespace dealii;
 
-  constexpr int dim = 2;
+  // the space dimension, set at compile time (heat_hybrid: 2, heat_hybrid_3d: 3)
+#ifndef HEAT_DIM
+#  define HEAT_DIM 2
+#endif
+  constexpr int dim = HEAT_DIM;
 
   struct Parameters
   {
-    std::string  mesh         = "hybrid";
+    std::string  mesh         = dim == 2 ? "hybrid" : "hybrid21";
+    // the refinement indicator: kelly (2D), or gradient (h_K |grad u_h|_{L2(K)},
+    // cell by cell; for 3D, where the face quadratures of wedges and pyramids
+    // depend on the face)
+    std::string  estimator    = dim == 2 ? "kelly" : "gradient";
     unsigned int n            = 4;
     unsigned int degree       = 2;
     unsigned int global       = 3;
@@ -168,6 +181,8 @@ namespace HeatHybrid
           const std::string key = arg.substr(0, eq), value = arg.substr(eq + 1);
           if (key == "mesh")
             mesh = value;
+          else if (key == "estimator")
+            estimator = value;
           else if (key == "n")
             n = std::stoi(value);
           else if (key == "degree")
@@ -209,8 +224,14 @@ namespace HeatHybrid
           else
             AssertThrow(false, ExcMessage("Unknown argument " + key));
         }
-      AssertThrow(mesh == "hybrid" || mesh == "quad" || mesh == "tri",
-                  ExcMessage("mesh must be hybrid, quad or tri"));
+      if (dim == 2)
+        AssertThrow(mesh == "hybrid" || mesh == "quad" || mesh == "tri",
+                    ExcMessage("mesh must be hybrid, quad or tri"));
+      else
+        AssertThrow(mesh == "hybrid21" || mesh == "hybrid16" || mesh == "hex",
+                    ExcMessage("mesh must be hybrid21, hybrid16 or hex"));
+      AssertThrow(estimator == "kelly" || estimator == "gradient",
+                  ExcMessage("estimator must be kelly or gradient"));
       AssertThrow(theta >= 0 && theta <= 1, ExcMessage("theta must be in [0,1]"));
       AssertThrow(scheme == "theta" || scheme == "sdirk2",
                   ExcMessage("scheme must be theta or sdirk2"));
@@ -233,9 +254,14 @@ namespace HeatHybrid
     Point<dim>
     center() const
     {
+      // on a circle in the plane z = 0.5 in 3D
       const double t = this->get_time();
-      return Point<dim>(0.5 + radius * std::cos(2 * numbers::PI * t),
-                        0.5 + radius * std::sin(2 * numbers::PI * t));
+      Point<dim>   c;
+      for (unsigned int d = 0; d < dim; ++d)
+        c[d] = 0.5;
+      c[0] += radius * std::cos(2 * numbers::PI * t);
+      c[1] += radius * std::sin(2 * numbers::PI * t);
+      return c;
     }
 
     Tensor<1, dim>
@@ -272,6 +298,101 @@ namespace HeatHybrid
 
 
 
+#if HEAT_DIM == 3
+  // The unit cube in octants of side 0.5 (the hybrid cube of amr_benchmark):
+  // hybrid21 with 6 tetrahedra at the origin, 2 wedges in each face neighbor,
+  // 6 pyramids in [0.5,1]^3 and hexahedra elsewhere; hybrid16 with a
+  // hexahedron instead of the pyramids; hex with hexahedra only.
+  void
+  make_mesh(Triangulation<dim> &tria, const unsigned int, const std::string &type)
+  {
+    const bool              pyramids = type == "hybrid21";
+    const bool              hex_only = type == "hex";
+    std::vector<Point<dim>> vertices;
+    for (unsigned int z = 0; z <= 2; ++z)
+      for (unsigned int y = 0; y <= 2; ++y)
+        for (unsigned int x = 0; x <= 2; ++x)
+          vertices.emplace_back(0.5 * x, 0.5 * y, 0.5 * z);
+    const unsigned int apex = vertices.size();
+    if (pyramids)
+      vertices.emplace_back(0.75, 0.75, 0.75);
+    const auto volume = [&](unsigned int a, unsigned int b, unsigned int c, unsigned int d) {
+      return cross_product_3d(vertices[b] - vertices[a], vertices[c] - vertices[a]) *
+             (vertices[d] - vertices[a]);
+    };
+    std::vector<CellData<dim>> cells;
+    const auto                 add_cell = [&](const std::vector<unsigned int> &v) {
+      CellData<dim> cell(v.size());
+      for (unsigned int i = 0; i < v.size(); ++i)
+        cell.vertices[i] = v[i];
+      cells.push_back(cell);
+    };
+    static const unsigned int cube_faces[6][4] = {
+      {0, 2, 4, 6}, {1, 3, 5, 7}, {0, 4, 1, 5}, {2, 6, 3, 7}, {0, 1, 2, 3}, {4, 5, 6, 7}};
+    for (unsigned int oz = 0; oz < 2; ++oz)
+      for (unsigned int oy = 0; oy < 2; ++oy)
+        for (unsigned int ox = 0; ox < 2; ++ox)
+          {
+            const auto corner = [&](unsigned int i, unsigned int j, unsigned int k) {
+              return (ox + i) + 3 * ((oy + j) + 3 * (oz + k));
+            };
+            std::array<unsigned int, 8> cube;
+            for (unsigned int v = 0; v < 8; ++v)
+              cube[v] = corner(v & 1, (v >> 1) & 1, v >> 2);
+            const unsigned int n_offsets = ox + oy + oz;
+            if (hex_only)
+              add_cell({cube.begin(), cube.end()});
+            else if (n_offsets == 0)
+              {
+                std::array<unsigned int, 3> directions = {{0, 1, 2}};
+                do
+                  {
+                    const unsigned int v1 = 1u << directions[0], v2 = v1 | (1u << directions[1]);
+                    std::vector<unsigned int> t = {cube[0], cube[v1], cube[v2], cube[7]};
+                    if (volume(t[0], t[1], t[2], t[3]) < 0)
+                      std::swap(t[2], t[3]);
+                    add_cell(t);
+                  }
+                while (std::next_permutation(directions.begin(), directions.end()));
+              }
+            else if (n_offsets == 1)
+              {
+                const unsigned int a = ox ? 0 : (oy ? 1 : 2), b = (a + 1) % 3, c = (a + 2) % 3;
+                const auto         local = [&](unsigned int ia, unsigned int ib, unsigned int ic) {
+                  unsigned int idx[3];
+                  idx[a] = ia, idx[b] = ib, idx[c] = ic;
+                  return corner(idx[0], idx[1], idx[2]);
+                };
+                const unsigned int triangles[2][3][2] = {{{0, 0}, {1, 0}, {1, 1}},
+                                                         {{0, 0}, {1, 1}, {0, 1}}};
+                for (const auto &t : triangles)
+                  {
+                    std::vector<unsigned int> w(6);
+                    for (unsigned int i = 0; i < 3; ++i)
+                      w[i] = local(0, t[i][0], t[i][1]), w[i + 3] = local(1, t[i][0], t[i][1]);
+                    if (volume(w[0], w[1], w[2], w[3]) < 0)
+                      std::swap(w[1], w[2]), std::swap(w[4], w[5]);
+                    add_cell(w);
+                  }
+              }
+            else if (n_offsets == 3 && pyramids)
+              for (unsigned int f = 0; f < 6; ++f)
+                {
+                  std::vector<unsigned int> base = {cube[cube_faces[f][0]],
+                                                    cube[cube_faces[f][1]],
+                                                    cube[cube_faces[f][2]],
+                                                    cube[cube_faces[f][3]],
+                                                    apex};
+                  if (volume(base[0], base[1], base[2], apex) < 0)
+                    std::swap(base[1], base[2]);
+                  add_cell(base);
+                }
+            else
+              add_cell({cube.begin(), cube.end()});
+          }
+    tria.create_triangulation(vertices, cells, SubCellData());
+  }
+#else
   // The unit square in n x n squares: quadrilaterals, pairs of triangles, or
   // both in a checkerboard pattern (hybrid).
   void
@@ -316,6 +437,7 @@ namespace HeatHybrid
         }
     tria.create_triangulation(vertices, cells, SubCellData());
   }
+#endif
 
 
 
@@ -328,11 +450,19 @@ namespace HeatHybrid
     run();
 
   private:
+    // 0 quadrilateral/hexahedron, 1 triangle/tetrahedron, 2 wedge, 3 pyramid
     unsigned int
     fe_index(const ReferenceCell &r) const
     {
-      return r == ReferenceCells::Quadrilateral ? 0 : 1;
+      return (r == ReferenceCells::Quadrilateral || r == ReferenceCells::Hexahedron) ? 0 :
+             (r == ReferenceCells::Triangle || r == ReferenceCells::Tetrahedron)    ? 1 :
+             r == ReferenceCells::Wedge                                             ? 2 :
+                                                                                      3;
     }
+
+    // the refinement indicator per active cell (Kelly or gradient)
+    void
+    compute_indicator(Vector<float> &indicator) const;
 
     void
     setup_system();
@@ -411,8 +541,56 @@ namespace HeatHybrid
     mapping.push_back(MappingFE<dim>(FE_SimplexP<dim>(1)));
     quadrature.push_back(QGauss<dim>(p + 1));
     quadrature.push_back(QGaussSimplex<dim>(p + 1));
+    // the face quadrature of the Kelly estimator (one per element; in 2D all
+    // faces are lines)
     face_quadrature.push_back(QGauss<dim - 1>(p + 1));
     face_quadrature.push_back(QGauss<dim - 1>(p + 1));
+#if HEAT_DIM == 3
+    fe.push_back(FE_WedgeP<dim>(p));
+    fe.push_back(FE_PyramidP<dim>(p));
+    mapping.push_back(MappingFE<dim>(FE_WedgeP<dim>(1)));
+    mapping.push_back(MappingFE<dim>(FE_PyramidP<dim>(1)));
+    quadrature.push_back(QGaussWedge<dim>(p + 1));
+    quadrature.push_back(QGaussPyramid<dim>(p + 1));
+    face_quadrature.push_back(QGauss<dim - 1>(p + 1));
+    face_quadrature.push_back(QGauss<dim - 1>(p + 1));
+#endif
+  }
+
+
+
+  // Kelly: jumps of the normal derivative over the faces. gradient:
+  // h_K |grad u_h|_{L2(K)}, which needs no face quadrature (the face
+  // quadratures of wedges and pyramids depend on the face, which the Kelly
+  // estimator does not support).
+  void
+  HeatEquation::compute_indicator(Vector<float> &indicator) const
+  {
+    indicator.reinit(triangulation.n_active_cells());
+    if (parameters.estimator == "kelly")
+      {
+        KellyErrorEstimator<dim>::estimate(mapping,
+                                           dof_handler,
+                                           face_quadrature,
+                                           std::map<types::boundary_id, const Function<dim> *>(),
+                                           solution,
+                                           indicator);
+        return;
+      }
+    hp::FEValues<dim>           hp_fe_values(mapping, fe, quadrature, update_gradients | update_JxW_values);
+    std::vector<Tensor<1, dim>> gradients;
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          hp_fe_values.reinit(cell);
+          const FEValues<dim> &fv = hp_fe_values.get_present_fe_values();
+          gradients.resize(fv.n_quadrature_points);
+          fv.get_function_gradients(solution, gradients);
+          double s = 0;
+          for (const unsigned int q : fv.quadrature_point_indices())
+            s += gradients[q].norm_square() * fv.JxW(q);
+          indicator(cell->active_cell_index()) = cell->diameter() * std::sqrt(s);
+        }
   }
 
 
@@ -599,13 +777,8 @@ namespace HeatHybrid
   HeatEquation::adapt_mesh()
   {
     this->time("adapt", [&]() {
-      Vector<float> estimate(triangulation.n_active_cells());
-      KellyErrorEstimator<dim>::estimate(mapping,
-                                         dof_handler,
-                                         face_quadrature,
-                                         std::map<types::boundary_id, const Function<dim> *>(),
-                                         solution,
-                                         estimate);
+      Vector<float> estimate;
+      compute_indicator(estimate);
       if (parameters.marking == "threshold")
         {
           const double max_estimate =
@@ -671,6 +844,14 @@ namespace HeatHybrid
       const auto flags_prepared = count_flags();
       transfer.prepare_for_coarsening_and_refinement(solution);
       triangulation.execute_coarsening_and_refinement();
+      // the parts of the refinement in the backend (t8code): adapt, balance, partition, copy
+      {
+        const auto &rt = triangulation.get_refinement_times();
+        times["refine: adapt"] += rt.adapt;
+        times["refine: balance"] += rt.balance;
+        times["refine: partition"] += rt.partition;
+        times["refine: copy"] += rt.copy;
+      }
       if (std::getenv("HEAT_ADAPT_LOG"))
         pcout << "  adapt: " << cells_before << " -> " << triangulation.n_global_active_cells()
               << " cells; flags refine/coarsen marked " << flags_marked.first << "/"
@@ -694,6 +875,10 @@ namespace HeatHybrid
     const unsigned int   p = parameters.degree;
     hp::QCollection<dim> error_quadrature(QGauss<dim>(p + 3),
                                           QGaussSimplex<dim>(std::min(p + 3, 5u)));
+#if HEAT_DIM == 3
+    error_quadrature.push_back(QGaussWedge<dim>(p + 3));
+    error_quadrature.push_back(QGaussPyramid<dim>(p + 3));
+#endif
     Vector<float>        cell_errors(triangulation.n_active_cells());
     VectorTools::integrate_difference(
       mapping, dof_handler, solution, exact, cell_errors, error_quadrature, VectorTools::L2_norm);
@@ -762,12 +947,19 @@ namespace HeatHybrid
       {
         csv.open(parameters.csv);
         csv << "step,time,cells,dofs,cells_min,cells_max,cg_iterations,l2_error,"
-               "assembly,amg_setup,solve,adapt\n";
+               "assembly,amg_setup,solve,adapt,refine_adapt,refine_balance,refine_partition,"
+               "refine_copy\n";
       }
 
     const unsigned int n_steps =
       static_cast<unsigned int>(std::round(parameters.t_end / parameters.dt));
-    double max_error = 0;
+    const unsigned int solves_per_step = parameters.scheme == "sdirk2" ? 2 : 1;
+    double             max_error = 0;
+    // the effort: sum over the steps of cells, of DoFs times solves, and of DoFs
+    // times CG iterations, and the wall time of the time loop
+    double sum_cells = 0, sum_dof_solves = 0, sum_dof_iterations = 0;
+    std::map<std::string, double> total_times;
+    const double                  wall_start = MPI_Wtime();
     output_results(0, 0.0);
     for (unsigned int step = 1; step <= n_steps; ++step)
       {
@@ -776,18 +968,33 @@ namespace HeatHybrid
         time_step(t);
         const double error = l2_error(t);
         max_error          = std::max(max_error, error);
+        sum_cells += triangulation.n_global_active_cells();
+        sum_dof_solves += 1.0 * dof_handler.n_dofs() * solves_per_step;
+        sum_dof_iterations += 1.0 * dof_handler.n_dofs() * last_iterations;
 
         const unsigned int n_local = triangulation.n_locally_owned_active_cells();
         const auto         cells   = Utilities::MPI::min_max_avg(1.0 * n_local, mpi_communicator);
         std::map<std::string, double> t_max;
-        for (const std::string phase : {"assembly", "amg setup", "solve", "adapt"})
-          t_max[phase] = Utilities::MPI::max(times[phase], mpi_communicator);
+        for (const std::string phase : {"assembly",
+                                        "amg setup",
+                                        "solve",
+                                        "adapt",
+                                        "refine: adapt",
+                                        "refine: balance",
+                                        "refine: partition",
+                                        "refine: copy"})
+          {
+            t_max[phase] = Utilities::MPI::max(times[phase], mpi_communicator);
+            total_times[phase] += t_max[phase];
+          }
         if (csv.is_open())
           csv << step << ',' << t << ',' << triangulation.n_global_active_cells() << ','
               << dof_handler.n_dofs() << ',' << cells.min << ',' << cells.max << ','
               << last_iterations << ',' << std::setprecision(10) << error << ','
               << t_max["assembly"] << ',' << t_max["amg setup"] << ',' << t_max["solve"] << ','
-              << t_max["adapt"] << std::setprecision(6) << '\n';
+              << t_max["adapt"] << ',' << t_max["refine: adapt"] << ','
+              << t_max["refine: balance"] << ',' << t_max["refine: partition"] << ','
+              << t_max["refine: copy"] << std::setprecision(6) << '\n';
         times.clear();
         if (step % parameters.output_every == 0 || step == n_steps)
           {
@@ -801,20 +1008,24 @@ namespace HeatHybrid
         if (parameters.adapt && step % parameters.adapt_every == 0 && step < n_steps)
           adapt_mesh();
       }
+    const double wall = MPI_Wtime() - wall_start;
     pcout << "final L2 error " << l2_error(n_steps * parameters.dt) << ", max over the steps "
           << max_error << std::endl;
+    pcout << "summary: steps " << n_steps << ", sum cells " << sum_cells << ", sum dofs*solves "
+          << sum_dof_solves << ", sum dofs*cg_iterations " << sum_dof_iterations << ", wall time "
+          << wall << " s (assembly " << total_times["assembly"] << ", amg setup "
+          << total_times["amg setup"] << ", solve " << total_times["solve"] << ", adapt "
+          << total_times["adapt"] << "; in adapt: refine adapt " << total_times["refine: adapt"]
+          << ", balance " << total_times["refine: balance"] << ", partition "
+          << total_times["refine: partition"] << ", copy " << total_times["refine: copy"] << ")"
+          << std::endl;
     // the centers and levels of the final cells (with HEAT_CELLS=prefix), for analysis
     if (const char *prefix = std::getenv("HEAT_CELLS"))
       {
         std::ofstream out(std::string(prefix) + "_r" +
                           std::to_string(Utilities::MPI::this_mpi_process(mpi_communicator)) + ".txt");
-        Vector<float> estimate(triangulation.n_active_cells());
-        KellyErrorEstimator<dim>::estimate(mapping,
-                                           dof_handler,
-                                           face_quadrature,
-                                           std::map<types::boundary_id, const Function<dim> *>(),
-                                           solution,
-                                           estimate);
+        Vector<float> estimate;
+        compute_indicator(estimate);
         for (const auto &cell : triangulation.active_cell_iterators())
           if (cell->is_locally_owned())
             out << cell->center()[0] << ' ' << cell->center()[1] << ' ' << cell->level() << ' '
