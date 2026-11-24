@@ -1,0 +1,22 @@
+
+DEAL::tetrahedra
+DEAL::  levels=2: G^T A G = nodal operator OK, iterations hiptmair=9 edge only=37
+DEAL::  levels=3: G^T A G = nodal operator OK, iterations hiptmair=11 edge only=138
+DEAL::wedges
+DEAL::  levels=2: G^T A G = nodal operator OK, iterations hiptmair=7 edge only=54
+DEAL::  levels=3: G^T A G = nodal operator OK, iterations hiptmair=8 edge only=131
+DEAL::hexahedra
+DEAL::  levels=2: G^T A G = nodal operator OK, iterations hiptmair=5 edge only=50
+DEAL::  levels=3: G^T A G = nodal operator OK, iterations hiptmair=6 edge only=118
+DEAL::pyramids
+DEAL::  levels=2: G^T A G = nodal operator OK, iterations hiptmair=6 edge only=34
+DEAL::  levels=3: G^T A G = nodal operator OK, iterations hiptmair=8 edge only=88
+DEAL::pyramids and tetrahedra
+DEAL::  levels=2: G^T A G = nodal operator OK, iterations hiptmair=8 edge only=41
+DEAL::  levels=3: G^T A G = nodal operator OK, iterations hiptmair=10 edge only=102
+DEAL::hexahedra and pyramids
+DEAL::  levels=2: G^T A G = nodal operator OK, iterations hiptmair=7 edge only=44
+DEAL::  levels=3: G^T A G = nodal operator OK, iterations hiptmair=7 edge only=97
+DEAL::wedges and tetrahedra
+DEAL::  levels=2: G^T A G = nodal operator OK, iterations hiptmair=7 edge only=32
+DEAL::  levels=3: G^T A G = nodal operator OK, iterations hiptmair=10 edge only=90
