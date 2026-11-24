@@ -52,6 +52,16 @@ public:
   requires_update_flags(const UpdateFlags update_flags) const override;
 
   /**
+   * Component @p component of the reference shape function @p i at the
+   * point @p p of the reference cell (directed as described at
+   * get_shape_values(), i.e. without the sign of a mesh cell).
+   */
+  virtual double
+  shape_value_component(const unsigned int i,
+                        const Point<dim>  &p,
+                        const unsigned int component) const override;
+
+  /**
    * With another lowest-order edge element derived from this class (on
    * another reference cell), the single DoF of a line is identical, since
    * both refer to the direction of the line object. This makes the DoFs of

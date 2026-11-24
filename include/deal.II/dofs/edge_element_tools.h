@@ -132,6 +132,212 @@ namespace internal
             }
       return rows;
     }
+
+
+
+    /**
+     * The rows of the prolongation from the edge element space of
+     * @p coarse_dof_handler to the one of @p fine_dof_handler, for every
+     * locally owned fine DoF: the DoF of a fine line is the line integral of
+     * the coarse function along it (in the direction of the fine line
+     * object). Every active coarse cell must either be active in the fine
+     * triangulation or be refined once there, as for the meshes of
+     * MGTransferGlobalCoarseningTools::create_geometric_coarsening_sequence().
+     *
+     * Since the covariant transformation keeps line integrals, the integral
+     * is computed in the reference coordinates of the coarse cell. The
+     * reference positions of the fine vertices follow from the topology:
+     * the vertices of the coarse cell, the midpoints of its lines, the
+     * centers of its refined quadrilateral faces and (hexahedra) its center.
+     * As for the hanging node constraints, this assumes that the children
+     * are the images of the reference children (straight lines, flat
+     * faces). Fine lines inside an unrefined coarse cell get the identity
+     * row.
+     *
+     * Constrained coarse DoFs (hanging or Dirichlet) are expressed by their
+     * constraints, and the rows of constrained fine DoFs are zero, so that
+     * the matrix maps the unknowns of the coarse space to those of the fine
+     * one. @p coarse_constraints must contain the constraints of all coarse
+     * DoFs of the cells that are used.
+     */
+    template <int dim, int spacedim, typename number>
+    std::map<types::global_dof_index,
+             std::map<types::global_dof_index, number>>
+    prolongation_rows(
+      const DoFHandler<dim, spacedim>         &coarse_dof_handler,
+      const dealii::AffineConstraints<number> &coarse_constraints,
+      const DoFHandler<dim, spacedim>         &fine_dof_handler,
+      const dealii::AffineConstraints<number> &fine_constraints)
+    {
+      const auto &fine_tria = fine_dof_handler.get_triangulation();
+      const auto &owned     = fine_dof_handler.locally_owned_dofs();
+
+      // the coarse functions are polynomial along the fine lines on
+      // simplices, wedges and hexahedra (degree at most 2), and rational on
+      // pyramids, whose pole (the plane of the apex) is at least half a
+      // coarse cell away from the lines of the children that do not end at
+      // the apex
+      const QGauss<1> polynomial_line_quadrature(2);
+      const QGauss<1> rational_line_quadrature(10);
+
+      std::map<types::global_dof_index,
+               std::map<types::global_dof_index, number>>
+        rows;
+
+      std::map<unsigned int, Point<dim>> reference_points;
+      std::vector<types::global_dof_index> coarse_dofs;
+      std::vector<typename DoFHandler<dim, spacedim>::active_cell_iterator>
+        fine_cells;
+
+      for (const auto &coarse_cell : coarse_dof_handler.active_cell_iterators())
+        {
+          if (coarse_cell->is_artificial() ||
+              fine_tria.contains_cell(coarse_cell->id()) == false)
+            continue;
+
+          const auto fine_tria_cell =
+            fine_tria.create_cell_iterator(coarse_cell->id());
+          const typename DoFHandler<dim, spacedim>::cell_iterator fine_cell(
+            &fine_tria,
+            fine_tria_cell->level(),
+            fine_tria_cell->index(),
+            &fine_dof_handler);
+
+          fine_cells.clear();
+          if (fine_cell->is_active())
+            fine_cells.push_back(fine_cell);
+          else
+            for (unsigned int c = 0; c < fine_cell->n_children(); ++c)
+              {
+                Assert(fine_cell->child(c)->is_active(),
+                       ExcMessage("The fine triangulation must refine every "
+                                  "active coarse cell at most once."));
+                fine_cells.push_back(fine_cell->child(c));
+              }
+
+          const auto &fe =
+            dynamic_cast<const FE_NedelecLowestOrderBase<dim, spacedim> &>(
+              coarse_cell->get_fe());
+          const QGauss<1> &line_quadrature =
+            (coarse_cell->reference_cell() == ReferenceCells::Pyramid) ?
+              rational_line_quadrature :
+              polynomial_line_quadrature;
+          coarse_dofs.resize(fe.n_dofs_per_cell());
+          coarse_cell->get_dof_indices(coarse_dofs);
+
+          // reference positions of the vertices of the fine cells, keyed by
+          // their vertex index in the fine triangulation (the fine cell has
+          // the vertex numbering of the coarse cell)
+          const ReferenceCell reference_cell = coarse_cell->reference_cell();
+          reference_points.clear();
+          for (const unsigned int v : reference_cell.vertex_indices())
+            reference_points[fine_cell->vertex_index(v)] =
+              reference_cell.template vertex<dim>(v);
+
+          const auto reference_point = [&](const unsigned int vertex_index) {
+            const auto it = reference_points.find(vertex_index);
+            Assert(it != reference_points.end(), ExcInternalError());
+            return it->second;
+          };
+
+          if (fine_cell->has_children())
+            {
+              for (unsigned int l = 0; l < fine_cell->n_lines(); ++l)
+                {
+                  const auto line = fine_cell->line(l);
+                  Assert(line->has_children(), ExcInternalError());
+                  reference_points[line->child(0)->vertex_index(1)] =
+                    0.5 * (reference_point(line->vertex_index(0)) +
+                           reference_point(line->vertex_index(1)));
+                }
+
+              // remaining new vertices: centers of refined quadrilateral
+              // faces, then the center of the cell
+              const auto add_centers = [&](const auto &object,
+                                           const auto &children) {
+                Point<dim> center;
+                for (unsigned int v = 0; v < object->n_vertices(); ++v)
+                  center += reference_point(object->vertex_index(v));
+                center /= object->n_vertices();
+                for (const auto &child : children)
+                  for (unsigned int v = 0; v < child->n_vertices(); ++v)
+                    reference_points.emplace(child->vertex_index(v), center);
+              };
+
+              if constexpr (dim == 3)
+                for (const unsigned int f : fine_cell->face_indices())
+                  {
+                    const auto face = fine_cell->face(f);
+                    if (face->has_children())
+                      {
+                        std::vector<
+                          typename DoFHandler<dim, spacedim>::face_iterator>
+                          children;
+                        for (unsigned int c = 0; c < face->n_children(); ++c)
+                          children.push_back(face->child(c));
+                        add_centers(face, children);
+                      }
+                  }
+              add_centers(fine_cell, fine_cells);
+            }
+
+          for (const auto &child : fine_cells)
+            {
+              if (child->is_artificial())
+                continue;
+              for (unsigned int l = 0; l < child->n_lines(); ++l)
+                {
+                  const auto                    line = child->line(l);
+                  const types::global_dof_index fine_dof =
+                    line->dof_index(0, child->active_fe_index());
+                  if (owned.is_element(fine_dof) == false ||
+                      rows.find(fine_dof) != rows.end())
+                    continue;
+
+                  auto &row = rows[fine_dof];
+                  if (fine_constraints.is_constrained(fine_dof))
+                    continue;
+
+                  const Point<dim> start =
+                    reference_point(line->vertex_index(0));
+                  const Tensor<1, dim> tangent =
+                    reference_point(line->vertex_index(1)) - start;
+
+                  for (unsigned int L = 0; L < coarse_cell->n_lines(); ++L)
+                    {
+                      double value = 0;
+                      for (unsigned int q = 0; q < line_quadrature.size(); ++q)
+                        {
+                          const Point<dim> x =
+                            start + line_quadrature.point(q)[0] * tangent;
+                          for (unsigned int d = 0; d < dim; ++d)
+                            value += line_quadrature.weight(q) *
+                                     fe.shape_value_component(L, x, d) *
+                                     tangent[d];
+                        }
+                      if (coarse_cell->line_orientation(L) !=
+                          numbers::default_geometric_orientation)
+                        value = -value;
+                      if (std::abs(value) < 1e-12)
+                        continue;
+
+                      const types::global_dof_index coarse_dof =
+                        coarse_dofs[L];
+                      if (coarse_constraints.is_constrained(coarse_dof))
+                        {
+                          for (const auto &[dof, weight] :
+                               *coarse_constraints.get_constraint_entries(
+                                 coarse_dof))
+                            row[dof] += value * weight;
+                        }
+                      else
+                        row[coarse_dof] += value;
+                    }
+                }
+            }
+        }
+      return rows;
+    }
   } // namespace EdgeElementTools
 } // namespace internal
 
@@ -198,6 +404,85 @@ namespace DoFTools
                                                             nodal_dof_handler,
                                                             nodal_constraints))
       {
+        columns.clear();
+        values.clear();
+        for (const auto &[column, value] : entries)
+          {
+            columns.push_back(column);
+            values.push_back(value);
+          }
+        matrix.set(row, columns, values);
+      }
+    matrix.compress(VectorOperation::insert);
+  }
+
+
+
+  /**
+   * Sparsity pattern of the prolongation computed by
+   * make_edge_element_prolongation(): rows are the DoFs of
+   * @p fine_dof_handler, columns those of @p coarse_dof_handler. Only the
+   * rows of locally owned fine DoFs are added.
+   */
+  template <int dim, int spacedim, typename number, typename SparsityPatternType>
+  void
+  make_edge_element_prolongation_sparsity_pattern(
+    const DoFHandler<dim, spacedim> &coarse_dof_handler,
+    const AffineConstraints<number> &coarse_constraints,
+    const DoFHandler<dim, spacedim> &fine_dof_handler,
+    const AffineConstraints<number> &fine_constraints,
+    SparsityPatternType             &sparsity)
+  {
+    for (const auto &[row, entries] :
+         dealii::internal::EdgeElementTools::prolongation_rows(
+           coarse_dof_handler,
+           coarse_constraints,
+           fine_dof_handler,
+           fine_constraints))
+      for (const auto &entry : entries)
+        sparsity.add(row, entry.first);
+  }
+
+
+
+  /**
+   * The prolongation P from the lowest-order edge element space of
+   * @p coarse_dof_handler to the one of @p fine_dof_handler, for geometric
+   * multigrid with a sequence of meshes in which every active coarse cell
+   * is active or refined once in the fine mesh. The fine DoFs of P u are the
+   * line integrals of the coarse function u along the fine lines, so P is
+   * the embedding of the coarse space where the spaces are nested
+   * (tetrahedra, wedges, hexahedra) and the canonical interpolation
+   * otherwise (pyramids, whose children include tetrahedra). Constrained
+   * coarse DoFs are expressed by their constraints, and the rows of
+   * constrained fine DoFs are zero, so P maps the unknowns of the coarse
+   * space to those of the fine one; the restriction is P^T. See
+   * internal::EdgeElementTools::prolongation_rows() for the details.
+   *
+   * @p matrix must have been initialized with a sparsity pattern containing
+   * the one of make_edge_element_prolongation_sparsity_pattern(). Only the
+   * rows of locally owned fine DoFs are set.
+   */
+  template <int dim, int spacedim, typename number, typename MatrixType>
+  void
+  make_edge_element_prolongation(
+    const DoFHandler<dim, spacedim> &coarse_dof_handler,
+    const AffineConstraints<number> &coarse_constraints,
+    const DoFHandler<dim, spacedim> &fine_dof_handler,
+    const AffineConstraints<number> &fine_constraints,
+    MatrixType                      &matrix)
+  {
+    std::vector<types::global_dof_index> columns;
+    std::vector<number>                  values;
+    for (const auto &[row, entries] :
+         dealii::internal::EdgeElementTools::prolongation_rows(
+           coarse_dof_handler,
+           coarse_constraints,
+           fine_dof_handler,
+           fine_constraints))
+      {
+        if (entries.empty())
+          continue;
         columns.clear();
         values.clear();
         for (const auto &[column, value] : entries)

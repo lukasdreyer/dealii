@@ -398,6 +398,20 @@ FE_NedelecLowestOrderBase<dim, spacedim>::fill_fe_face_values(
 }
 
 
+
+template <int dim, int spacedim>
+double
+FE_NedelecLowestOrderBase<dim, spacedim>::shape_value_component(
+  const unsigned int i,
+  const Point<dim>  &p,
+  const unsigned int component) const
+{
+  AssertIndexRange(i, this->n_dofs_per_cell());
+  AssertIndexRange(component, dim);
+  return get_shape_values(std::vector<Point<dim>>{p})[i][0][component];
+}
+
+
 template <int dim, int spacedim>
 UpdateFlags
 FE_NedelecLowestOrderBase<dim, spacedim>::requires_update_flags(

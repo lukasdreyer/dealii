@@ -1,0 +1,31 @@
+
+DEAL::tetrahedra: coarse 180 cells, 353 DoFs (90 constrained), fine 677 cells, 1236 DoFs (458 constrained), 1930 nonzeros
+DEAL::  a + b x x: max error < 1e-12, constrained fine rows zero
+DEAL::  a + b x x, constrained coarse DoFs zero: max error < 1e-12, constrained fine rows zero
+DEAL::  random coarse function: max difference < 1e-10, in pyramids (not nested) 0.00000
+DEAL::  fine DoFs = line integrals of the coarse function: max error < 1e-10
+DEAL::pyramids: coarse 75 cells, 197 DoFs (42 constrained), fine 207 cells, 525 DoFs (222 constrained), 879 nonzeros
+DEAL::  a + b x x: max error < 1e-12, constrained fine rows zero
+DEAL::  a + b x x, constrained coarse DoFs zero: max error < 1e-12, constrained fine rows zero
+DEAL::  random coarse function: max difference < 1e-10, in pyramids (not nested) 0.970486
+DEAL::  fine DoFs = line integrals of the coarse function: max error < 1e-10
+DEAL::pyramids and tetrahedra: coarse 79 cells, 189 DoFs (42 constrained), fine 216 cells, 522 DoFs (226 constrained), 856 nonzeros
+DEAL::  a + b x x: max error < 1e-12, constrained fine rows zero
+DEAL::  a + b x x, constrained coarse DoFs zero: max error < 1e-12, constrained fine rows zero
+DEAL::  random coarse function: max difference < 1e-10, in pyramids (not nested) 1.22707
+DEAL::  fine DoFs = line integrals of the coarse function: max error < 1e-10
+DEAL::hexahedra and pyramids: coarse 35 cells, 137 DoFs (30 constrained), fine 201 cells, 656 DoFs (248 constrained), 1138 nonzeros
+DEAL::  a + b x x: max error < 1e-12, constrained fine rows zero
+DEAL::  a + b x x, constrained coarse DoFs zero: max error < 1e-12, constrained fine rows zero
+DEAL::  random coarse function: max difference < 1e-10, in pyramids (not nested) 0.745336
+DEAL::  fine DoFs = line integrals of the coarse function: max error < 1e-10
+DEAL::wedges and tetrahedra: coarse 46 cells, 144 DoFs (34 constrained), fine 172 cells, 509 DoFs (224 constrained), 683 nonzeros
+DEAL::  a + b x x: max error < 1e-12, constrained fine rows zero
+DEAL::  a + b x x, constrained coarse DoFs zero: max error < 1e-12, constrained fine rows zero
+DEAL::  random coarse function: max difference < 1e-10, in pyramids (not nested) 0.00000
+DEAL::  fine DoFs = line integrals of the coarse function: max error < 1e-10
+DEAL::hexahedra: coarse 36 cells, 216 DoFs (60 constrained), fine 134 cells, 716 DoFs (284 constrained), 854 nonzeros
+DEAL::  a + b x x: max error < 1e-12, constrained fine rows zero
+DEAL::  a + b x x, constrained coarse DoFs zero: max error < 1e-12, constrained fine rows zero
+DEAL::  random coarse function: max difference < 1e-10, in pyramids (not nested) 0.00000
+DEAL::  fine DoFs = line integrals of the coarse function: max error < 1e-10
