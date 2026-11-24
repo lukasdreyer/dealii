@@ -1,0 +1,7 @@
+
+DEAL:0::pyramids: cells=417 dofs=1001 constraints=474
+DEAL:0::  consistent OK, exactness OK, tangential continuity OK, same mesh and constraints as serial OK
+DEAL:0::pyramids and tetrahedra: cells=484 dofs=987 constraints=459
+DEAL:0::  consistent OK, exactness OK, tangential continuity OK, same mesh and constraints as serial OK
+DEAL:0::wedges and tetrahedra: cells=249 dofs=594 constraints=259
+DEAL:0::  consistent OK, exactness OK, tangential continuity OK, same mesh and constraints as serial OK

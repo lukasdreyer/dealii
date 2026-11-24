@@ -1,0 +1,16 @@
+
+DEAL::pyramids: tetrahedra=171 wedges=0 pyramids=246 hanging triangles=304 hanging quadrilaterals=4 faces between different cells=616 constraints=474
+DEAL::  exactness OK, tangential continuity OK
+DEAL::pyramids and tetrahedra: tetrahedra=378 wedges=0 pyramids=106 hanging triangles=292 hanging quadrilaterals=4 faces between different cells=326 constraints=459
+DEAL::  exactness OK, tangential continuity OK
+DEAL::wedges and tetrahedra: tetrahedra=178 wedges=71 pyramids=0 hanging triangles=124 hanging quadrilaterals=28 faces between different cells=41 constraints=259
+DEAL::  exactness OK, tangential continuity OK
+DEAL::pyramids convergence: cells=15 dofs=56 constraints=44
+DEAL::pyramids convergence: cells=134 dofs=316 constraints=172 rate_u=1.02 rate_curl=1.04
+DEAL::pyramids convergence: cells=1100 dofs=2072 constraints=680 rate_u=1.03 rate_curl=1.03
+DEAL::pyramids and tetrahedra convergence: cells=22 dofs=71 constraints=57
+DEAL::pyramids and tetrahedra convergence: cells=188 dofs=403 constraints=224 rate_u=0.67 rate_curl=0.96
+DEAL::pyramids and tetrahedra convergence: cells=1528 dofs=2650 constraints=888 rate_u=0.89 rate_curl=1.01
+DEAL::wedges and tetrahedra convergence: cells=15 dofs=64 constraints=59
+DEAL::wedges and tetrahedra convergence: cells=120 dofs=338 constraints=231 rate_u=0.72 rate_curl=0.99
+DEAL::wedges and tetrahedra convergence: cells=960 dofs=2116 constraints=914 rate_u=0.89 rate_curl=1.04
