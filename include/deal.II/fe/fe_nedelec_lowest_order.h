@@ -51,6 +51,38 @@ public:
   virtual UpdateFlags
   requires_update_flags(const UpdateFlags update_flags) const override;
 
+  /**
+   * With another lowest-order edge element derived from this class (on
+   * another reference cell), the single DoF of a line is identical, since
+   * both refer to the direction of the line object. This makes the DoFs of
+   * hybrid meshes (e.g. FE_NedelecSimplex and FE_NedelecPyramid) conforming.
+   */
+  virtual std::vector<std::pair<unsigned int, unsigned int>>
+  hp_line_dof_identities(
+    const FiniteElement<dim, spacedim> &fe_other) const override;
+
+  /**
+   * There are no DoFs on vertices.
+   */
+  virtual std::vector<std::pair<unsigned int, unsigned int>>
+  hp_vertex_dof_identities(
+    const FiniteElement<dim, spacedim> &fe_other) const override;
+
+  /**
+   * There are no DoFs on quads.
+   */
+  virtual std::vector<std::pair<unsigned int, unsigned int>>
+  hp_quad_dof_identities(const FiniteElement<dim, spacedim> &fe_other,
+                         const unsigned int face_no = 0) const override;
+
+  /**
+   * Lowest-order edge elements on different reference cells have the same
+   * traces, so either can dominate.
+   */
+  virtual FiniteElementDomination::Domination
+  compare_for_domination(const FiniteElement<dim, spacedim> &fe_other,
+                         const unsigned int codim = 0) const override;
+
 protected:
   /**
    * Constructor: one DoF per line of @p reference_cell, whose shape

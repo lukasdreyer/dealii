@@ -3251,10 +3251,18 @@ namespace DoFTools
         {
           constexpr int facedim = dim - 1;
 
-          // the only DoF of a line, for the one element active on it
+          // the only DoF of a line; on lines between cells with different
+          // elements (e.g. tetrahedra and pyramids), the elements share it
+          // through their hp line identities
           const auto line_dof = [](const auto &line) {
-            Assert(line->n_active_fe_indices() == 1, ExcNotImplemented());
-            return line->dof_index(0, line->nth_active_fe_index(0));
+            const types::global_dof_index dof =
+              line->dof_index(0, line->nth_active_fe_index(0));
+            if constexpr (running_in_debug_mode())
+              for (unsigned int i = 1; i < line->n_active_fe_indices(); ++i)
+                Assert(line->dof_index(0, line->nth_active_fe_index(i)) == dof,
+                       ExcMessage("The edge elements on a line do not share "
+                                  "its DoF."));
+            return dof;
           };
 
           // Lines that belong only to artificial cells have no valid DoF

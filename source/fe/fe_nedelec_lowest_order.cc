@@ -443,6 +443,54 @@ FE_NedelecLowestOrderBase<dim, spacedim>::get_dpo_vector(const unsigned int degr
 }
 
 
+template <int dim, int spacedim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_NedelecLowestOrderBase<dim, spacedim>::hp_line_dof_identities(
+  const FiniteElement<dim, spacedim> &fe_other) const
+{
+  if (dynamic_cast<const FE_NedelecLowestOrderBase<dim, spacedim> *>(
+        &fe_other) != nullptr)
+    return {{0, 0}};
+  return {};
+}
+
+
+
+template <int dim, int spacedim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_NedelecLowestOrderBase<dim, spacedim>::hp_vertex_dof_identities(
+  const FiniteElement<dim, spacedim> &) const
+{
+  return {};
+}
+
+
+
+template <int dim, int spacedim>
+std::vector<std::pair<unsigned int, unsigned int>>
+FE_NedelecLowestOrderBase<dim, spacedim>::hp_quad_dof_identities(
+  const FiniteElement<dim, spacedim> &,
+  const unsigned int) const
+{
+  return {};
+}
+
+
+
+template <int dim, int spacedim>
+FiniteElementDomination::Domination
+FE_NedelecLowestOrderBase<dim, spacedim>::compare_for_domination(
+  const FiniteElement<dim, spacedim> &fe_other,
+  const unsigned int) const
+{
+  if (dynamic_cast<const FE_NedelecLowestOrderBase<dim, spacedim> *>(
+        &fe_other) != nullptr)
+    return FiniteElementDomination::either_element_can_dominate;
+  return FiniteElementDomination::neither_element_dominates;
+}
+
+
+
 // explicit instantiations
 #include "fe/fe_nedelec_lowest_order.inst"
 

@@ -27,6 +27,9 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping.h>
 
+#include <deal.II/hp/fe_collection.h>
+#include <deal.II/hp/mapping_collection.h>
+
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/vector.h>
 
@@ -115,7 +118,8 @@ namespace internal
                 {
                   const number sign = (v == 0) ? -1 : 1;
                   const types::global_dof_index vertex_dof =
-                    nodal_line->vertex_dof_index(v, 0);
+                    nodal_line->vertex_dof_index(
+                      v, 0, nodal_line->nth_active_fe_index(0));
                   if (nodal_constraints.is_constrained(vertex_dof))
                     {
                       for (const auto &[dof, weight] :
@@ -214,65 +218,83 @@ namespace VectorTools
 {
   /**
    * Tangential boundary values for lowest-order edge elements
-   * (FE_NedelecSimplex(0)): for every line of a boundary face whose boundary
-   * id is in @p function_map, the DoF is set to the line integral of the
-   * tangential component of the function along the line object (components
-   * @p first_vector_component to @p first_vector_component + dim - 1). This
-   * is the canonical interpolation, so that n x u = n x g holds exactly for
-   * functions g in the edge element space. The integral is computed with
-   * Gauss points on the reference line of the cell, mapped by @p mapping,
-   * so that curved boundaries are taken into account. Lines that are
-   * already constrained (e.g. hanging lines) are not changed, so the hanging
-   * node constraints should be computed first.
+   * (FE_NedelecSimplex(0), FE_NedelecWedge(0), FE_NedelecPyramid(0), also
+   * mixed in an hp::FECollection): for every line of a boundary face whose
+   * boundary id is in @p function_map, the DoF is set to the line integral of
+   * the tangential component of the function along the line object
+   * (components @p first_vector_component to @p first_vector_component +
+   * dim - 1). This is the canonical interpolation, so that n x u = n x g
+   * holds exactly for functions g in the edge element space. The integral is
+   * computed with Gauss points on the reference line of the cell, mapped by
+   * the mapping with the active FE index of the cell (or the only one), so
+   * that curved boundaries are taken into account. Lines that are already
+   * constrained (e.g. hanging lines) are not changed, so the hanging node
+   * constraints should be computed first.
    */
   template <int dim, int spacedim, typename number>
   void
   interpolate_boundary_values_curl_conforming(
-    const Mapping<dim, spacedim>    &mapping,
-    const DoFHandler<dim, spacedim> &dof_handler,
+    const hp::MappingCollection<dim, spacedim> &mapping_collection,
+    const DoFHandler<dim, spacedim>            &dof_handler,
     const std::map<types::boundary_id, const Function<spacedim, number> *>
                               &function_map,
     AffineConstraints<number> &constraints,
     const unsigned int         first_vector_component = 0)
   {
     static_assert(dim > 1, "Edge elements need at least two dimensions.");
-    const FiniteElement<dim, spacedim> &fe = dof_handler.get_fe();
-    dealii::internal::EdgeElementTools::assert_line_oriented_edge_element(fe);
+    const hp::FECollection<dim, spacedim> &fe_collection =
+      dof_handler.get_fe_collection();
+    for (unsigned int i = 0; i < fe_collection.size(); ++i)
+      dealii::internal::EdgeElementTools::assert_line_oriented_edge_element(
+        fe_collection[i]);
+    Assert(mapping_collection.size() == 1 ||
+             mapping_collection.size() == fe_collection.size(),
+           ExcDimensionMismatch(mapping_collection.size(),
+                                fe_collection.size()));
 
-    const ReferenceCell ref_cell = fe.reference_cell();
-    const QGauss<1>     q_line(4);
+    const QGauss<1> q_line(4);
 
-    // one FEValues object per line of the reference cell, with the Gauss
-    // points on that line
-    std::vector<std::unique_ptr<FEValues<dim, spacedim>>> line_values;
-    std::vector<Tensor<1, dim>>                           reference_tangents;
-    for (unsigned int l = 0; l < ref_cell.n_lines(); ++l)
-      {
-        const Point<dim> v0 =
-          ref_cell.template vertex<dim>(ref_cell.line_to_cell_vertices(l, 0));
-        const Point<dim> v1 =
-          ref_cell.template vertex<dim>(ref_cell.line_to_cell_vertices(l, 1));
-        std::vector<Point<dim>> points;
-        for (unsigned int q = 0; q < q_line.size(); ++q)
-          points.push_back(v0 + q_line.point(q)[0] * (v1 - v0));
-        line_values.push_back(std::make_unique<FEValues<dim, spacedim>>(
-          mapping,
-          fe,
-          Quadrature<dim>(points),
-          update_quadrature_points | update_jacobians));
-        reference_tangents.push_back(v1 - v0);
-      }
+    // one FEValues object per element and line of its reference cell, with
+    // the Gauss points on that line, created on first use
+    std::map<std::pair<unsigned int, unsigned int>,
+             std::unique_ptr<FEValues<dim, spacedim>>>
+      line_values;
+    const auto get_line_values = [&](const unsigned int fe_index,
+                                     const unsigned int l)
+      -> FEValues<dim, spacedim> & {
+      auto &entry = line_values[{fe_index, l}];
+      if (entry == nullptr)
+        {
+          const ReferenceCell ref_cell =
+            fe_collection[fe_index].reference_cell();
+          const Point<dim> v0 = ref_cell.template vertex<dim>(
+            ref_cell.line_to_cell_vertices(l, 0));
+          const Point<dim> v1 = ref_cell.template vertex<dim>(
+            ref_cell.line_to_cell_vertices(l, 1));
+          std::vector<Point<dim>> points;
+          for (unsigned int q = 0; q < q_line.size(); ++q)
+            points.push_back(v0 + q_line.point(q)[0] * (v1 - v0));
+          entry = std::make_unique<FEValues<dim, spacedim>>(
+            mapping_collection[mapping_collection.size() == 1 ? 0 : fe_index],
+            fe_collection[fe_index],
+            Quadrature<dim>(points),
+            update_quadrature_points | update_jacobians);
+        }
+      return *entry;
+    };
 
     Vector<number> g;
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
         if (cell->is_artificial())
           continue;
+        const ReferenceCell ref_cell = cell->reference_cell();
         for (const unsigned int f : cell->face_indices())
           {
             if (cell->at_boundary(f) == false)
               continue;
-            const auto function = function_map.find(cell->face(f)->boundary_id());
+            const auto function =
+              function_map.find(cell->face(f)->boundary_id());
             if (function == function_map.end())
               continue;
             Assert(function->second->n_components >=
@@ -299,17 +321,24 @@ namespace VectorTools
                     constraints.can_store_line(dof) == false)
                   continue;
 
-                line_values[l]->reinit(cell);
+                FEValues<dim, spacedim> &values =
+                  get_line_values(cell->active_fe_index(), l);
+                values.reinit(cell);
+                const Tensor<1, dim> reference_tangent =
+                  ref_cell.template vertex<dim>(
+                    ref_cell.line_to_cell_vertices(l, 1)) -
+                  ref_cell.template vertex<dim>(
+                    ref_cell.line_to_cell_vertices(l, 0));
                 number integral = 0;
                 for (unsigned int q = 0; q < q_line.size(); ++q)
                   {
                     // derivative of the mapped line with respect to the
                     // line parameter
                     const Tensor<1, spacedim> tangent =
-                      apply_transformation(line_values[l]->jacobian(q),
-                                           reference_tangents[l]);
-                    function->second->vector_value(
-                      line_values[l]->quadrature_point(q), g);
+                      apply_transformation(values.jacobian(q),
+                                           reference_tangent);
+                    function->second->vector_value(values.quadrature_point(q),
+                                                   g);
                     for (unsigned int d = 0; d < spacedim; ++d)
                       integral += q_line.weight(q) *
                                   g(first_vector_component + d) * tangent[d];
@@ -322,6 +351,29 @@ namespace VectorTools
               }
           }
       }
+  }
+
+
+
+  /**
+   * Same as above, with one mapping for all cells.
+   */
+  template <int dim, int spacedim, typename number>
+  void
+  interpolate_boundary_values_curl_conforming(
+    const Mapping<dim, spacedim>    &mapping,
+    const DoFHandler<dim, spacedim> &dof_handler,
+    const std::map<types::boundary_id, const Function<spacedim, number> *>
+                              &function_map,
+    AffineConstraints<number> &constraints,
+    const unsigned int         first_vector_component = 0)
+  {
+    interpolate_boundary_values_curl_conforming(
+      hp::MappingCollection<dim, spacedim>(mapping),
+      dof_handler,
+      function_map,
+      constraints,
+      first_vector_component);
   }
 } // namespace VectorTools
 
