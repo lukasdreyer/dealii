@@ -467,8 +467,11 @@ test(const std::function<void(Triangulation<3> &)> &make,
                   << " iterations=" << control.last_step() << std::endl;
     }
   if (!verbose)
+    // (the counts of the edge smoother alone depend on rounding)
     deallog << ", iterations hiptmair=" << iterations.first
-            << " edge only=" << iterations.second << std::endl;
+            << ", edge only more: "
+            << (iterations.second > iterations.first ? "yes" : "no")
+            << std::endl;
   return iterations;
 }
 

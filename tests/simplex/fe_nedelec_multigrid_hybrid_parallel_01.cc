@@ -461,6 +461,9 @@ test(const std::string                             &name,
   MGSmootherPrecondition<MatrixType, Relaxation, VectorType> edge_only;
   edge_only.initialize(a);
 
+  // the iteration counts of the edge smoother alone depend on rounding, so
+  // only the comparison with the Hiptmair smoother is printed
+  unsigned int hiptmair_iterations = 0;
   for (const bool nodal_step : {true, false})
     {
       const MGSmootherBase<VectorType> &smoother =
@@ -490,8 +493,19 @@ test(const std::string                             &name,
                       << " iterations=" << control.last_step() << std::endl;
         }
       else
-        deallog << "  " << (nodal_step ? "hiptmair" : "edge only")
-                << ": iterations " << control.last_step() << std::endl;
+        {
+          if (nodal_step)
+            {
+              hiptmair_iterations = control.last_step();
+              deallog << "  hiptmair: iterations " << control.last_step()
+                      << std::endl;
+            }
+          else
+            deallog << "  edge only: more iterations "
+                    << (control.last_step() > hiptmair_iterations ? "yes" :
+                                                                    "no")
+                    << std::endl;
+        }
     }
 }
 

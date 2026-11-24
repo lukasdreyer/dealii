@@ -8,14 +8,14 @@ DEAL:0::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:0::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:0::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:0::  hiptmair: iterations 9, L2 error 0.0509
-DEAL:0::  edge only: iterations 341, L2 error 0.0509
+DEAL:0::  edge only: more iterations yes, L2 error 0.0509
 DEAL:0::dim=3 beta=0.0100000 levels=4
 DEAL:0::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:0::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:0::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:0::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:0::  hiptmair: iterations 10, L2 error 0.105
-DEAL:0::  edge only: iterations 195, L2 error 0.105
+DEAL:0::  edge only: more iterations yes, L2 error 0.105
 DEAL:0::dim=2 beta=1.00000 levels=5
 DEAL:0::  level 0: cells 8, edge DoFs 16, |G|_F 2.449489743
 DEAL:0::  level 1: cells 17, edge DoFs 34, |G|_F 4.358898944, |P|_F 2.850438563
@@ -23,14 +23,14 @@ DEAL:0::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:0::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:0::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:0::  hiptmair: iterations 9, L2 error 0.0509
-DEAL:0::  edge only: iterations 234, L2 error 0.0509
+DEAL:0::  edge only: more iterations yes, L2 error 0.0509
 DEAL:0::dim=3 beta=1.00000 levels=4
 DEAL:0::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:0::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:0::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:0::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:0::  hiptmair: iterations 10, L2 error 0.104
-DEAL:0::  edge only: iterations 131, L2 error 0.104
+DEAL:0::  edge only: more iterations yes, L2 error 0.104
 DEAL:0::dim=2 beta=100.000 levels=5
 DEAL:0::  level 0: cells 8, edge DoFs 16, |G|_F 2.449489743
 DEAL:0::  level 1: cells 17, edge DoFs 34, |G|_F 4.358898944, |P|_F 2.850438563
@@ -38,14 +38,14 @@ DEAL:0::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:0::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:0::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:0::  hiptmair: iterations 9, L2 error 0.0505
-DEAL:0::  edge only: iterations 52, L2 error 0.0505
+DEAL:0::  edge only: more iterations yes, L2 error 0.0505
 DEAL:0::dim=3 beta=100.000 levels=4
 DEAL:0::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:0::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:0::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:0::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:0::  hiptmair: iterations 9, L2 error 0.101
-DEAL:0::  edge only: iterations 30, L2 error 0.101
+DEAL:0::  edge only: more iterations yes, L2 error 0.101
 
 DEAL:1::dim=2 without repartitioning: 113 cells, coarsened 32 (copy 32), coarsened 17 (copy 17)
 DEAL:1::dim=3 without repartitioning: 1041 cells, coarsened 222 (copy 222), coarsened 110 (copy 110)
@@ -56,14 +56,14 @@ DEAL:1::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:1::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:1::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:1::  hiptmair: iterations 9, L2 error 0.0509
-DEAL:1::  edge only: iterations 341, L2 error 0.0509
+DEAL:1::  edge only: more iterations yes, L2 error 0.0509
 DEAL:1::dim=3 beta=0.0100000 levels=4
 DEAL:1::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:1::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:1::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:1::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:1::  hiptmair: iterations 10, L2 error 0.105
-DEAL:1::  edge only: iterations 195, L2 error 0.105
+DEAL:1::  edge only: more iterations yes, L2 error 0.105
 DEAL:1::dim=2 beta=1.00000 levels=5
 DEAL:1::  level 0: cells 8, edge DoFs 16, |G|_F 2.449489743
 DEAL:1::  level 1: cells 17, edge DoFs 34, |G|_F 4.358898944, |P|_F 2.850438563
@@ -71,14 +71,14 @@ DEAL:1::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:1::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:1::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:1::  hiptmair: iterations 9, L2 error 0.0509
-DEAL:1::  edge only: iterations 234, L2 error 0.0509
+DEAL:1::  edge only: more iterations yes, L2 error 0.0509
 DEAL:1::dim=3 beta=1.00000 levels=4
 DEAL:1::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:1::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:1::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:1::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:1::  hiptmair: iterations 10, L2 error 0.104
-DEAL:1::  edge only: iterations 131, L2 error 0.104
+DEAL:1::  edge only: more iterations yes, L2 error 0.104
 DEAL:1::dim=2 beta=100.000 levels=5
 DEAL:1::  level 0: cells 8, edge DoFs 16, |G|_F 2.449489743
 DEAL:1::  level 1: cells 17, edge DoFs 34, |G|_F 4.358898944, |P|_F 2.850438563
@@ -86,14 +86,14 @@ DEAL:1::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:1::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:1::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:1::  hiptmair: iterations 9, L2 error 0.0505
-DEAL:1::  edge only: iterations 52, L2 error 0.0505
+DEAL:1::  edge only: more iterations yes, L2 error 0.0505
 DEAL:1::dim=3 beta=100.000 levels=4
 DEAL:1::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:1::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:1::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:1::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:1::  hiptmair: iterations 9, L2 error 0.101
-DEAL:1::  edge only: iterations 30, L2 error 0.101
+DEAL:1::  edge only: more iterations yes, L2 error 0.101
 
 
 DEAL:2::dim=2 without repartitioning: 113 cells, coarsened 32 (copy 32), coarsened 17 (copy 17)
@@ -105,14 +105,14 @@ DEAL:2::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:2::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:2::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:2::  hiptmair: iterations 9, L2 error 0.0509
-DEAL:2::  edge only: iterations 341, L2 error 0.0509
+DEAL:2::  edge only: more iterations yes, L2 error 0.0509
 DEAL:2::dim=3 beta=0.0100000 levels=4
 DEAL:2::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:2::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:2::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:2::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:2::  hiptmair: iterations 10, L2 error 0.105
-DEAL:2::  edge only: iterations 195, L2 error 0.105
+DEAL:2::  edge only: more iterations yes, L2 error 0.105
 DEAL:2::dim=2 beta=1.00000 levels=5
 DEAL:2::  level 0: cells 8, edge DoFs 16, |G|_F 2.449489743
 DEAL:2::  level 1: cells 17, edge DoFs 34, |G|_F 4.358898944, |P|_F 2.850438563
@@ -120,14 +120,14 @@ DEAL:2::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:2::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:2::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:2::  hiptmair: iterations 9, L2 error 0.0509
-DEAL:2::  edge only: iterations 234, L2 error 0.0509
+DEAL:2::  edge only: more iterations yes, L2 error 0.0509
 DEAL:2::dim=3 beta=1.00000 levels=4
 DEAL:2::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:2::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:2::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:2::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:2::  hiptmair: iterations 10, L2 error 0.104
-DEAL:2::  edge only: iterations 131, L2 error 0.104
+DEAL:2::  edge only: more iterations yes, L2 error 0.104
 DEAL:2::dim=2 beta=100.000 levels=5
 DEAL:2::  level 0: cells 8, edge DoFs 16, |G|_F 2.449489743
 DEAL:2::  level 1: cells 17, edge DoFs 34, |G|_F 4.358898944, |P|_F 2.850438563
@@ -135,14 +135,14 @@ DEAL:2::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:2::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:2::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:2::  hiptmair: iterations 9, L2 error 0.0505
-DEAL:2::  edge only: iterations 52, L2 error 0.0505
+DEAL:2::  edge only: more iterations yes, L2 error 0.0505
 DEAL:2::dim=3 beta=100.000 levels=4
 DEAL:2::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:2::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:2::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:2::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:2::  hiptmair: iterations 9, L2 error 0.101
-DEAL:2::  edge only: iterations 30, L2 error 0.101
+DEAL:2::  edge only: more iterations yes, L2 error 0.101
 
 
 DEAL:3::dim=2 without repartitioning: 113 cells, coarsened 32 (copy 32), coarsened 17 (copy 17)
@@ -154,14 +154,14 @@ DEAL:3::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:3::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:3::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:3::  hiptmair: iterations 9, L2 error 0.0509
-DEAL:3::  edge only: iterations 341, L2 error 0.0509
+DEAL:3::  edge only: more iterations yes, L2 error 0.0509
 DEAL:3::dim=3 beta=0.0100000 levels=4
 DEAL:3::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:3::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:3::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:3::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:3::  hiptmair: iterations 10, L2 error 0.105
-DEAL:3::  edge only: iterations 195, L2 error 0.105
+DEAL:3::  edge only: more iterations yes, L2 error 0.105
 DEAL:3::dim=2 beta=1.00000 levels=5
 DEAL:3::  level 0: cells 8, edge DoFs 16, |G|_F 2.449489743
 DEAL:3::  level 1: cells 17, edge DoFs 34, |G|_F 4.358898944, |P|_F 2.850438563
@@ -169,14 +169,14 @@ DEAL:3::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:3::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:3::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:3::  hiptmair: iterations 9, L2 error 0.0509
-DEAL:3::  edge only: iterations 234, L2 error 0.0509
+DEAL:3::  edge only: more iterations yes, L2 error 0.0509
 DEAL:3::dim=3 beta=1.00000 levels=4
 DEAL:3::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:3::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:3::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:3::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:3::  hiptmair: iterations 10, L2 error 0.104
-DEAL:3::  edge only: iterations 131, L2 error 0.104
+DEAL:3::  edge only: more iterations yes, L2 error 0.104
 DEAL:3::dim=2 beta=100.000 levels=5
 DEAL:3::  level 0: cells 8, edge DoFs 16, |G|_F 2.449489743
 DEAL:3::  level 1: cells 17, edge DoFs 34, |G|_F 4.358898944, |P|_F 2.850438563
@@ -184,12 +184,12 @@ DEAL:3::  level 2: cells 41, edge DoFs 79, |G|_F 7.968688725, |P|_F 4.344536799
 DEAL:3::  level 3: cells 131, edge DoFs 229, |G|_F 16.88194302, |P|_F 6.776568084
 DEAL:3::  level 4: cells 449, edge DoFs 743, |G|_F 33.56337289, |P|_F 12.69042454
 DEAL:3::  hiptmair: iterations 9, L2 error 0.0505
-DEAL:3::  edge only: iterations 52, L2 error 0.0505
+DEAL:3::  edge only: more iterations yes, L2 error 0.0505
 DEAL:3::dim=3 beta=100.000 levels=4
 DEAL:3::  level 0: cells 40, edge DoFs 90, |G|_F 4.242640687
 DEAL:3::  level 1: cells 96, edge DoFs 207, |G|_F 6.164414003, |P|_F 4.527692569
 DEAL:3::  level 2: cells 222, edge DoFs 462, |G|_F 9.450529086, |P|_F 7.636773697
 DEAL:3::  level 3: cells 1041, edge DoFs 1780, |G|_F 30.89093718, |P|_F 13.58480309
 DEAL:3::  hiptmair: iterations 9, L2 error 0.101
-DEAL:3::  edge only: iterations 30, L2 error 0.101
+DEAL:3::  edge only: more iterations yes, L2 error 0.101
 

@@ -1,19 +1,19 @@
 
-DEAL::dim=2 beta=0.0100000 levels=2 iterations hiptmair=6 edge only=28
-DEAL::dim=2 beta=0.0100000 levels=3 iterations hiptmair=7 edge only=72
-DEAL::dim=2 beta=0.0100000 levels=4 iterations hiptmair=7 edge only=141
-DEAL::dim=2 beta=0.0100000 levels=5 iterations hiptmair=7 edge only=268
-DEAL::dim=3 beta=0.0100000 levels=2 iterations hiptmair=8 edge only=42
-DEAL::dim=3 beta=0.0100000 levels=3 iterations hiptmair=9 edge only=118
-DEAL::dim=2 beta=1.00000 levels=2 iterations hiptmair=6 edge only=23
-DEAL::dim=2 beta=1.00000 levels=3 iterations hiptmair=7 edge only=53
-DEAL::dim=2 beta=1.00000 levels=4 iterations hiptmair=8 edge only=111
-DEAL::dim=2 beta=1.00000 levels=5 iterations hiptmair=8 edge only=209
-DEAL::dim=3 beta=1.00000 levels=2 iterations hiptmair=8 edge only=33
-DEAL::dim=3 beta=1.00000 levels=3 iterations hiptmair=9 edge only=85
-DEAL::dim=2 beta=100.000 levels=2 iterations hiptmair=4 edge only=6
-DEAL::dim=2 beta=100.000 levels=3 iterations hiptmair=6 edge only=13
-DEAL::dim=2 beta=100.000 levels=4 iterations hiptmair=7 edge only=27
-DEAL::dim=2 beta=100.000 levels=5 iterations hiptmair=8 edge only=53
-DEAL::dim=3 beta=100.000 levels=2 iterations hiptmair=5 edge only=9
-DEAL::dim=3 beta=100.000 levels=3 iterations hiptmair=8 edge only=18
+DEAL::dim=2 beta=0.0100000 levels=2 iterations hiptmair=6, edge only more: yes
+DEAL::dim=2 beta=0.0100000 levels=3 iterations hiptmair=7, edge only more: yes
+DEAL::dim=2 beta=0.0100000 levels=4 iterations hiptmair=7, edge only more: yes
+DEAL::dim=2 beta=0.0100000 levels=5 iterations hiptmair=7, edge only more: yes
+DEAL::dim=3 beta=0.0100000 levels=2 iterations hiptmair=8, edge only more: yes
+DEAL::dim=3 beta=0.0100000 levels=3 iterations hiptmair=9, edge only more: yes
+DEAL::dim=2 beta=1.00000 levels=2 iterations hiptmair=6, edge only more: yes
+DEAL::dim=2 beta=1.00000 levels=3 iterations hiptmair=7, edge only more: yes
+DEAL::dim=2 beta=1.00000 levels=4 iterations hiptmair=8, edge only more: yes
+DEAL::dim=2 beta=1.00000 levels=5 iterations hiptmair=8, edge only more: yes
+DEAL::dim=3 beta=1.00000 levels=2 iterations hiptmair=8, edge only more: yes
+DEAL::dim=3 beta=1.00000 levels=3 iterations hiptmair=9, edge only more: yes
+DEAL::dim=2 beta=100.000 levels=2 iterations hiptmair=4, edge only more: yes
+DEAL::dim=2 beta=100.000 levels=3 iterations hiptmair=6, edge only more: yes
+DEAL::dim=2 beta=100.000 levels=4 iterations hiptmair=7, edge only more: yes
+DEAL::dim=2 beta=100.000 levels=5 iterations hiptmair=8, edge only more: yes
+DEAL::dim=3 beta=100.000 levels=2 iterations hiptmair=5, edge only more: yes
+DEAL::dim=3 beta=100.000 levels=3 iterations hiptmair=8, edge only more: yes

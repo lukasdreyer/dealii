@@ -368,14 +368,16 @@ main(int argc, char **argv)
           const auto [hiptmair, edge] = test<2>(n, beta, false);
           deallog << "dim=2 beta=" << beta << " levels=" << n
                   << " iterations hiptmair=" << hiptmair
-                  << " edge only=" << edge << std::endl;
+                  << ", edge only more: " << (edge > hiptmair ? "yes" : "no")
+                  << std::endl;
         }
       for (unsigned int n = 2; n <= 3; ++n)
         {
           const auto [hiptmair, edge] = test<3>(n, beta, false);
           deallog << "dim=3 beta=" << beta << " levels=" << n
                   << " iterations hiptmair=" << hiptmair
-                  << " edge only=" << edge << std::endl;
+                  << ", edge only more: " << (edge > hiptmair ? "yes" : "no")
+                  << std::endl;
         }
     }
 }
