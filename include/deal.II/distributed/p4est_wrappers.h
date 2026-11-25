@@ -17,6 +17,8 @@
 
 #include <deal.II/base/geometry_info.h>
 
+#include <deal.II/distributed/connection_type.h>
+
 #include <deal.II/grid/reference_cell.h>
 
 #include <type_traits>
@@ -597,9 +599,9 @@ namespace internal
 
     template <int dim>
     typename types<dim>::forest *
-    balance_full(typename types<dim>::forest *forest,
-                 const bool                   balance_vertices,
-                 const bool                   with_ghost_layer);
+    balance_full(typename types<dim>::forest            *forest,
+                 const ::dealii::parallel::distributed::ConnectionType balance_type,
+                 const bool                               with_ghost_layer);
 
     template <int dim>
     bool
@@ -684,9 +686,9 @@ namespace internal
 
     template <int dim>
     typename types<dim>::forest *
-    balance_full(typename types<dim>::forest *forest,
-                 const bool                   balance_vertices,
-                 const bool                   with_ghost_layer);
+    balance_full(typename types<dim>::forest            *forest,
+                 const ::dealii::parallel::distributed::ConnectionType balance_type,
+                 const bool                               with_ghost_layer);
 
 
 

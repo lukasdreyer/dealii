@@ -152,9 +152,9 @@ for (deal_II_dimension : DIMENSIONS)
 
         template types<deal_II_dimension>::forest *
         balance_full<deal_II_dimension>(
-          types<deal_II_dimension>::forest *forest,
-          const bool                        balance_vertices,
-          const bool                        with_ghost_layer);
+          types<deal_II_dimension>::forest            *forest,
+          const ::dealii::parallel::distributed::ConnectionType balance_type,
+          const bool                               with_ghost_layer);
 
         template types<deal_II_dimension>::forest *
         partition<deal_II_dimension>(

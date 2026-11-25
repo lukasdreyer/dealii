@@ -544,7 +544,7 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
 
       t8_forest_init(&new_forest);
       t8_forest_set_adapt(new_forest, parallel_forest, adapt_from_vec, false);
-      t8_forest_set_ghost(new_forest, true, T8_GHOST_VERTICES);
+      set_ghost_layer_like(new_forest, parallel_forest);
       t8_forest_commit(new_forest);
 
 
@@ -556,24 +556,29 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
 
     template <int dim>
     typename types<dim>::forest *
-    balance_full(typename types<dim>::forest *forest,
-                 const bool                   balance_vertices,
-                 const bool                   with_ghost_layer)
+    balance_full(typename types<dim>::forest            *forest,
+                 const ::dealii::parallel::distributed::ConnectionType balance_type,
+                 const bool                               with_ghost_layer)
     {
       t8_forest_t new_forest;
       t8_forest_init(&new_forest);
       t8_forest_set_balance(new_forest, forest, 1);
-      // Balance across faces and edges (deal.II's hanging node constraints
-      // need both in 3d), and also across vertices if requested, like p4est's
-      // P8EST_CONNECT_EDGE and P8EST_CONNECT_FULL. In 2d edges are faces.
-      t8_forest_set_balance_type(new_forest,
-                                 balance_vertices ? T8_GHOST_VERTICES :
-                                                    T8_GHOST_EDGES);
+      // The triangulation chooses the type (at least faces and edges in 3d
+      // for deal.II's hanging node constraints, see
+      // Triangulation::set_balance_type()). In 2d, t8code's edges are
+      // vertices.
+      t8_forest_set_balance_type(new_forest, to_t8_ghost_type(balance_type));
       // the ghost layer, if no partition (which builds one) follows
       if (with_ghost_layer)
-        t8_forest_set_ghost(new_forest, 1, T8_GHOST_VERTICES);
+        set_ghost_layer_like(new_forest, forest);
       t8_forest_set_user_data(new_forest, t8_forest_get_user_data(forest));
+      // the forest is committed before forest is released (it is the source)
+      t8_forest_ref(forest);
       t8_forest_commit(new_forest);
+      // the partition after the balance takes the ghost layer from here
+      if (!with_ghost_layer)
+        copy_ghost_layer_settings(new_forest, forest);
+      t8_forest_unref(&forest);
       return new_forest;
     }
 
@@ -590,15 +595,16 @@ const ::dealii::ndarray<unsigned int, 24, 8>  tet_child_types= {{
       // the weighted boundaries behind families that would be split
       if (weight_callback != nullptr)
         t8_forest_set_partition_weight_function(new_forest, weight_callback);
-      t8_forest_set_ghost(new_forest, 1, T8_GHOST_VERTICES);
+      set_ghost_layer_like(new_forest, forest);
       t8_forest_set_user_data(new_forest, t8_forest_get_user_data(forest));
       t8_forest_commit(new_forest);
       if constexpr (running_in_debug_mode())
         {
-          // The forest must be balanced at least across faces and edges (see
-          // balance_full), which t8code checks with the vertex ghost layer.
+          // The forest must be balanced at least across faces, and in 3d
+          // across edges (see balance_full), which t8code checks with the
+          // ghost layer. In 2d, t8code's edges would be vertices.
           const t8_ghost_type_t balance_type = new_forest->balance_type;
-          new_forest->balance_type           = T8_GHOST_EDGES;
+          new_forest->balance_type = dim == 3 ? T8_GHOST_EDGES : T8_GHOST_FACES;
           const int locally_balanced = t8_forest_is_balanced(new_forest);
           new_forest->balance_type   = balance_type;
           const int balanced =

@@ -1346,7 +1346,7 @@ namespace internal
     template <int dim>
     typename types<dim>::forest *
     balance_full(typename types<dim>::forest *forest,
-                 const bool /*balance_vertices*/,
+                 const ::dealii::parallel::distributed::ConnectionType /*balance_type*/,
                  const bool /*with_ghost_layer*/)
     {
       // p4est builds its ghost layer separately (ghost_new)

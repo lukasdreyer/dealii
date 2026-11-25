@@ -40,11 +40,95 @@
 #include <t8_data/t8_element_array_iterator.hxx>
 // clang-format on
 
+#include <deal.II/distributed/connection_type.h>
+
 DEAL_II_NAMESPACE_OPEN
 namespace internal
 {
   namespace t8code
   {
+    /**
+     * The t8code ghost type of a ConnectionType.
+     */
+    inline t8_ghost_type_t
+    to_t8_ghost_type(const ::dealii::parallel::distributed::ConnectionType type)
+    {
+      return type == ::dealii::parallel::distributed::ConnectionType::faces ?
+               T8_GHOST_FACES :
+             type == ::dealii::parallel::distributed::ConnectionType::edges ?
+               T8_GHOST_EDGES :
+               T8_GHOST_VERTICES;
+    }
+
+    /**
+     * Set the ghost layer of an uncommitted forest: across @p type, or, if
+     * @p overlap_layers is positive, the overlap of @p overlap_layers layers
+     * of elements of level @p overlap_level (t8_forest_set_ghost_overlap).
+     */
+    inline void
+    set_ghost_layer(t8_forest_t                              forest,
+                    const ::dealii::parallel::distributed::ConnectionType type,
+                    const unsigned int                       overlap_level,
+                    const unsigned int                       overlap_layers)
+    {
+      if (overlap_layers > 0)
+        t8_forest_set_ghost_overlap(forest, overlap_level, overlap_layers);
+      else
+        t8_forest_set_ghost(forest, 1, to_t8_ghost_type(type));
+    }
+
+    /**
+     * Set the ghost layer of an uncommitted forest like that of @p from,
+     * whose settings t8code keeps after the commit. All forests of a
+     * triangulation have the same ghost layer, see
+     * parallel::distributed::Triangulation::set_ghost_layer().
+     */
+    inline void
+    set_ghost_layer_like(t8_forest_t forest, const t8_forest_t from)
+    {
+      if (from->ghost_algorithm == 5)
+        t8_forest_set_ghost_overlap(forest,
+                                    from->ghost_overlap_level,
+                                    from->ghost_overlap_layers);
+      else
+        t8_forest_set_ghost(forest,
+                            1,
+                            from->ghost_type == T8_GHOST_NONE ?
+                              T8_GHOST_VERTICES :
+                              from->ghost_type);
+    }
+
+    /**
+     * Copy the ghost layer settings of @p from to a committed forest that was
+     * built without a ghost layer, so that the forests derived from it
+     * (set_ghost_layer_like()) still use them.
+     */
+    inline void
+    copy_ghost_layer_settings(t8_forest_t forest, const t8_forest_t from)
+    {
+      forest->ghost_type           = from->ghost_type;
+      forest->ghost_algorithm      = from->ghost_algorithm;
+      forest->ghost_overlap_level  = from->ghost_overlap_level;
+      forest->ghost_overlap_layers = from->ghost_overlap_layers;
+    }
+
+    /**
+     * Store ghost layer settings in a committed forest, so that the forests
+     * derived from it (set_ghost_layer_like()) use them.
+     */
+    inline void
+    store_ghost_layer(t8_forest_t                              forest,
+                      const ::dealii::parallel::distributed::ConnectionType type,
+                      const unsigned int                       overlap_level,
+                      const unsigned int                       overlap_layers)
+    {
+      forest->ghost_type = overlap_layers > 0 ? T8_GHOST_VERTICES :
+                                                to_t8_ghost_type(type);
+      forest->ghost_algorithm      = overlap_layers > 0 ? 5 : 4;
+      forest->ghost_overlap_level  = overlap_level;
+      forest->ghost_overlap_layers = overlap_layers;
+    }
+
     template <int dim>
     struct types
     {
@@ -157,7 +241,7 @@ namespace internal
         t8_forest_t new_forest;
         t8_forest_init(&new_forest);
         t8_forest_set_copy(new_forest, input);
-        t8_forest_set_ghost(new_forest, 1, T8_GHOST_VERTICES);
+        set_ghost_layer_like(new_forest, input);
         t8_forest_commit(new_forest);
         return new_forest;
       };
@@ -290,9 +374,9 @@ namespace internal
 
     template <int dim>
     types<dim>::forest *
-    balance_full(typename types<dim>::forest *forest,
-                 const bool                   balance_vertices,
-                 const bool                   with_ghost_layer);
+    balance_full(typename types<dim>::forest            *forest,
+                 const ::dealii::parallel::distributed::ConnectionType balance_type,
+                 const bool                               with_ghost_layer);
 
     template <int dim>
     void

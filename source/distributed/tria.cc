@@ -2467,7 +2467,10 @@ namespace parallel
       t8_forest_set_cmesh(parallel_forest, cmesh, this->mpi_communicator);
       t8_forest_set_scheme(parallel_forest, scheme_collection);
       t8_forest_set_level(parallel_forest, 0);
-      t8_forest_set_ghost(parallel_forest, 1, T8_GHOST_VERTICES);
+      dealii::internal::amr::set_ghost_layer(parallel_forest,
+                                             ghost_type,
+                                             ghost_overlap_level,
+                                             ghost_overlap_layers);
       t8_forest_commit(parallel_forest);
       t8_forest_set_user_data(parallel_forest, this);
       parallel_ghost = dealii::internal::amr::ghost_new<dim>(parallel_forest);
@@ -3429,8 +3432,7 @@ namespace parallel
             // one, so the balance only does without repartitioning.
             parallel_forest = dealii::internal::amr::balance_full<dim>(
               parallel_forest,
-              this->smooth_grid & dealii::Triangulation<dim, spacedim>::
-                                    limit_level_difference_at_vertices,
+              effective_balance_type(),
               (settings & no_automatic_repartitioning) != 0);
             const double time_balanced = MPI_Wtime();
 
@@ -3668,6 +3670,111 @@ namespace parallel
 
             // signal that refinement is finished
             this->signals.post_distributed_refinement();
+          }
+
+
+
+          template <int dim, int spacedim>
+          DEAL_II_CXX20_REQUIRES(
+            (concepts::is_valid_dim_spacedim<dim, spacedim>))
+          void
+          Triangulation<dim, spacedim>::set_ghost_layer(
+            const ConnectionType type)
+          {
+#  ifdef DEAL_II_WITH_T8CODE
+            ghost_type           = type;
+            ghost_overlap_level  = 0;
+            ghost_overlap_layers = 0;
+            // the forests derived from the current one take over its settings
+            if (parallel_forest != nullptr)
+              dealii::internal::amr::store_ghost_layer(parallel_forest,
+                                                       ghost_type,
+                                                       0,
+                                                       0);
+#  else
+            AssertThrow(type == ConnectionType::vertices,
+                        ExcMessage("Only the t8code backend supports ghost "
+                                   "layers other than across vertices."));
+#  endif
+          }
+
+
+
+          template <int dim, int spacedim>
+          DEAL_II_CXX20_REQUIRES(
+            (concepts::is_valid_dim_spacedim<dim, spacedim>))
+          void
+          Triangulation<dim, spacedim>::set_ghost_overlap(
+            const unsigned int level,
+            const unsigned int layers)
+          {
+#  ifdef DEAL_II_WITH_T8CODE
+            ghost_type           = ConnectionType::vertices;
+            ghost_overlap_level  = level;
+            ghost_overlap_layers = layers;
+            if (parallel_forest != nullptr)
+              dealii::internal::amr::store_ghost_layer(parallel_forest,
+                                                       ghost_type,
+                                                       level,
+                                                       layers);
+#  else
+            (void)level;
+            AssertThrow(layers == 0,
+                        ExcMessage("Only the t8code backend supports an "
+                                   "overlap as ghost layer."));
+#  endif
+          }
+
+
+
+          template <int dim, int spacedim>
+          DEAL_II_CXX20_REQUIRES(
+            (concepts::is_valid_dim_spacedim<dim, spacedim>))
+          void
+          Triangulation<dim, spacedim>::set_balance_type(
+            const ConnectionType type)
+          {
+#  ifdef DEAL_II_WITH_T8CODE
+            AssertThrow(dim < 3 || type != ConnectionType::faces,
+                        ExcMessage("deal.II's hanging node constraints need "
+                                   "at most one level of difference across "
+                                   "edges in 3d, so the balance type must be "
+                                   "edges or vertices."));
+            balance_type = type;
+            // checks the combination with the mesh smoothing
+            (void)effective_balance_type();
+#  else
+            AssertThrow(type == ConnectionType::vertices,
+                        ExcMessage("Only the t8code backend supports balance "
+                                   "types other than across vertices."));
+#  endif
+          }
+
+
+
+          template <int dim, int spacedim>
+          DEAL_II_CXX20_REQUIRES(
+            (concepts::is_valid_dim_spacedim<dim, spacedim>))
+          ConnectionType Triangulation<dim, spacedim>::effective_balance_type()
+            const
+          {
+            const bool vertices_required =
+              this->smooth_grid &
+              dealii::Triangulation<dim,
+                                    spacedim>::limit_level_difference_at_vertices;
+            if (!balance_type.has_value())
+              return vertices_required ? ConnectionType::vertices :
+                                         ConnectionType::edges;
+            // In 2d, t8code's edges are vertices
+            AssertThrow(!vertices_required ||
+                          *balance_type == ConnectionType::vertices ||
+                          (dim == 2 && *balance_type == ConnectionType::edges),
+                        ExcMessage("The mesh smoothing requires at most one "
+                                   "level of difference across vertices "
+                                   "(limit_level_difference_at_vertices, also "
+                                   "set for multigrid), which the balance "
+                                   "type does not provide."));
+            return *balance_type;
           }
 
 

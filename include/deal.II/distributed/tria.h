@@ -22,6 +22,7 @@
 #include <deal.II/base/template_constraints.h>
 
 #include <deal.II/distributed/amr.h>
+#include <deal.II/distributed/connection_type.h>
 #include <deal.II/distributed/tria_base.h>
 
 #include <deal.II/grid/tria.h>
@@ -30,6 +31,7 @@
 
 #include <functional>
 #include <list>
+#include <optional>
 #include <set>
 #include <type_traits>
 #include <utility>
@@ -607,6 +609,67 @@ namespace parallel
       repartition();
 
       /**
+       * @name Neighbors for the ghost layer and the balance (t8code backend)
+       * @{
+       */
+
+      /**
+       * Set which cells of other processes are ghost cells: those sharing a
+       * face, an edge (or a face), or a vertex with a locally owned cell. The
+       * default is ConnectionType::vertices, which deal.II's algorithms (hanging
+       * node constraints, DoF distribution) expect; fewer ghost cells are
+       * only suitable for code that knows what it needs.
+       *
+       * The setting replaces one made with set_ghost_overlap(). It takes
+       * effect when the parallel forest changes next, i.e., at the next call
+       * of execute_coarsening_and_refinement() or repartition(); set it before
+       * creating the triangulation, or call repartition() afterwards.
+       *
+       * @note Only implemented for the t8code backend.
+       */
+      void
+      set_ghost_layer(const ConnectionType type);
+
+      /**
+       * Make the ghost layer an overlap of a given width, for overlapping
+       * domain decomposition: the cells of other processes that intersect
+       * the cells of refinement level @p level within @p layers steps
+       * (between cells of that level sharing a vertex) from the locally owned
+       * cells. So the overlap is at least @p layers times the size of the
+       * cells of level @p level wide, independent of the refinement, and it
+       * contains the vertex ghost layer if @p layers is at least one.
+       * @p layers = 0 restores the vertex ghost layer.
+       *
+       * As set_ghost_layer(), this takes effect at the next change of the
+       * parallel forest.
+       *
+       * @note Only implemented for the t8code backend, which requires a
+       * replicated coarse mesh if the overlap reaches trees that a process
+       * does not store.
+       */
+      void
+      set_ghost_overlap(const unsigned int level, const unsigned int layers);
+
+      /**
+       * Set the neighbors across which execute_coarsening_and_refinement()
+       * enforces at most one level of difference. By default this is
+       * ConnectionType::edges (faces and edges in 3d, which deal.II's hanging
+       * node constraints need; in 2d t8code's edges are vertices), or
+       * ConnectionType::vertices with the mesh smoothing flag
+       * limit_level_difference_at_vertices (always with multigrid).
+       *
+       * ConnectionType::faces is only allowed in 2d, and a setting weaker than
+       * the one the mesh smoothing requires is rejected.
+       *
+       * @note Only implemented for the t8code backend; p4est always balances
+       * across vertices.
+       */
+      void
+      set_balance_type(const ConnectionType type);
+
+      /** @} */
+
+      /**
        * Return the local memory consumption in bytes.
        */
       virtual std::size_t
@@ -798,6 +861,22 @@ namespace parallel
        * the triangulation.
        */
       typename dealii::internal::amr::types<dim>::ghost *parallel_ghost;
+
+      /**
+       * The ghost layer and balance settings, see set_ghost_layer(),
+       * set_ghost_overlap() and set_balance_type().
+       */
+      ConnectionType ghost_type = ConnectionType::vertices;
+      unsigned int ghost_overlap_level  = 0;
+      unsigned int ghost_overlap_layers = 0;
+      std::optional<ConnectionType> balance_type;
+
+      /**
+       * The balance type of the next balance: the one set with
+       * set_balance_type(), or the default for the mesh smoothing.
+       */
+      ConnectionType
+      effective_balance_type() const;
 
       /**
        * Go through all p4est trees and record the relations between locally
