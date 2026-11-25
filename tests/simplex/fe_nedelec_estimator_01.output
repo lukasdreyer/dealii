@@ -1,0 +1,17 @@
+
+DEAL::tetrahedra:
+DEAL::  cells=47 dofs=112 effectivity=4.5
+DEAL::  cells=376 dofs=646 effectivity=4.9 rate_error=0.76 rate_eta=0.65
+DEAL::  cells=3008 dofs=4296 effectivity=5.0 rate_error=0.93 rate_eta=0.90
+DEAL::pyramids and tetrahedra:
+DEAL::  cells=22 dofs=71 effectivity=5.7
+DEAL::  cells=188 dofs=403 effectivity=5.8 rate_error=0.77 rate_eta=0.73
+DEAL::  cells=1528 dofs=2650 effectivity=6.0 rate_error=0.92 rate_eta=0.87
+DEAL::hexahedra and pyramids:
+DEAL::  cells=35 dofs=137 effectivity=6.7
+DEAL::  cells=328 dofs=856 effectivity=6.9 rate_error=1.07 rate_eta=1.02
+DEAL::  cells=2720 dofs=5984 effectivity=7.0 rate_error=1.02 rate_eta=0.99
+DEAL::wedges and tetrahedra:
+DEAL::  cells=15 dofs=64 effectivity=5.1
+DEAL::  cells=120 dofs=338 effectivity=5.6 rate_error=0.84 rate_eta=0.71
+DEAL::  cells=960 dofs=2116 effectivity=5.8 rate_error=0.95 rate_eta=0.88

@@ -34,6 +34,7 @@
 #include <deal.II/grid/cell_id_translator.h>
 
 #include <deal.II/hp/fe_collection.h>
+#include <deal.II/hp/fe_values.h>
 #include <deal.II/hp/mapping_collection.h>
 
 #include <deal.II/lac/affine_constraints.h>
@@ -42,6 +43,7 @@
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/vector.hpp>
 
+#include <array>
 #include <map>
 #include <memory>
 #include <optional>
@@ -694,6 +696,310 @@ namespace EdgeElementTools
             }
         }
     return points;
+  }
+
+
+  /**
+   * Like face_points_on_coarser_neighbor(), but for any neighbor that is not
+   * finer than @p cell (same level or coarser): the reference points on the
+   * neighbor of the points of @p face_quadrature on face @p face_no of
+   * @p cell, in the order used by FEFaceValues on @p cell.
+   */
+  template <int dim, int spacedim>
+  std::vector<Point<dim>>
+  face_points_on_neighbor(
+    const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+    const unsigned int                                          face_no,
+    const Quadrature<dim - 1>                                  &face_quadrature)
+  {
+    if (cell->neighbor_is_coarser(face_no))
+      return face_points_on_coarser_neighbor<dim, spacedim>(cell,
+                                                            face_no,
+                                                            face_quadrature);
+    Assert(cell->face(face_no)->has_children() == false,
+           ExcMessage("The neighbor must not be finer."));
+    const auto neighbor = cell->neighbor(face_no);
+    // the vertices of the face are vertices of both cells
+    std::map<unsigned int, Point<dim>> reference_points;
+    for (const unsigned int v : neighbor->vertex_indices())
+      reference_points[neighbor->vertex_index(v)] =
+        neighbor->reference_cell().template vertex<dim>(v);
+    const Quadrature<dim> cell_points =
+      QProjector<dim>::project_to_face(cell->reference_cell(),
+                                       face_quadrature,
+                                       face_no,
+                                       cell->combined_face_orientation(
+                                         face_no));
+    std::vector<Point<dim>> points(cell_points.size());
+    for (unsigned int q = 0; q < cell_points.size(); ++q)
+      for (const unsigned int v : cell->vertex_indices())
+        {
+          const double phi = cell->reference_cell().d_linear_shape_function(
+            cell_points.point(q), v);
+          if (std::abs(phi) > 1e-12)
+            {
+              const auto it = reference_points.find(cell->vertex_index(v));
+              Assert(it != reference_points.end(), ExcInternalError());
+              points[q] += phi * it->second;
+            }
+        }
+    return points;
+  }
+
+
+
+  /**
+   * Residual error indicators for curl(mu^{-1} curl u) + beta u = f with
+   * the lowest-order edge elements (FE_NedelecLowestOrderBase), for
+   * constants mu^{-1} and beta, with tangential Dirichlet conditions on the
+   * whole boundary (no boundary terms): for every locally owned active cell
+   * K,
+   *
+   *   eta_K^2 = h_K^2 || f - beta u_h - mu^{-1} curl curl u_h ||_K^2
+   *           + h_K^2 || div (f - beta u_h) ||_K^2
+   *           + 1/2 sum_{F interior faces of K}
+   *               h_F ( || [n x mu^{-1} curl u_h] ||_F^2
+   *                     + || [n . beta u_h] ||_F^2 )
+   *
+   * (Beck, Hiptmair, Hoppe, Wohlmuth 2000; Monk 2003). @p indicators gets
+   * eta_K at the active cell index of the locally owned cells (it must have
+   * n_active_cells() entries; the others are not changed). @p solution must
+   * contain the values of the DoFs of the locally owned and ghost cells
+   * (with the constraints applied). @p f must provide vector_value() and
+   * vector_gradient() (for div f).
+   *
+   * Every cell computes the contributions of all its faces from both sides
+   * (so every interior face is computed twice), which only needs the ghost
+   * layer and gives the same values on all processes. Both sides are
+   * evaluated at the same points with face_points_on_neighbor() (from the
+   * fine side on hanging faces), which works on all cell shapes.
+   * @p face_quadratures holds the face quadratures for triangles and
+   * quadrilaterals (in this order); @p quadratures, @p mapping are indexed by
+   * the active FE index.
+   */
+  template <typename VectorType>
+  void
+  estimate_residual(const hp::MappingCollection<3> &mapping,
+                    const DoFHandler<3>            &dof_handler,
+                    const VectorType               &solution,
+                    const Function<3>              &f,
+                    const double                    beta,
+                    const double                    mu_inv,
+                    const hp::QCollection<3>       &quadratures,
+                    const std::array<Quadrature<2>, 2> &face_quadratures,
+                    Vector<float>                  &indicators)
+  {
+    using cell_iterator = typename DoFHandler<3>::active_cell_iterator;
+    const FEValuesExtractors::Vector E(0);
+    AssertDimension(indicators.size(),
+                    dof_handler.get_triangulation().n_active_cells());
+
+    hp::FEValues<3> hp_fe_values(mapping,
+                                 dof_handler.get_fe_collection(),
+                                 quadratures,
+                                 update_values | update_gradients |
+                                   update_hessians | update_quadrature_points |
+                                   update_JxW_values);
+
+    std::vector<Tensor<1, 3>>             values, curls, f_values;
+    std::vector<double>                   divergences;
+    std::vector<Tensor<3, 3>>             hessians;
+    std::vector<Vector<double>>           f_vector_values;
+    std::vector<std::vector<Tensor<1, 3>>> f_gradients;
+
+    // values and curls of u_h on cell at the reference points (or at the
+    // points of fe_face_values if given)
+    const auto evaluate_at = [&](const cell_iterator           &cell,
+                                 const std::vector<Point<3>>   &points,
+                                 std::vector<Tensor<1, 3>>     &u,
+                                 std::vector<Tensor<1, 3>>     &curl_u) {
+      const unsigned int i = cell->active_fe_index();
+      FEValues<3>        fe_values(mapping[i],
+                            dof_handler.get_fe(i),
+                            Quadrature<3>(points),
+                            update_values | update_gradients);
+      fe_values.reinit(cell);
+      u.resize(points.size());
+      curl_u.resize(points.size());
+      fe_values[E].get_function_values(solution, u);
+      fe_values[E].get_function_curls(solution, curl_u);
+    };
+
+    // FEFaceValues for every FE index (with the face quadrature of each face
+    // of its reference cell), created when first needed
+    std::map<unsigned int, std::unique_ptr<FEFaceValues<3>>> face_values;
+    const auto get_face_values = [&](const cell_iterator &cell,
+                                     const unsigned int   face_no)
+      -> FEFaceValues<3> & {
+      const unsigned int i  = cell->active_fe_index();
+      auto              &fv = face_values[i];
+      if (!fv)
+        {
+          hp::QCollection<2> face_quadrature_collection;
+          for (const unsigned int g : cell->face_indices())
+            face_quadrature_collection.push_back(
+              face_quadratures[cell->face(g)->reference_cell() ==
+                                   ReferenceCells::Triangle ?
+                                 0 :
+                                 1]);
+          fv = std::make_unique<FEFaceValues<3>>(
+            mapping[i],
+            dof_handler.get_fe(i),
+            face_quadrature_collection,
+            update_values | update_gradients | update_quadrature_points |
+              update_normal_vectors | update_JxW_values);
+        }
+      fv->reinit(cell, face_no);
+      return *fv;
+    };
+
+    // contribution h_F (||[n x mu^{-1} curl u]||^2 + ||[n . beta u]||^2) of
+    // face face_no of cell, whose neighbor is not finer
+    std::vector<Tensor<1, 3>> u_here, curl_here, u_there, curl_there;
+    std::vector<Point<3>>     points_here;
+    std::vector<unsigned int> matching;
+    const auto face_contribution = [&](const cell_iterator &cell,
+                                       const unsigned int   face_no) {
+      const bool triangle =
+        cell->face(face_no)->reference_cell() == ReferenceCells::Triangle;
+      const Quadrature<2> &face_quadrature =
+        face_quadratures[triangle ? 0 : 1];
+      const unsigned int n_q = face_quadrature.size();
+
+      FEFaceValues<3> &fe_face_values = get_face_values(cell, face_no);
+      u_here.resize(n_q);
+      curl_here.resize(n_q);
+      fe_face_values[E].get_function_values(solution, u_here);
+      fe_face_values[E].get_function_curls(solution, curl_here);
+      points_here = fe_face_values.get_quadrature_points();
+      std::vector<double> JxW(n_q);
+      std::vector<Tensor<1, 3>> normals(n_q);
+      for (unsigned int q = 0; q < n_q; ++q)
+        {
+          JxW[q]     = fe_face_values.JxW(q);
+          normals[q] = fe_face_values.normal_vector(q);
+        }
+
+      const cell_iterator neighbor = cell->neighbor(face_no);
+      if (cell->neighbor_is_coarser(face_no))
+        // hanging face: the neighbor at the corresponding points
+        evaluate_at(neighbor,
+                    face_points_on_coarser_neighbor<3, 3>(cell,
+                                                          face_no,
+                                                          face_quadrature),
+                    u_there,
+                    curl_there);
+      else
+        {
+          // conforming face: FEFaceValues on the neighbor, whose points are
+          // the same up to their order
+          FEFaceValues<3> &neighbor_values =
+            get_face_values(neighbor, cell->neighbor_of_neighbor(face_no));
+          std::vector<Tensor<1, 3>> u_n(n_q), curl_n(n_q);
+          neighbor_values[E].get_function_values(solution, u_n);
+          neighbor_values[E].get_function_curls(solution, curl_n);
+          u_there.resize(n_q);
+          curl_there.resize(n_q);
+          for (unsigned int q = 0; q < n_q; ++q)
+            {
+              unsigned int best = 0;
+              for (unsigned int p = 1; p < n_q; ++p)
+                if (neighbor_values.quadrature_point(p).distance_square(
+                      points_here[q]) <
+                    neighbor_values.quadrature_point(best).distance_square(
+                      points_here[q]))
+                  best = p;
+              Assert(neighbor_values.quadrature_point(best).distance(
+                       points_here[q]) < 1e-10 * cell->diameter(),
+                     ExcInternalError());
+              u_there[q]    = u_n[best];
+              curl_there[q] = curl_n[best];
+            }
+        }
+
+      double jumps = 0;
+      for (unsigned int q = 0; q < n_q; ++q)
+        {
+          const Tensor<1, 3> &n = normals[q];
+          jumps += (mu_inv * mu_inv *
+                      cross_product_3d(n, curl_here[q] - curl_there[q])
+                        .norm_square() +
+                    beta * beta *
+                      Utilities::fixed_power<2>(n * (u_here[q] - u_there[q]))) *
+                   JxW[q];
+        }
+      return cell->face(face_no)->diameter() * jumps;
+    };
+
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          // cell terms
+          hp_fe_values.reinit(cell);
+          const FEValues<3> &fe_values = hp_fe_values.get_present_fe_values();
+          const unsigned int n_q       = fe_values.n_quadrature_points;
+          values.resize(n_q);
+          divergences.resize(n_q);
+          hessians.resize(n_q);
+          f_vector_values.assign(n_q, Vector<double>(3));
+          f_gradients.assign(n_q, std::vector<Tensor<1, 3>>(3));
+          fe_values[E].get_function_values(solution, values);
+          fe_values[E].get_function_divergences(solution, divergences);
+          fe_values[E].get_function_hessians(solution, hessians);
+          f.vector_value_list(fe_values.get_quadrature_points(),
+                              f_vector_values);
+          f.vector_gradient_list(fe_values.get_quadrature_points(),
+                                 f_gradients);
+          double element_residual = 0, divergence_residual = 0;
+          for (unsigned int q = 0; q < n_q; ++q)
+            {
+              // curl curl u = grad div u - Laplace u
+              Tensor<1, 3> curl_curl;
+              for (unsigned int c = 0; c < 3; ++c)
+                for (unsigned int j = 0; j < 3; ++j)
+                  curl_curl[c] += hessians[q][j][c][j] - hessians[q][c][j][j];
+              Tensor<1, 3> r;
+              double       div_f = 0;
+              for (unsigned int c = 0; c < 3; ++c)
+                {
+                  r[c] = f_vector_values[q](c) - beta * values[q][c] -
+                         mu_inv * curl_curl[c];
+                  div_f += f_gradients[q][c][c];
+                }
+              element_residual += r.norm_square() * fe_values.JxW(q);
+              divergence_residual +=
+                Utilities::fixed_power<2>(div_f - beta * divergences[q]) *
+                fe_values.JxW(q);
+            }
+          const double h   = cell->diameter();
+          double       eta = h * h * (element_residual + divergence_residual);
+
+          // face terms (half of each face, from both of its sides)
+          for (const unsigned int f_no : cell->face_indices())
+            {
+              if (cell->at_boundary(f_no))
+                continue;
+              if (cell->face(f_no)->has_children())
+                {
+                  // finer neighbors: the child faces, from the fine side
+                  for (unsigned int sf = 0;
+                       sf < cell->face(f_no)->n_children();
+                       ++sf)
+                    {
+                      const auto fine =
+                        cell->neighbor_child_on_subface(f_no, sf);
+                      for (const unsigned int g : fine->face_indices())
+                        if (!fine->at_boundary(g) &&
+                            fine->neighbor_is_coarser(g) &&
+                            fine->neighbor(g) == cell)
+                          eta += 0.5 * face_contribution(fine, g);
+                    }
+                }
+              else
+                eta += 0.5 * face_contribution(cell, f_no);
+            }
+          indicators(cell->active_cell_index()) = std::sqrt(eta);
+        }
   }
 } // namespace EdgeElementTools
 
