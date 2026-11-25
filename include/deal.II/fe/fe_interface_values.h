@@ -24,6 +24,9 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/hp/q_collection.h>
 
+#include <algorithm>
+#include <numeric>
+
 DEAL_II_NAMESPACE_OPEN
 
 #ifndef DOXYGEN
@@ -1366,6 +1369,26 @@ public:
                     const UpdateFlags               update_flags);
 
   /**
+   * Like the constructor with a hp::QCollection above, but with face
+   * quadrature rules for each element and each of its faces: the ith entry of
+   * @p quadrature_collections holds the rules on the faces of cells with the
+   * ith element, one rule per face (or a single one for all faces), as for
+   * hp::FEFaceValues. This is needed for meshes with wedges and pyramids,
+   * whose faces are triangles and quadrilaterals.
+   *
+   * With this constructor, if no @p q_index is given to reinit(), each side of
+   * a face uses the rules of its own element (instead of the rules of the
+   * dominated element), and the rule for the face: the rules on the two sides
+   * of a face have to produce the same points, for example QGauss on
+   * quadrilaterals and QGaussSimplex on triangles for all elements.
+   */
+  FEInterfaceValues(
+    const hp::MappingCollection<dim, spacedim>  &mapping_collection,
+    const hp::FECollection<dim, spacedim>       &fe_collection,
+    const std::vector<hp::QCollection<dim - 1>> &quadrature_collections,
+    const UpdateFlags                            update_flags);
+
+  /**
    * Re-initialize this object to be used on a new interface given by two faces
    * of two neighboring cells. The `cell` and `cell_neighbor` cells will be
    * referred to through `cell_index` zero and one after this call in all places
@@ -2193,7 +2216,13 @@ private:
    * An hp::FEValues object for the FEFaceValues on the
    * present cell.
    */
-  std::unique_ptr<hp::FEFaceValues<dim, spacedim>> internal_hp_fe_face_values;
+  /**
+   * Whether the hp objects were created with face quadrature rules for each
+   * element and face, see the corresponding constructor.
+   */
+  bool quadrature_for_each_element_and_face = false;
+
+    std::unique_ptr<hp::FEFaceValues<dim, spacedim>> internal_hp_fe_face_values;
 
   /**
    * An hp::FEValues object for the FESubfaceValues on the
@@ -2373,6 +2402,51 @@ FEInterfaceValues<dim, spacedim>::FEInterfaceValues(
 
 template <int dim, int spacedim>
 FEInterfaceValues<dim, spacedim>::FEInterfaceValues(
+  const hp::MappingCollection<dim, spacedim>  &mapping_collection,
+  const hp::FECollection<dim, spacedim>       &fe_collection,
+  const std::vector<hp::QCollection<dim - 1>> &quadrature_collections,
+  const UpdateFlags                            update_flags)
+  : n_quadrature_points(std::accumulate(
+      quadrature_collections.begin(),
+      quadrature_collections.end(),
+      0u,
+      [](const unsigned int n, const hp::QCollection<dim - 1> &q) {
+        return std::max(n, q.max_n_quadrature_points());
+      }))
+  , fe_face_values(nullptr)
+  , fe_face_values_neighbor(nullptr)
+  , internal_hp_fe_face_values(
+      std::make_unique<hp::FEFaceValues<dim, spacedim>>(mapping_collection,
+                                                        fe_collection,
+                                                        quadrature_collections,
+                                                        update_flags))
+  , internal_hp_fe_subface_values(
+      std::make_unique<hp::FESubfaceValues<dim, spacedim>>(
+        mapping_collection,
+        fe_collection,
+        quadrature_collections,
+        update_flags))
+  , internal_hp_fe_face_values_neighbor(
+      std::make_unique<hp::FEFaceValues<dim, spacedim>>(mapping_collection,
+                                                        fe_collection,
+                                                        quadrature_collections,
+                                                        update_flags))
+  , internal_hp_fe_subface_values_neighbor(
+      std::make_unique<hp::FESubfaceValues<dim, spacedim>>(
+        mapping_collection,
+        fe_collection,
+        quadrature_collections,
+        update_flags))
+{
+  AssertDimension(dim, spacedim);
+  AssertDimension(quadrature_collections.size(), fe_collection.size());
+  quadrature_for_each_element_and_face = true;
+}
+
+
+
+template <int dim, int spacedim>
+FEInterfaceValues<dim, spacedim>::FEInterfaceValues(
   const hp::FECollection<dim, spacedim> &fe_collection,
   const hp::QCollection<dim - 1>        &quadrature_collection,
   const UpdateFlags                      update_flags)
@@ -2489,6 +2563,16 @@ FEInterfaceValues<dim, spacedim>::reinit(
           used_mapping_index_neighbor = active_fe_index_neighbor;
         }
 
+      // With face quadrature rules for each element and face, each side uses
+      // the rules of its own element unless a rule was specified explicitly.
+      unsigned int used_q_index_neighbor = numbers::invalid_unsigned_int;
+      if (quadrature_for_each_element_and_face &&
+          used_q_index == numbers::invalid_unsigned_int)
+        {
+          used_q_index          = active_fe_index;
+          used_q_index_neighbor = active_fe_index_neighbor;
+        }
+
       // First check. If there is only one element in a collection, and if none
       // had been specified explicitly, then that's clearly the one to take:
       if (used_q_index == numbers::invalid_unsigned_int)
@@ -2552,6 +2636,8 @@ FEInterfaceValues<dim, spacedim>::reinit(
 
       if (used_mapping_index_neighbor == numbers::invalid_unsigned_int)
         used_mapping_index_neighbor = used_mapping_index;
+      if (used_q_index_neighbor == numbers::invalid_unsigned_int)
+        used_q_index_neighbor = used_q_index;
 
       // Same as if above, but when hp is enabled.
       if (sub_face_no == numbers::invalid_unsigned_int)
@@ -2577,7 +2663,7 @@ FEInterfaceValues<dim, spacedim>::reinit(
         {
           internal_hp_fe_face_values_neighbor->reinit(cell_neighbor,
                                                       face_no_neighbor,
-                                                      used_q_index,
+                                                      used_q_index_neighbor,
                                                       used_mapping_index_neighbor,
                                                       active_fe_index_neighbor);
 
@@ -2590,7 +2676,7 @@ FEInterfaceValues<dim, spacedim>::reinit(
             cell_neighbor,
             face_no_neighbor,
             sub_face_no_neighbor,
-            used_q_index,
+            used_q_index_neighbor,
             used_mapping_index_neighbor,
             active_fe_index_neighbor);
 

@@ -1088,13 +1088,24 @@ MappingFE<dim, spacedim>::get_subface_data(
   const UpdateFlags          update_flags,
   const Quadrature<dim - 1> &quadrature) const
 {
+  return get_subface_data(update_flags, hp::QCollection<dim - 1>(quadrature));
+}
+
+
+
+template <int dim, int spacedim>
+std::unique_ptr<typename Mapping<dim, spacedim>::InternalDataBase>
+MappingFE<dim, spacedim>::get_subface_data(
+  const UpdateFlags               update_flags,
+  const hp::QCollection<dim - 1> &quadrature) const
+{
   std::unique_ptr<typename Mapping<dim, spacedim>::InternalDataBase> data_ptr =
     std::make_unique<InternalData>(*this->fe);
   auto &data = dynamic_cast<InternalData &>(*data_ptr);
   data.initialize_face(this->requires_update_flags(update_flags),
                        QProjector<dim>::project_to_all_subfaces(
                          this->fe->reference_cell(), quadrature),
-                       quadrature.size());
+                       quadrature.max_n_quadrature_points());
 
   return data_ptr;
 }
@@ -1630,6 +1641,27 @@ MappingFE<dim, spacedim>::fill_fe_subface_values(
   internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
     &output_data) const
 {
+  fill_fe_subface_values(cell,
+                         face_no,
+                         subface_no,
+                         hp::QCollection<dim - 1>(quadrature),
+                         internal_data,
+                         output_data);
+}
+
+
+
+template <int dim, int spacedim>
+void
+MappingFE<dim, spacedim>::fill_fe_subface_values(
+  const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+  const unsigned int                                          face_no,
+  const unsigned int                                          subface_no,
+  const hp::QCollection<dim - 1>                             &quadrature,
+  const typename Mapping<dim, spacedim>::InternalDataBase    &internal_data,
+  internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
+    &output_data) const
+{
   // ensure that the following cast is really correct:
   Assert((dynamic_cast<const InternalData *>(&internal_data) != nullptr),
          ExcInternalError());
@@ -1658,9 +1690,9 @@ MappingFE<dim, spacedim>::fill_fe_subface_values(
                                                 subface_no,
                                                 cell->combined_face_orientation(
                                                   face_no),
-                                                quadrature.size(),
+                                                quadrature,
                                                 cell->subface_case(face_no)),
-    quadrature,
+    quadrature[quadrature.size() == 1 ? 0 : face_no],
     data,
     output_data);
 }

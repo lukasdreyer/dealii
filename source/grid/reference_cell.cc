@@ -273,6 +273,35 @@ ReferenceCell::subface_vertex_location(
 template <int dim>
 std::pair<unsigned int, RefinementCase<dim - 1>>
 ReferenceCell::equivalent_refinement_case(
+  const unsigned int                 face_no,
+  const types::geometric_orientation combined_face_orientation,
+  const internal::SubfaceCase<dim>   subface_case,
+  const unsigned int                 subface_no) const
+{
+  AssertDimension(dim, get_dimension());
+  AssertIndexRange(face_no, n_faces());
+  if constexpr (dim == 3)
+    if (*this == ReferenceCells::Wedge || *this == ReferenceCells::Pyramid)
+      {
+        // the result only depends on the shape of the face
+        const ReferenceCell cell_with_same_faces =
+          face_reference_cell(face_no) == ReferenceCells::Quadrilateral ?
+            ReferenceCells::Hexahedron :
+            ReferenceCells::Tetrahedron;
+        return cell_with_same_faces.equivalent_refinement_case<dim>(
+          combined_face_orientation, subface_case, subface_no);
+      }
+  (void)face_no;
+  return equivalent_refinement_case<dim>(combined_face_orientation,
+                                         subface_case,
+                                         subface_no);
+}
+
+
+
+template <int dim>
+std::pair<unsigned int, RefinementCase<dim - 1>>
+ReferenceCell::equivalent_refinement_case(
   const types::geometric_orientation combined_face_orientation,
   const internal::SubfaceCase<dim>   subface_case,
   const unsigned int                 subface_no) const

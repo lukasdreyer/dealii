@@ -378,6 +378,8 @@ protected:
     return data_ptr;
   }
 
+  using FiniteElement<1, spacedim>::get_subface_data;
+
   std::unique_ptr<typename FiniteElement<1, spacedim>::InternalDataBase>
   get_subface_data(
     const UpdateFlags           update_flags,
@@ -422,6 +424,8 @@ protected:
     dealii::internal::FEValuesImplementation::FiniteElementRelatedData<1,
                                                                        spacedim>
       &output_data) const override;
+
+  using FiniteElement<1, spacedim>::fill_fe_subface_values;
 
   virtual void
   fill_fe_subface_values(

@@ -1418,6 +1418,61 @@ FiniteElement<dim, spacedim>::get_subface_data(
 
 
 template <int dim, int spacedim>
+std::unique_ptr<typename FiniteElement<dim, spacedim>::InternalDataBase>
+FiniteElement<dim, spacedim>::get_subface_data(
+  const UpdateFlags               flags,
+  const Mapping<dim, spacedim>   &mapping,
+  const hp::QCollection<dim - 1> &quadrature,
+  dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim,
+                                                                     spacedim>
+    &output_data) const
+{
+  // with a single rule, keep using the (possibly overridden) function for a
+  // single rule
+  if (quadrature.size() == 1)
+    return get_subface_data(flags, mapping, quadrature[0], output_data);
+  return get_data(flags,
+                  mapping,
+                  QProjector<dim>::project_to_all_subfaces(
+                    this->reference_cell(), quadrature),
+                  output_data);
+}
+
+
+
+template <int dim, int spacedim>
+void
+FiniteElement<dim, spacedim>::fill_fe_subface_values(
+  const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+  const unsigned int                                          face_no,
+  const unsigned int                                          sub_no,
+  const hp::QCollection<dim - 1>                             &quadrature,
+  const Mapping<dim, spacedim>                               &mapping,
+  const typename Mapping<dim, spacedim>::InternalDataBase    &mapping_internal,
+  const internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
+                                                                &mapping_data,
+  const typename FiniteElement<dim, spacedim>::InternalDataBase &fe_internal,
+  dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim,
+                                                                     spacedim>
+    &output_data) const
+{
+  // base class version, implement overridden function in derived classes
+  // that support a different quadrature rule on each face
+  AssertDimension(quadrature.size(), 1);
+  fill_fe_subface_values(cell,
+                         face_no,
+                         sub_no,
+                         quadrature[0],
+                         mapping,
+                         mapping_internal,
+                         mapping_data,
+                         fe_internal,
+                         output_data);
+}
+
+
+
+template <int dim, int spacedim>
 const FiniteElement<dim, spacedim> &
 FiniteElement<dim, spacedim>::base_element(const unsigned int index) const
 {

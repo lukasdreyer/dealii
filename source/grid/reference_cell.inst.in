@@ -42,6 +42,13 @@ for (deal_II_dimension : DIMENSIONS)
       const internal::SubfaceCase<deal_II_dimension>,
       const unsigned int) const;
 
+    template std::pair<unsigned int, RefinementCase<deal_II_dimension - 1>>
+    ReferenceCell::equivalent_refinement_case(
+      const unsigned int,
+      const types::geometric_orientation,
+      const internal::SubfaceCase<deal_II_dimension>,
+      const unsigned int) const;
+
     template Point<deal_II_dimension> ReferenceCell::closest_point(
       const Point<deal_II_dimension> &) const;
   }

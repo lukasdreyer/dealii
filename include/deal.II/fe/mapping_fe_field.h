@@ -567,6 +567,8 @@ protected:
   get_face_data(const UpdateFlags               flags,
                 const hp::QCollection<dim - 1> &quadrature) const override;
 
+  using Mapping<dim, spacedim>::get_subface_data;
+
   // documentation can be found in Mapping::get_subface_data()
   virtual std::unique_ptr<typename Mapping<dim, spacedim>::InternalDataBase>
   get_subface_data(const UpdateFlags          flags,
@@ -593,6 +595,8 @@ protected:
     const typename Mapping<dim, spacedim>::InternalDataBase    &internal_data,
     internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
       &output_data) const override;
+
+  using Mapping<dim, spacedim>::fill_fe_subface_values;
 
   // documentation can be found in Mapping::fill_fe_subface_values()
   virtual void

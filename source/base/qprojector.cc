@@ -455,9 +455,23 @@ Quadrature<dim>
 QProjector<dim>::project_to_all_subfaces(const ReferenceCell &reference_cell,
                                          const Quadrature<dim - 1> &quadrature)
 {
+  return project_to_all_subfaces(reference_cell,
+                                 hp::QCollection<dim - 1>(quadrature));
+}
+
+
+
+template <int dim>
+Quadrature<dim>
+QProjector<dim>::project_to_all_subfaces(
+  const ReferenceCell            &reference_cell,
+  const hp::QCollection<dim - 1> &quadrature_collection)
+{
   AssertDimension(reference_cell.get_dimension(), dim);
-  if (dim == 1)
-    AssertDimension(quadrature.size(), 1);
+  Assert(quadrature_collection.size() == 1 ||
+           quadrature_collection.size() == reference_cell.n_faces(),
+         ExcDimensionMismatch(quadrature_collection.size(),
+                              reference_cell.n_faces()));
 
   std::vector<Point<dim>> points;
   std::vector<double>     weights;
@@ -465,6 +479,10 @@ QProjector<dim>::project_to_all_subfaces(const ReferenceCell &reference_cell,
   // project to each face and copy results
   for (unsigned int face_no = 0; face_no < reference_cell.n_faces(); ++face_no)
     {
+      const Quadrature<dim - 1> &quadrature =
+        quadrature_collection[quadrature_collection.size() == 1 ? 0 : face_no];
+      if (dim == 1)
+        AssertDimension(quadrature.size(), 1);
       const auto face_reference_cell =
         reference_cell.face_reference_cell(face_no);
       const auto &refinement_cases =
@@ -763,6 +781,76 @@ QProjector<dim>::DataSetDescriptor::subface(
       else
         index += reference_cell.n_face_orientations(face_no) * n_children *
                  n_quadrature_points;
+    }
+  DEAL_II_ASSERT_UNREACHABLE();
+
+  return index;
+}
+
+
+
+template <int dim>
+typename QProjector<dim>::DataSetDescriptor
+QProjector<dim>::DataSetDescriptor::subface(
+  const ReferenceCell               &reference_cell,
+  const unsigned int                 face_no,
+  const unsigned int                 subface_no,
+  const types::geometric_orientation combined_orientation,
+  const hp::QCollection<dim - 1>    &quadrature,
+  const internal::SubfaceCase<dim>   ref_case)
+{
+  AssertDimension(reference_cell.get_dimension(), dim);
+  AssertIndexRange(face_no, reference_cell.n_faces());
+  AssertIndexRange(combined_orientation,
+                   reference_cell.n_face_orientations(face_no));
+  Assert(quadrature.size() == 1 || quadrature.size() == reference_cell.n_faces(),
+         ExcDimensionMismatch(quadrature.size(), reference_cell.n_faces()));
+
+  const auto [final_subface_no, final_refinement_case] =
+    reference_cell.equivalent_refinement_case(face_no,
+                                              combined_orientation,
+                                              ref_case,
+                                              subface_no);
+  if (dim > 1)
+    AssertIndexRange(final_subface_no,
+                     reference_cell.face_reference_cell(face_no).n_children(
+                       final_refinement_case));
+
+  // the number of points of all subfaces, refinement cases, and orientations
+  // of a face, in the order of project_to_all_subfaces()
+  const auto n_points_of_face = [&](const unsigned int f) {
+    const auto face_reference_cell = reference_cell.face_reference_cell(f);
+    const unsigned int n_q_points =
+      quadrature[quadrature.size() == 1 ? 0 : f].size();
+    unsigned int n = 0;
+    for (const auto &refinement_case :
+         face_reference_cell.template refinement_cases<dim - 1>())
+      n += reference_cell.n_face_orientations(f) *
+           (dim > 1 ? face_reference_cell.n_children(refinement_case) : 1) *
+           n_q_points;
+    return n;
+  };
+
+  unsigned int index = 0;
+  for (unsigned int f = 0; f < face_no; ++f)
+    index += n_points_of_face(f);
+
+  // then where we are in the enumeration of the rules of the current face
+  const auto face_reference_cell = reference_cell.face_reference_cell(face_no);
+  const unsigned int n_q_points =
+    quadrature[quadrature.size() == 1 ? 0 : face_no].size();
+  for (const auto &refinement_case :
+       face_reference_cell.template refinement_cases<dim - 1>())
+    {
+      const auto n_children =
+        dim > 1 ? face_reference_cell.n_children(refinement_case) : 1;
+
+      if (refinement_case == final_refinement_case)
+        return index + (combined_orientation * n_children + final_subface_no) *
+                         n_q_points;
+      else
+        index += reference_cell.n_face_orientations(face_no) * n_children *
+                 n_q_points;
     }
   DEAL_II_ASSERT_UNREACHABLE();
 

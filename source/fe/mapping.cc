@@ -277,6 +277,40 @@ Mapping<dim, spacedim>::get_face_data(
 
   return std::unique_ptr<typename Mapping<dim, spacedim>::InternalDataBase>();
 }
+
+
+
+template <int dim, int spacedim>
+std::unique_ptr<typename Mapping<dim, spacedim>::InternalDataBase>
+Mapping<dim, spacedim>::get_subface_data(
+  const UpdateFlags               update_flags,
+  const hp::QCollection<dim - 1> &quadrature) const
+{
+  // base class version, implement overridden function in derived classes
+  // that support a different quadrature rule on each face
+  AssertDimension(quadrature.size(), 1);
+  return get_subface_data(update_flags, quadrature[0]);
+}
+
+
+
+template <int dim, int spacedim>
+void
+Mapping<dim, spacedim>::fill_fe_subface_values(
+  const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+  const unsigned int                                          face_no,
+  const unsigned int                                          subface_no,
+  const hp::QCollection<dim - 1>                             &quadrature,
+  const typename Mapping<dim, spacedim>::InternalDataBase    &internal_data,
+  internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
+    &output_data) const
+{
+  // base class version, implement overridden function in derived classes
+  // that support a different quadrature rule on each face
+  AssertDimension(quadrature.size(), 1);
+  fill_fe_subface_values(
+    cell, face_no, subface_no, quadrature[0], internal_data, output_data);
+}
 #  endif
 
 /* ---------------------------- InternalDataBase --------------------------- */

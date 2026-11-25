@@ -706,9 +706,13 @@ FESubfaceValues<dim, spacedim>::FESubfaceValues(
   const FiniteElement<dim, spacedim> &fe,
   const hp::QCollection<dim - 1>     &quadrature,
   const UpdateFlags                   update_flags)
-  : FESubfaceValues(mapping, fe, quadrature[0], update_flags)
+  : FEFaceValuesBase<dim, spacedim>(fe.n_dofs_per_cell(),
+                                    update_flags,
+                                    mapping,
+                                    fe,
+                                    quadrature)
 {
-  AssertDimension(quadrature.size(), 1);
+  initialize(update_flags);
 }
 
 
@@ -735,9 +739,14 @@ FESubfaceValues<dim, spacedim>::FESubfaceValues(
   const FiniteElement<dim, spacedim> &fe,
   const hp::QCollection<dim - 1>     &quadrature,
   const UpdateFlags                   update_flags)
-  : FESubfaceValues(fe, quadrature[0], update_flags)
+  : FEFaceValuesBase<dim, spacedim>(
+      fe.n_dofs_per_cell(),
+      update_flags,
+      fe.reference_cell().template get_default_linear_mapping<dim, spacedim>(),
+      fe,
+      quadrature)
 {
-  AssertDimension(quadrature.size(), 1);
+  initialize(update_flags);
 }
 
 
@@ -758,24 +767,37 @@ FESubfaceValues<dim, spacedim>::initialize(const UpdateFlags update_flags)
   // then get objects into which the FE and the Mapping can store
   // intermediate data used across calls to reinit. this can be done
   // in parallel
+  // (one quadrature rule for all faces, or one for each face)
+  std::unique_ptr<typename FiniteElement<dim, spacedim>::InternalDataBase> (
+    FiniteElement<dim, spacedim>::*finite_element_get_subface_data)(
+    const UpdateFlags,
+    const Mapping<dim, spacedim> &,
+    const hp::QCollection<dim - 1> &,
+    dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim,
+                                                                       spacedim>
+      &) const = &FiniteElement<dim, spacedim>::get_subface_data;
+
+  std::unique_ptr<typename Mapping<dim, spacedim>::InternalDataBase> (
+    Mapping<dim, spacedim>::*mapping_get_subface_data)(
+    const UpdateFlags, const hp::QCollection<dim - 1> &) const =
+    &Mapping<dim, spacedim>::get_subface_data;
+
   Threads::Task<
     std::unique_ptr<typename FiniteElement<dim, spacedim>::InternalDataBase>>
-    fe_get_data =
-      Threads::new_task(&FiniteElement<dim, spacedim>::get_subface_data,
-                        *this->fe,
-                        flags,
-                        *this->mapping,
-                        this->quadrature[0],
-                        this->finite_element_output);
+    fe_get_data = Threads::new_task(finite_element_get_subface_data,
+                                    *this->fe,
+                                    flags,
+                                    *this->mapping,
+                                    this->quadrature,
+                                    this->finite_element_output);
   Threads::Task<
     std::unique_ptr<typename Mapping<dim, spacedim>::InternalDataBase>>
     mapping_get_data;
   if (flags & update_mapping)
-    mapping_get_data =
-      Threads::new_task(&Mapping<dim, spacedim>::get_subface_data,
-                        *this->mapping,
-                        flags,
-                        this->quadrature[0]);
+    mapping_get_data = Threads::new_task(mapping_get_subface_data,
+                                         *this->mapping,
+                                         flags,
+                                         this->quadrature);
 
   this->update_flags = flags;
 
@@ -976,7 +998,7 @@ FESubfaceValues<dim, spacedim>::do_reinit(const unsigned int face_no,
       this->get_mapping().fill_fe_subface_values(this->present_cell,
                                                  face_no,
                                                  subface_no,
-                                                 this->quadrature[0],
+                                                 this->quadrature,
                                                  *this->mapping_data,
                                                  this->mapping_output);
     }
@@ -984,12 +1006,15 @@ FESubfaceValues<dim, spacedim>::do_reinit(const unsigned int face_no,
   this->get_fe().fill_fe_subface_values(this->present_cell,
                                         face_no,
                                         subface_no,
-                                        this->quadrature[0],
+                                        this->quadrature,
                                         this->get_mapping(),
                                         *this->mapping_data,
                                         this->mapping_output,
                                         *this->fe_data,
                                         this->finite_element_output);
+
+  const_cast<unsigned int &>(this->n_quadrature_points) =
+    this->quadrature[this->quadrature.size() == 1 ? 0 : face_no].size();
 }
 #endif
 

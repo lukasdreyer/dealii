@@ -409,6 +409,11 @@ public:
   get_subface_data(const UpdateFlags          flags,
                    const Quadrature<dim - 1> &quadrature) const override;
 
+  // documentation can be found in Mapping::get_subface_data()
+  virtual std::unique_ptr<typename Mapping<dim, spacedim>::InternalDataBase>
+  get_subface_data(const UpdateFlags               flags,
+                   const hp::QCollection<dim - 1> &quadrature) const override;
+
   // documentation can be found in Mapping::fill_fe_values()
   virtual CellSimilarity::Similarity
   fill_fe_values(
@@ -438,6 +443,17 @@ public:
     const unsigned int                                          face_no,
     const unsigned int                                          subface_no,
     const Quadrature<dim - 1>                                  &quadrature,
+    const typename Mapping<dim, spacedim>::InternalDataBase    &internal_data,
+    internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
+      &output_data) const override;
+
+  // documentation can be found in Mapping::fill_fe_subface_values()
+  virtual void
+  fill_fe_subface_values(
+    const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+    const unsigned int                                          face_no,
+    const unsigned int                                          subface_no,
+    const hp::QCollection<dim - 1>                             &quadrature,
     const typename Mapping<dim, spacedim>::InternalDataBase    &internal_data,
     internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
       &output_data) const override;

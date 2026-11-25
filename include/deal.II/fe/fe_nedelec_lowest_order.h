@@ -196,6 +196,8 @@ protected:
         /**
    * Not implemented.
    */
+  using FiniteElement<dim, dim>::fill_fe_subface_values;
+
   virtual void
   fill_fe_subface_values(
     const typename Triangulation<dim, dim>::cell_iterator &cell,

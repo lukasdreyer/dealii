@@ -837,6 +837,16 @@ protected:
                    const Quadrature<dim - 1> &quadrature) const = 0;
 
   /**
+   * Like the function above, but with a quadrature rule for each face (or a
+   * single one for all faces), as needed for reference cells with faces of
+   * different kinds (wedges and pyramids). The default implementation only
+   * accepts a single rule and calls the function above.
+   */
+  virtual std::unique_ptr<InternalDataBase>
+  get_subface_data(const UpdateFlags               update_flags,
+                   const hp::QCollection<dim - 1> &quadrature) const;
+
+  /**
    * Compute information about the mapping from the reference cell to the real
    * cell indicated by the first argument to this function. Derived classes
    * will have to implement this function based on the kind of mapping they
@@ -1008,6 +1018,22 @@ protected:
     const typename Mapping<dim, spacedim>::InternalDataBase    &internal_data,
     internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
       &output_data) const = 0;
+
+  /**
+   * Like the function above, but with a quadrature rule for each face (or a
+   * single one for all faces); @p internal_data has to be created by the
+   * variant of get_subface_data() taking a hp::QCollection. The default
+   * implementation only accepts a single rule and calls the function above.
+   */
+  virtual void
+  fill_fe_subface_values(
+    const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+    const unsigned int                                          face_no,
+    const unsigned int                                          subface_no,
+    const hp::QCollection<dim - 1>                             &quadrature,
+    const typename Mapping<dim, spacedim>::InternalDataBase    &internal_data,
+    internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
+      &output_data) const;
 
   /**
    * The equivalent of Mapping::fill_fe_values(), but for the case that the

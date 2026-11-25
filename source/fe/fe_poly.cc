@@ -439,6 +439,38 @@ FE_Poly<dim, spacedim>::fill_fe_subface_values(
                                                                      spacedim>
     &output_data) const
 {
+  fill_fe_subface_values(cell,
+                         face_no,
+                         sub_no,
+                         hp::QCollection<dim - 1>(quadrature),
+                         mapping,
+                         mapping_internal,
+                         mapping_data,
+                         fe_internal,
+                         output_data);
+}
+
+
+
+template <int dim, int spacedim>
+void
+FE_Poly<dim, spacedim>::fill_fe_subface_values(
+  const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+  const unsigned int                                          face_no,
+  const unsigned int                                          sub_no,
+  const hp::QCollection<dim - 1>                             &quadrature,
+  const Mapping<dim, spacedim>                               &mapping,
+  const typename Mapping<dim, spacedim>::InternalDataBase    &mapping_internal,
+  const internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
+                                                                &mapping_data,
+  const typename FiniteElement<dim, spacedim>::InternalDataBase &fe_internal,
+  dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim,
+                                                                     spacedim>
+    &output_data) const
+{
+  const unsigned int n_q_points =
+    quadrature[quadrature.size() == 1 ? 0 : face_no].size();
+
   // convert data object to internal
   // data for this class. fails with
   // an exception if that is not
@@ -457,7 +489,7 @@ FE_Poly<dim, spacedim>::fill_fe_subface_values(
                                                 sub_no,
                                                 cell->combined_face_orientation(
                                                   face_no),
-                                                quadrature.size(),
+                                                quadrature,
                                                 cell->subface_case(face_no));
 
   const UpdateFlags flags(fe_data.update_each);
@@ -465,7 +497,7 @@ FE_Poly<dim, spacedim>::fill_fe_subface_values(
   const bool need_to_correct_higher_derivatives =
     higher_derivatives_need_correcting(mapping,
                                        mapping_data,
-                                       quadrature.size(),
+                                       n_q_points,
                                        flags);
 
   // transform gradients and higher derivatives. we also have to copy
@@ -473,13 +505,13 @@ FE_Poly<dim, spacedim>::fill_fe_subface_values(
   // we need to take into account the offsets
   if (flags & update_values)
     for (unsigned int k = 0; k < this->n_dofs_per_cell(); ++k)
-      for (unsigned int i = 0; i < quadrature.size(); ++i)
+      for (unsigned int i = 0; i < n_q_points; ++i)
         output_data.shape_values(k, i) = fe_data.shape_values[k][i + offset];
 
   if (flags & update_gradients)
     for (unsigned int k = 0; k < this->n_dofs_per_cell(); ++k)
       mapping.transform(
-        make_array_view(fe_data.shape_gradients, k, offset, quadrature.size()),
+        make_array_view(fe_data.shape_gradients, k, offset, n_q_points),
         mapping_covariant,
         mapping_internal,
         make_array_view(output_data.shape_gradients, k));
@@ -488,29 +520,26 @@ FE_Poly<dim, spacedim>::fill_fe_subface_values(
     {
       for (unsigned int k = 0; k < this->n_dofs_per_cell(); ++k)
         mapping.transform(
-          make_array_view(fe_data.shape_hessians, k, offset, quadrature.size()),
+          make_array_view(fe_data.shape_hessians, k, offset, n_q_points),
           mapping_covariant_gradient,
           mapping_internal,
           make_array_view(output_data.shape_hessians, k));
 
       if (need_to_correct_higher_derivatives)
-        correct_hessians(output_data, mapping_data, quadrature.size());
+        correct_hessians(output_data, mapping_data, n_q_points);
     }
 
   if (flags & update_3rd_derivatives)
     {
       for (unsigned int k = 0; k < this->n_dofs_per_cell(); ++k)
-        mapping.transform(make_array_view(fe_data.shape_3rd_derivatives,
-                                          k,
-                                          offset,
-                                          quadrature.size()),
-                          mapping_covariant_hessian,
-                          mapping_internal,
-                          make_array_view(output_data.shape_3rd_derivatives,
-                                          k));
+        mapping.transform(
+          make_array_view(fe_data.shape_3rd_derivatives, k, offset, n_q_points),
+          mapping_covariant_hessian,
+          mapping_internal,
+          make_array_view(output_data.shape_3rd_derivatives, k));
 
       if (need_to_correct_higher_derivatives)
-        correct_third_derivatives(output_data, mapping_data, quadrature.size());
+        correct_third_derivatives(output_data, mapping_data, n_q_points);
     }
 }
 

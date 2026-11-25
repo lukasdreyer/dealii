@@ -2964,6 +2964,22 @@ protected:
       &output_data) const;
 
   /**
+   * Like the function above, but with a quadrature rule for each face (or a
+   * single one for all faces), as needed for reference cells with faces of
+   * different kinds (wedges and pyramids). The default implementation
+   * converts the face quadratures into a cell quadrature with
+   * QProjector::project_to_all_subfaces() and calls get_data().
+   */
+  virtual std::unique_ptr<InternalDataBase>
+  get_subface_data(
+    const UpdateFlags               update_flags,
+    const Mapping<dim, spacedim>   &mapping,
+    const hp::QCollection<dim - 1> &quadrature,
+    dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim,
+                                                                       spacedim>
+      &output_data) const;
+
+  /**
    * Compute information about the shape functions on the cell denoted by the
    * first argument. Derived classes will have to implement this function
    * based on the kind of element they represent. It is called by
@@ -3188,6 +3204,27 @@ protected:
     dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim,
                                                                        spacedim>
       &output_data) const = 0;
+
+  /**
+   * Like the function above, but with a quadrature rule for each face (or a
+   * single one for all faces); @p fe_internal has to be created by the
+   * variant of get_subface_data() taking a hp::QCollection. The default
+   * implementation only accepts a single rule and calls the function above.
+   */
+  virtual void
+  fill_fe_subface_values(
+    const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+    const unsigned int                                          face_no,
+    const unsigned int                                          sub_no,
+    const hp::QCollection<dim - 1>                             &quadrature,
+    const Mapping<dim, spacedim>                               &mapping,
+    const typename Mapping<dim, spacedim>::InternalDataBase &mapping_internal,
+    const internal::FEValuesImplementation::MappingRelatedData<dim, spacedim>
+                           &mapping_data,
+    const InternalDataBase &fe_internal,
+    dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim,
+                                                                       spacedim>
+      &output_data) const;
 
   friend class InternalDataBase;
   friend class FEValuesBase<dim, spacedim>;

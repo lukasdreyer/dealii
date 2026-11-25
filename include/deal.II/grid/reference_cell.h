@@ -443,6 +443,21 @@ public:
     const unsigned int                 subface_no) const;
 
   /**
+   * Same as above, for the face @p face_no of the current reference cell.
+   * This variant also supports wedges and pyramids, whose faces are
+   * quadrilaterals and triangles: the result only depends on the shape of the
+   * face, so quadrilateral faces are treated like the faces of a hexahedron
+   * and triangular faces like those of a tetrahedron.
+   */
+  template <int dim>
+  std::pair<unsigned int, RefinementCase<dim - 1>>
+  equivalent_refinement_case(
+    const unsigned int                 face_no,
+    const types::geometric_orientation combined_face_orientation,
+    const internal::SubfaceCase<dim>   subface_case,
+    const unsigned int                 subface_no) const;
+
+  /**
    * Return an ArrayView of the possible refinements (e.g.,
    * `RefinementPossibilities<2>::cut_x`) of the current ReferenceCell. This
    * ArrayView will not include `RefinementPossibilities<dim>::no_refinement`:

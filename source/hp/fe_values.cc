@@ -558,6 +558,33 @@ namespace hp
   {}
 
 
+
+  template <int dim, int spacedim>
+  FESubfaceValues<dim, spacedim>::FESubfaceValues(
+    const hp::MappingCollection<dim, spacedim>  &mapping,
+    const hp::FECollection<dim, spacedim>       &fe_collection,
+    const std::vector<hp::QCollection<dim - 1>> &q_collections,
+    const UpdateFlags                            update_flags)
+    : hp::FEValuesBase<dim, dim - 1, dealii::FESubfaceValues<dim, spacedim>>(
+        mapping,
+        fe_collection,
+        q_collections,
+        update_flags)
+  {}
+
+
+  template <int dim, int spacedim>
+  FESubfaceValues<dim, spacedim>::FESubfaceValues(
+    const hp::FECollection<dim, spacedim>       &fe_collection,
+    const std::vector<hp::QCollection<dim - 1>> &q_collections,
+    const UpdateFlags                            update_flags)
+    : hp::FEValuesBase<dim, dim - 1, dealii::FESubfaceValues<dim, spacedim>>(
+        fe_collection,
+        q_collections,
+        update_flags)
+  {}
+
+
   template <int dim, int spacedim>
   template <bool lda>
   void
