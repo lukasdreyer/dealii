@@ -30,6 +30,10 @@ namespace
    *   grad = (a/4 + ab y/(4C), b/4 + ab x/(4C), -1/4 + ab xy/(4C^2)),
    *   d_xy = ab/(4C), d_xz = ab y/(4C^2), d_yz = ab x/(4C^2),
    *   d_zz = ab xy/(2C^3), d_xx = d_yy = 0,
+   * third derivatives (from N = (C + a x + b y + ab xy/C)/4)
+   *   d_xyz = ab/(4C^2), d_xzz = ab y/(2C^3), d_yzz = ab x/(2C^3),
+   *   d_zzz = 3ab xy/(2C^4), and zero if two of the directions are x or
+   *   two are y,
    * and N_4 = z for the apex.
    */
   struct VertexFunction
@@ -37,6 +41,7 @@ namespace
     double       value;
     Tensor<1, 3> grad;
     Tensor<2, 3> hessian;
+    Tensor<3, 3> third;
   };
 
   VertexFunction
@@ -69,6 +74,27 @@ namespace
     n.hessian[0][2] = n.hessian[2][0] = ab * y / (4. * C * C);
     n.hessian[1][2] = n.hessian[2][1] = ab * x / (4. * C * C);
     n.hessian[2][2]                   = ab * x * y / (2. * C * C * C);
+    // third derivatives, symmetric in all indices
+    const double d_xyz = ab / (4. * C * C);
+    const double d_xzz = ab * y / (2. * C * C * C);
+    const double d_yzz = ab * x / (2. * C * C * C);
+    const double d_zzz = 3. * ab * x * y / (2. * C * C * C * C);
+    for (unsigned int i = 0; i < 3; ++i)
+      for (unsigned int j = 0; j < 3; ++j)
+        for (unsigned int k = 0; k < 3; ++k)
+          {
+            const unsigned int n_x = (i == 0) + (j == 0) + (k == 0);
+            const unsigned int n_y = (i == 1) + (j == 1) + (k == 1);
+            const unsigned int n_z = (i == 2) + (j == 2) + (k == 2);
+            if (n_x == 1 && n_y == 1 && n_z == 1)
+              n.third[i][j][k] = d_xyz;
+            else if (n_x == 1 && n_z == 2)
+              n.third[i][j][k] = d_xzz;
+            else if (n_y == 1 && n_z == 2)
+              n.third[i][j][k] = d_yzz;
+            else if (n_z == 3)
+              n.third[i][j][k] = d_zzz;
+          }
     return n;
   }
 
@@ -90,6 +116,27 @@ namespace
         g[c][d] = np.grad[d] * nq.grad[c] + np.value * nq.hessian[c][d] -
                   nq.grad[d] * np.grad[c] - nq.value * np.hessian[c][d];
     return g;
+  }
+
+  // the Hessian of theta_pq, indexed [component][direction][direction]:
+  // d_e d_d theta_c = d_ed N_p d_c N_q + d_d N_p d_ec N_q + d_e N_p d_dc N_q
+  //                 + N_p d_edc N_q - (p and q exchanged)
+  Tensor<3, 3>
+  hessian_theta(const VertexFunction &np, const VertexFunction &nq)
+  {
+    Tensor<3, 3> h;
+    for (unsigned int c = 0; c < 3; ++c)
+      for (unsigned int d = 0; d < 3; ++d)
+        for (unsigned int e = 0; e < 3; ++e)
+          h[c][d][e] = np.hessian[e][d] * nq.grad[c] +
+                       np.grad[d] * nq.hessian[e][c] +
+                       np.grad[e] * nq.hessian[d][c] +
+                       np.value * nq.third[e][d][c] -
+                       nq.hessian[e][d] * np.grad[c] -
+                       nq.grad[d] * np.hessian[e][c] -
+                       nq.grad[e] * np.hessian[d][c] -
+                       nq.value * np.third[e][d][c];
+    return h;
   }
 
   // the diagonals of the base, from vertex 0 to 3 and from vertex 1 to 2
@@ -172,6 +219,38 @@ FE_NedelecPyramid<dim, spacedim>::get_shape_grads(
         }
     }
   return grads;
+}
+
+
+
+template <int dim, int spacedim>
+std::vector<std::vector<Tensor<3, dim>>>
+FE_NedelecPyramid<dim, spacedim>::get_shape_hessians(
+  const std::vector<Point<dim>> &p_list) const
+{
+  Assert(this->degree == 1, ExcMessage("Only order 0 is implemented."));
+  const ReferenceCell ref_cell = ReferenceCells::Pyramid;
+
+  std::vector<std::vector<Tensor<3, dim>>> hessians(
+    ref_cell.n_lines(), std::vector<Tensor<3, dim>>(p_list.size()));
+  std::array<VertexFunction, 5> n;
+  for (unsigned int i = 0; i < p_list.size(); ++i)
+    {
+      for (unsigned int v = 0; v < 5; ++v)
+        n[v] = vertex_function(v, p_list[i]);
+      for (unsigned int l = 0; l < ref_cell.n_lines(); ++l)
+        {
+          hessians[l][i] =
+            hessian_theta(n[ref_cell.line_to_cell_vertices(l, 0)],
+                          n[ref_cell.line_to_cell_vertices(l, 1)]);
+          if (l < 4)
+            for (unsigned int k = 0; k < 2; ++k)
+              hessians[l][i] +=
+                diagonal_weights[l][k] *
+                hessian_theta(n[diagonals[k][0]], n[diagonals[k][1]]);
+        }
+    }
+  return hessians;
 }
 
 

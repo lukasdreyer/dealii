@@ -244,6 +244,18 @@ FE_NedelecSimplex<dim, spacedim>::get_shape_values(
 
 
 template <int dim, int spacedim>
+std::vector<std::vector<Tensor<3, dim>>>
+FE_NedelecSimplex<dim, spacedim>::get_shape_hessians(
+  const std::vector<Point<dim>> &p_list) const
+{
+  // the Whitney functions are linear
+  return std::vector<std::vector<Tensor<3, dim>>>(
+    this->n_dofs_per_cell(), std::vector<Tensor<3, dim>>(p_list.size()));
+}
+
+
+
+template <int dim, int spacedim>
 std::vector<std::vector<Tensor<2, dim>>>
 FE_NedelecSimplex<dim, spacedim>::get_shape_grads(
   const std::vector<Point<dim>> &p_list)

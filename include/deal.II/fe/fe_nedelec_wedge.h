@@ -66,6 +66,9 @@ protected:
 
   virtual std::vector<std::vector<Tensor<2, dim>>>
   get_shape_grads(const std::vector<Point<dim>> &p_list) const override;
+
+  virtual std::vector<std::vector<Tensor<3, dim>>>
+  get_shape_hessians(const std::vector<Point<dim>> &p_list) const override;
 };
 
 /** @} */

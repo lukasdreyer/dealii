@@ -149,6 +149,44 @@ FE_NedelecWedge<dim, spacedim>::get_shape_grads(
 
 
 template <int dim, int spacedim>
+std::vector<std::vector<Tensor<3, dim>>>
+FE_NedelecWedge<dim, spacedim>::get_shape_hessians(
+  const std::vector<Point<dim>> &p_list) const
+{
+  Assert(this->degree == 1, ExcMessage("Only order 0 is implemented."));
+  const ReferenceCell ref_cell = ReferenceCells::Wedge;
+
+  // horizontal lines: v = mu (lambda_p grad lambda_q - lambda_q grad
+  // lambda_p) with linear mu and lambda, so
+  // d_e d_d v_c = d_e mu (g_p,d g_q,c - g_q,d g_p,c)
+  //             + d_d mu (g_p,e g_q,c - g_q,e g_p,c);
+  // vertical lines: +-lambda_p e_z, linear
+  std::vector<std::vector<Tensor<3, dim>>> hessians(
+    ref_cell.n_lines(), std::vector<Tensor<3, dim>>(p_list.size()));
+  for (unsigned int l = 0; l < ref_cell.n_lines(); ++l)
+    {
+      const unsigned int p = ref_cell.line_to_cell_vertices(l, 0);
+      const unsigned int q = ref_cell.line_to_cell_vertices(l, 1);
+      if (p / 3 != q / 3)
+        continue;
+      const Tensor<1, dim> gp = grad_lambda(p % 3);
+      const Tensor<1, dim> gq = grad_lambda(q % 3);
+      const Tensor<1, dim> gm = grad_mu(p / 3);
+      Tensor<3, dim>       h;
+      for (unsigned int c = 0; c < dim; ++c)
+        for (unsigned int d = 0; d < dim; ++d)
+          for (unsigned int e = 0; e < dim; ++e)
+            h[c][d][e] = gm[e] * (gp[d] * gq[c] - gq[d] * gp[c]) +
+                         gm[d] * (gp[e] * gq[c] - gq[e] * gp[c]);
+      for (unsigned int i = 0; i < p_list.size(); ++i)
+        hessians[l][i] = h;
+    }
+  return hessians;
+}
+
+
+
+template <int dim, int spacedim>
 std::string
 FE_NedelecWedge<dim, spacedim>::get_name() const
 {

@@ -137,6 +137,43 @@ FE_NedelecHypercube<dim, spacedim>::get_shape_grads(
 
 
 template <int dim, int spacedim>
+std::vector<std::vector<Tensor<3, dim>>>
+FE_NedelecHypercube<dim, spacedim>::get_shape_hessians(
+  const std::vector<Point<dim>> &p_list) const
+{
+  Assert(this->degree == 1, ExcMessage("Only order 0 is implemented."));
+  const unsigned int n_lines = this->reference_cell().n_lines();
+
+  // only the component along the axis of the line is nonzero; the weight is
+  // a product of linear factors in the other coordinates, so only the mixed
+  // second derivatives in two different other coordinates are nonzero
+  std::vector<std::vector<Tensor<3, dim>>> hessians(
+    n_lines, std::vector<Tensor<3, dim>>(p_list.size()));
+  for (unsigned int l = 0; l < n_lines; ++l)
+    {
+      unsigned int axis      = 0;
+      double       direction = 0;
+      Point<dim>   start;
+      line_geometry(l, axis, direction, start);
+      for (unsigned int i = 0; i < p_list.size(); ++i)
+        for (unsigned int d = 0; d < dim; ++d)
+          for (unsigned int e = 0; e < dim; ++e)
+            if (d != axis && e != axis && d != e)
+              {
+                double derivative = direction * factor_derivative(start[d]) *
+                                    factor_derivative(start[e]);
+                for (unsigned int j = 0; j < dim; ++j)
+                  if (j != axis && j != d && j != e)
+                    derivative *= factor(start[j], p_list[i][j]);
+                hessians[l][i][axis][d][e] = derivative;
+              }
+    }
+  return hessians;
+}
+
+
+
+template <int dim, int spacedim>
 std::string
 FE_NedelecHypercube<dim, spacedim>::get_name() const
 {

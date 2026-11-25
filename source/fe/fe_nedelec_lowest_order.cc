@@ -70,16 +70,25 @@ FE_NedelecLowestOrderBase<dim, spacedim>::get_data(
 //  for (const auto & p:p_list)
 //    std::cout<<p<<std::endl;
 
-  Assert(!(update_flags & (update_hessians | update_3rd_derivatives)),
-         ExcMessage("FE_NedelecSimplex does not compute second or third "
+  Assert(!(update_flags & update_3rd_derivatives),
+         ExcMessage("The lowest-order Nedelec elements do not compute third "
                     "derivatives."));
   const UpdateFlags flags = requires_update_flags(update_flags);
-  auto shape_values = (flags & update_values) ? get_shape_values(p_list): std::vector<std::vector<Tensor<1,dim>>>();
-  auto shape_gradients = (flags & update_gradients) ? get_shape_grads(p_list): std::vector<std::vector<Tensor<2,dim>>>();
+  auto shape_values = (flags & update_values) ?
+                        get_shape_values(p_list) :
+                        std::vector<std::vector<Tensor<1, dim>>>();
+  auto shape_gradients = (flags & update_gradients) ?
+                           get_shape_grads(p_list) :
+                           std::vector<std::vector<Tensor<2, dim>>>();
+  auto shape_hessians = (flags & update_hessians) ?
+                          get_shape_hessians(p_list) :
+                          std::vector<std::vector<Tensor<3, dim>>>();
 
-    std::unique_ptr<
+  std::unique_ptr<
     typename dealii::FiniteElement<dim, spacedim>::InternalDataBase>
-    data_ptr = std::make_unique<InternalData>(std::move(shape_values), std::move(shape_gradients));
+    data_ptr = std::make_unique<InternalData>(std::move(shape_values),
+                                              std::move(shape_gradients),
+                                              std::move(shape_hessians));
   data_ptr->update_each = requires_update_flags(update_flags);
   return data_ptr;
 }
@@ -139,94 +148,14 @@ FE_NedelecLowestOrderBase<dim, spacedim>::fill_fe_values(
   //  for(const auto &value: edge_sign)
   //    std::cout<<value<<std::endl;
 
-  const UpdateFlags  flags(fe_data.update_each);
-  const unsigned int n_q_points = quadrature.size();
-
-  if (flags & update_values)
-    {
-      // Now have all shape_values stored on the reference cell.
-      // Must now transform to the physical cell.
-      std::vector<Tensor<1, dim>> transformed_shape_values(n_q_points);
-      for (unsigned int dof = 0; dof < this->n_dofs_per_cell(); ++dof)
-        {
-          const unsigned int first =
-            data.shape_function_to_row_table[dof * this->n_components() +
-                                             this->get_nonzero_components(dof)
-                                               .first_selected_component()];
-
-          // std::cout<<"shape values on reference for dof "<<dof<<std::endl;
-          // for (const auto &value: fe_data.shape_values[dof])
-          //   std::cout<<value<<std::endl;
-
-          mapping.transform(make_array_view(fe_data.shape_values[dof]),
-                            mapping_covariant,
-                            mapping_internal,
-                            make_array_view(transformed_shape_values));
-
-          //  std::cout<<"transformed shape values"<<std::endl;
-          //  for (const auto &value: transformed_shape_values)
-          //    std::cout<<value<<std::endl;
-
-          // std::cout<<"edge_sign: "<<edge_sign[dof]<<std::endl;
-
-          for (unsigned int q = 0; q < n_q_points; ++q)
-            {
-              for (unsigned int d = 0; d < dim; ++d)
-                {
-                  data.shape_values(first + d, q) =
-                    transformed_shape_values[q][d] * edge_sign[dof];
-//                  std::cout<<"filled value of dof "<<dof<<", q_point "<<q<<" and d "<<d<<"with "<< data.shape_values[first + d][q] <<std::endl;
-                }
-            }
-        }
-    }
-
-  if (flags & update_gradients)
-    {
-      // Now have all shape_grads stored on the reference cell.
-      // Must now transform to the physical cell.
-      std::vector<Tensor<2, dim>> input(n_q_points);
-      std::vector<Tensor<2, dim>> transformed_shape_grads(n_q_points);
-      for (unsigned int dof = 0; dof < this->n_dofs_per_cell(); ++dof)
-        {
-          for (unsigned int q = 0; q < n_q_points; ++q)
-            {
-              input[q] = fe_data.shape_grads[dof][q];
-            }
-          mapping.transform(make_array_view(input),
-                            mapping_covariant_gradient,
-                            mapping_internal,
-                            make_array_view(transformed_shape_grads));
-
-          const unsigned int first =
-            data.shape_function_to_row_table[dof * this->n_components() +
-                                             this->get_nonzero_components(dof)
-                                               .first_selected_component()];
-
-          for (unsigned int q = 0; q < n_q_points; ++q)
-            {
-              for (unsigned int d1 = 0; d1 < dim; ++d1)
-                {
-                  for (unsigned int d2 = 0; d2 < dim; ++d2)
-                    {
-                      transformed_shape_grads[q][d1] -=
-                        data.shape_values(first + d2, q) *
-                        mapping_data.jacobian_pushed_forward_grads[q][d2][d1];
-                    }
-                }
-            }
-
-          for (unsigned int q = 0; q < n_q_points; ++q)
-            {
-              for (unsigned int d = 0; d < dim; ++d)
-                {
-                  data.shape_gradients[first + d][q] =
-                    transformed_shape_grads[q][d] * edge_sign[dof];
-//                  std::cout<<"filled grad of dof "<<dof<<", q_point "<<q<<" and d "<<d<<"with "<< data.shape_gradients[first + d][q] <<std::endl;
-                }
-            }
-        }
-    }
+  transform_shape_data(edge_sign,
+                       0,
+                       quadrature.size(),
+                       mapping,
+                       mapping_internal,
+                       mapping_data,
+                       fe_data,
+                       data);
 }
 
 
@@ -276,7 +205,6 @@ FE_NedelecLowestOrderBase<dim, spacedim>::fill_fe_face_values(
   //for(const auto &value: edge_sign)
   //  std::cout<<value<<std::endl;
 
-  const UpdateFlags  flags(fe_data.update_each);
   const unsigned int n_q_points =
     quadrature[quadrature.size() == 1 ? 0 : face_no].size();
   const auto offset =
@@ -285,90 +213,114 @@ FE_NedelecLowestOrderBase<dim, spacedim>::fill_fe_face_values(
                                              cell->combined_face_orientation(
                                                face_no),
                                              quadrature);
+  transform_shape_data(edge_sign,
+                       offset,
+                       n_q_points,
+                       mapping,
+                       mapping_internal,
+                       mapping_data,
+                       fe_data,
+                       data);
+}
 
-  if (flags & update_values)
+
+
+template <int dim, int spacedim>
+void
+FE_NedelecLowestOrderBase<dim, spacedim>::transform_shape_data(
+  const std::vector<int>                             &edge_sign,
+  const unsigned int                                  offset,
+  const unsigned int                                  n_q_points,
+  const Mapping<dim, dim>                            &mapping,
+  const typename Mapping<dim, dim>::InternalDataBase &mapping_internal,
+  const internal::FEValuesImplementation::MappingRelatedData<dim, dim>
+                     &mapping_data,
+  const InternalData &fe_data,
+  dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim, dim>
+    &data) const
+{
+  // The function of a line on the mesh cell is s DF^{-T} phi^ o F^{-1}, s the
+  // sign of the line. Values, gradients and Hessians of DF^{-T} phi^ o F^{-1}
+  // are computed as in FE_PolyTensor (covariant transformation and the
+  // derivatives of the Jacobian), and then multiplied by s. (The corrections
+  // with the derivatives of the Jacobian must use the unsigned values and
+  // gradients.)
+  const UpdateFlags flags(fe_data.update_each);
+
+  std::vector<Tensor<1, dim>> values(n_q_points);
+  std::vector<Tensor<2, dim>> reference_grads(n_q_points), grads(n_q_points);
+  std::vector<Tensor<3, dim>> reference_hessians(n_q_points),
+    hessians(n_q_points);
+  for (unsigned int dof = 0; dof < this->n_dofs_per_cell(); ++dof)
     {
-      // Now have all shape_values stored on the reference cell.
-      // Must now transform to the physical cell.
-      std::vector<Tensor<1, dim>> transformed_shape_values(n_q_points);
-      for (unsigned int dof = 0; dof < this->n_dofs_per_cell(); ++dof)
-        {
-          //std::cout<<"shape values on reference for face"<<face_no<<"and dof "<<dof<<std::endl;
-          //for (unsigned int index=0; index< n_q_points; index++){
-          //  std::cout<<fe_data.shape_values[dof][index+offset]<<std::endl;
-          //}
+      const double       sign = edge_sign[dof];
+      const unsigned int first =
+        data.shape_function_to_row_table[dof * this->n_components() +
+                                         this->get_nonzero_components(dof)
+                                           .first_selected_component()];
 
+      if (flags & update_values)
+        {
           mapping.transform(make_array_view(fe_data.shape_values[dof],
                                             offset,
                                             n_q_points),
                             mapping_covariant,
                             mapping_internal,
-                            make_array_view(transformed_shape_values));
-
-          // std::cout<<"transformed shape values"<<std::endl;
-          // for (const auto &value: transformed_shape_values)
-          //   std::cout<<value<<std::endl;
-
-          const unsigned int first =
-            data.shape_function_to_row_table[dof * this->n_components() +
-                                             this->get_nonzero_components(dof)
-                                               .first_selected_component()];
-
+                            make_array_view(values));
           for (unsigned int q = 0; q < n_q_points; ++q)
-            {
-              for (unsigned int d = 0; d < dim; ++d)
-                {
-                  data.shape_values(first + d, q) =
-                    transformed_shape_values[q][d]*edge_sign[dof];
-//                  std::cout<<"filled value of dof "<<dof<<", q_point "<<q<<" and d "<<d<<"with "<< data.shape_values[first + d][q] <<std::endl;
-                }
-            }
+            for (unsigned int d = 0; d < dim; ++d)
+              data.shape_values(first + d, q) = sign * values[q][d];
         }
-    }
-  if (flags & update_gradients)
-    {
-      // Now have all shape_grads stored on the reference cell.
-      // Must now transform to the physical cell.
-      std::vector<Tensor<2, dim>> input(n_q_points);
-      std::vector<Tensor<2, dim>> transformed_shape_grads(n_q_points);
-      for (unsigned int dof = 0; dof < this->n_dofs_per_cell(); ++dof)
+
+      if (flags & update_gradients)
         {
           for (unsigned int q = 0; q < n_q_points; ++q)
-            {
-              input[q] = fe_data.shape_grads[dof][offset + q];
-            }
-          mapping.transform(input,
+            reference_grads[q] = fe_data.shape_grads[dof][offset + q];
+          mapping.transform(make_array_view(reference_grads),
                             mapping_covariant_gradient,
                             mapping_internal,
-                            make_array_view(transformed_shape_grads));
-
-          const unsigned int first =
-            data.shape_function_to_row_table[dof * this->n_components() +
-                                             this->get_nonzero_components(dof)
-                                               .first_selected_component()];
-
+                            make_array_view(grads));
           for (unsigned int q = 0; q < n_q_points; ++q)
-            {
-              for (unsigned int d1 = 0; d1 < dim; ++d1)
-                {
-                  for (unsigned int d2 = 0; d2 < dim; ++d2)
-                    {
-                      transformed_shape_grads[q][d1] -=
-                        data.shape_values(first + d2, q) *
-                        mapping_data.jacobian_pushed_forward_grads[q][d2][d1];
-                    }
-                }
-            }
-
+            for (unsigned int d1 = 0; d1 < dim; ++d1)
+              for (unsigned int d2 = 0; d2 < dim; ++d2)
+                grads[q][d1] -=
+                  values[q][d2] *
+                  mapping_data.jacobian_pushed_forward_grads[q][d2][d1];
           for (unsigned int q = 0; q < n_q_points; ++q)
-            {
-              for (unsigned int d = 0; d < dim; ++d)
-                {
-                  data.shape_gradients[first + d][q] =
-                    transformed_shape_grads[q][d]*edge_sign[dof];
-//                  std::cout<<"filled gradient of dof "<<dof<<", q_point "<<q<<" and d "<<d<<"with "<< data.shape_gradients[first + d][q] <<std::endl;
-                }
-            }
+            for (unsigned int d = 0; d < dim; ++d)
+              data.shape_gradients[first + d][q] = sign * grads[q][d];
+        }
+
+      if (flags & update_hessians)
+        {
+          for (unsigned int q = 0; q < n_q_points; ++q)
+            reference_hessians[q] = fe_data.shape_hessians[dof][offset + q];
+          mapping.transform(make_array_view(reference_hessians),
+                            mapping_covariant_hessian,
+                            mapping_internal,
+                            make_array_view(hessians));
+          for (unsigned int q = 0; q < n_q_points; ++q)
+            for (unsigned int d = 0; d < dim; ++d)
+              for (unsigned int n = 0; n < dim; ++n)
+                for (unsigned int i = 0; i < dim; ++i)
+                  for (unsigned int j = 0; j < dim; ++j)
+                    hessians[q][d][i][j] -=
+                      values[q][n] *
+                        mapping_data
+                          .jacobian_pushed_forward_2nd_derivatives[q][n][d][i]
+                                                                  [j] +
+                      grads[q][d][n] *
+                        mapping_data.jacobian_pushed_forward_grads[q][n][i]
+                                                                  [j] +
+                      grads[q][n][i] *
+                        mapping_data.jacobian_pushed_forward_grads[q][n][d]
+                                                                  [j] +
+                      grads[q][n][j] *
+                        mapping_data.jacobian_pushed_forward_grads[q][n][i]
+                                                                  [d];
+          for (unsigned int q = 0; q < n_q_points; ++q)
+            for (unsigned int d = 0; d < dim; ++d)
+              data.shape_hessians[first + d][q] = sign * hessians[q][d];
         }
     }
 }
@@ -425,6 +377,12 @@ FE_NedelecLowestOrderBase<dim, spacedim>::requires_update_flags(
   if (flags & update_gradients)
     out |= update_gradients | update_values |
            update_jacobian_pushed_forward_grads |
+           update_covariant_transformation;
+
+  if (flags & update_hessians)
+    out |= update_hessians | update_values | update_gradients |
+           update_jacobian_pushed_forward_grads |
+           update_jacobian_pushed_forward_2nd_derivatives |
            update_covariant_transformation;
 
 

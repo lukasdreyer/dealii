@@ -1,0 +1,7 @@
+
+DEAL::tetrahedra: 40 cells, 32 with lines in non-default orientation; gradients OK, Hessians OK, faces OK
+DEAL::wedges: 16 cells, 14 with lines in non-default orientation; gradients OK, Hessians OK, faces OK
+DEAL::hexahedra: 8 cells, 0 with lines in non-default orientation; gradients OK, Hessians OK, faces OK
+DEAL::pyramids and tetrahedra: 52 cells, 42 with lines in non-default orientation; gradients OK, Hessians OK, faces OK
+DEAL::hexahedra and pyramids: 28 cells, 20 with lines in non-default orientation; gradients OK, Hessians OK, faces OK
+DEAL::wedges and tetrahedra: 32 cells, 27 with lines in non-default orientation; gradients OK, Hessians OK, faces OK

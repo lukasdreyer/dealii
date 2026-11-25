@@ -137,6 +137,13 @@ protected:
   virtual std::vector<std::vector<Tensor<2, dim>>>
   get_shape_grads(const std::vector<Point<dim>> &p_list) const = 0;
 
+  /**
+   * Hessians of the shape functions, indexed [shape function][point] and
+   * [component][direction][direction].
+   */
+  virtual std::vector<std::vector<Tensor<3, dim>>>
+  get_shape_hessians(const std::vector<Point<dim>> &p_list) const = 0;
+
 
   virtual std::unique_ptr<
     typename dealii::FiniteElement<dim, spacedim>::InternalDataBase>
@@ -206,7 +213,13 @@ protected:
   class InternalData : public FiniteElement<dim, dim>::InternalDataBase
   {
   public:
-    InternalData(std::vector<std::vector<Tensor<1,dim>>> &&values, std::vector<std::vector<Tensor<2,dim>>> &&grads):shape_values(std::move(values)), shape_grads(std::move(grads)){};
+    InternalData(std::vector<std::vector<Tensor<1, dim>>> &&values,
+                 std::vector<std::vector<Tensor<2, dim>>> &&grads,
+                 std::vector<std::vector<Tensor<3, dim>>> &&hessians)
+      : shape_values(std::move(values))
+      , shape_grads(std::move(grads))
+      , shape_hessians(std::move(hessians))
+    {}
     /**
      * Storage for shape functions on the reference element. We only pre-compute
      * the values on the reference cell for the edge dofs and transform mapping and edge_sign for each cell individually
@@ -220,6 +233,12 @@ protected:
      *
      */
     std::vector<std::vector<Tensor<2, dim>>> shape_grads;
+
+    /**
+     * Storage for the Hessians of the shape functions on the reference
+     * element.
+     */
+    std::vector<std::vector<Tensor<3, dim>>> shape_hessians;
   };
 
 private:
@@ -240,6 +259,26 @@ private:
    */
   std::vector<int>
   compute_edge_sign(const typename Triangulation<dim, dim>::cell_iterator &cell) const;
+
+  /**
+   * Transform the values, gradients and Hessians on the reference cell at
+   * the points offset, ..., offset + n_q_points - 1 of the quadrature of
+   * get_data() to the mesh cell (covariant transformation and its
+   * derivatives, multiplied by the signs of the lines). Used for cells and
+   * faces.
+   */
+  void
+  transform_shape_data(
+    const std::vector<int>                             &edge_sign,
+    const unsigned int                                  offset,
+    const unsigned int                                  n_q_points,
+    const Mapping<dim, dim>                            &mapping,
+    const typename Mapping<dim, dim>::InternalDataBase &mapping_internal,
+    const internal::FEValuesImplementation::MappingRelatedData<dim, dim>
+                       &mapping_data,
+    const InternalData &fe_data,
+    dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim, dim>
+      &data) const;
 
 };
 
