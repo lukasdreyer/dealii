@@ -7,29 +7,43 @@
  *
  * ------------------------------------------------------------------------
  *
- * Linear advection u_t + beta . grad u = 0 on the unit square with
- * discontinuous Galerkin elements on a hybrid mesh of quadrilaterals (FE_DGQ)
- * and triangles (FE_SimplexDGP), parallel::distributed::Triangulation (t8code
- * backend), explicit Runge-Kutta time stepping, and adaptive refinement and
- * coarsening every few time steps with SolutionTransfer.
+ * Linear advection u_t + beta . grad u = 0 on the unit square (ADV_DIM 2,
+ * advection_hybrid) or the unit cube (ADV_DIM 3, advection_hybrid_3d) with
+ * discontinuous Galerkin elements on hybrid meshes: quadrilaterals (FE_DGQ) and
+ * triangles (FE_SimplexDGP) in 2D; hexahedra, tetrahedra, wedges and pyramids
+ * (FE_DGQ, FE_SimplexDGP, FE_WedgeDGP, FE_PyramidDGP) in 3D;
+ * parallel::distributed::Triangulation (t8code backend), explicit Runge-Kutta
+ * time stepping, and adaptive refinement and coarsening every few time steps
+ * with SolutionTransfer.
  *
  * The velocity is the solid body rotation beta = 2 pi (-(y - 1/2), x - 1/2)
- * (one turn per unit time), the initial value a Gaussian hill, so that the
- * exact solution is the rotated hill (zero inflow: the hill stays away from
- * the boundary).
+ * (in 3D about the axis x = y = 1/2, with beta_z = 0; one turn per unit
+ * time), the initial value a Gaussian hill, so that the exact solution is the
+ * rotated hill (zero inflow: the hill stays away from the boundary).
  *
  * Spatial discretization: upwind fluxes, M u' = A u with the operator matrix A
- * assembled once per mesh (cell terms, interior faces with FEInterfaceValues,
- * also between cells of different shapes and at hanging faces, outflow
- * boundary), and the block diagonal mass matrix inverted cell by cell. Time
+ * assembled once per mesh (cell terms, interior faces also between cells of
+ * different shapes and at hanging faces, outflow boundary), and the block
+ * diagonal mass matrix inverted cell by cell. The interior faces: with
+ * FEInterfaceValues (2D, faces=interface), or by hand (faces=manual, always in
+ * 3D): FEFaceValues with one quadrature per face of the reference cell (the
+ * faces of wedges and pyramids are triangles and quadrilaterals) on both sides
+ * of conforming faces; at hanging faces the quadrature of the fine face, and
+ * the shape functions of the coarse cell at its points through the inverse
+ * mapping (FESubfaceValues is not implemented for wedges and pyramids). Time
  * stepping: SSP-RK3 (Shu-Osher) or the classical RK4, with the time step from
  * the CFL condition dt = cfl h_min / (|beta|_max (2p + 1)) for the cells of
  * the finest level.
  *
- * Usage: mpirun -np N ./advection_hybrid [key=value ...]
- *   mesh=hybrid       hybrid (squares alternating with pairs of triangles),
- *                     quad or tri, n x n squares
- *   n=4               coarse mesh size
+ * Usage: mpirun -np N ./advection_hybrid[_3d] [key=value ...]
+ *   mesh=hybrid       2D: hybrid (squares alternating with pairs of
+ *                     triangles), quad or tri, n x n squares. 3D: hybrid21
+ *                     (all four shapes), hybrid16 (no pyramids) or hex
+ *   n=4               coarse mesh size (2D)
+ *   faces=interface   interface (FEInterfaceValues, 2D) or manual
+ *   estimator=kelly   kelly (2D) or gradient (h_K |grad u_h|_{L2(K)}, default
+ *                     in 3D: the Kelly estimator takes one face quadrature
+ *                     per element)
  *   degree=2          polynomial degree
  *   global=3          global refinements
  *   max_delta=3       maximal number of adaptive levels above global
@@ -62,7 +76,9 @@
 
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/fe_interface_values.h>
+#include <deal.II/fe/fe_pyramid_p.h>
 #include <deal.II/fe/fe_simplex_p.h>
+#include <deal.II/fe/fe_wedge_p.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping_fe.h>
 #include <deal.II/fe/mapping_q.h>
@@ -95,6 +111,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -112,12 +129,17 @@ namespace AdvectionHybrid
 {
   using namespace dealii;
 
-  constexpr int dim = 2;
+#ifndef ADV_DIM
+#  define ADV_DIM 2
+#endif
+  constexpr int dim = ADV_DIM;
 
   struct Parameters
   {
-    std::string  mesh         = "hybrid";
+    std::string  mesh         = dim == 2 ? "hybrid" : "hybrid21";
     unsigned int n            = 4;
+    std::string  faces        = dim == 2 ? "interface" : "manual";
+    std::string  estimator    = dim == 2 ? "kelly" : "gradient";
     unsigned int degree       = 2;
     unsigned int global       = 3;
     unsigned int max_delta    = 3;
@@ -147,6 +169,10 @@ namespace AdvectionHybrid
             mesh = value;
           else if (key == "n")
             n = std::stoi(value);
+          else if (key == "faces")
+            faces = value;
+          else if (key == "estimator")
+            estimator = value;
           else if (key == "degree")
             degree = std::stoi(value);
           else if (key == "global")
@@ -178,8 +204,16 @@ namespace AdvectionHybrid
           else
             AssertThrow(false, ExcMessage("Unknown argument " + key));
         }
-      AssertThrow(mesh == "hybrid" || mesh == "quad" || mesh == "tri",
-                  ExcMessage("mesh must be hybrid, quad or tri"));
+      if (dim == 2)
+        AssertThrow(mesh == "hybrid" || mesh == "quad" || mesh == "tri",
+                    ExcMessage("mesh must be hybrid, quad or tri"));
+      else
+        AssertThrow(mesh == "hybrid21" || mesh == "hybrid16" || mesh == "hex",
+                    ExcMessage("mesh must be hybrid21, hybrid16 or hex"));
+      AssertThrow(faces == "manual" || (faces == "interface" && dim == 2),
+                  ExcMessage("faces must be manual, or interface in 2D"));
+      AssertThrow(estimator == "gradient" || (estimator == "kelly" && dim == 2),
+                  ExcMessage("estimator must be gradient, or kelly in 2D"));
       AssertThrow(scheme == "ssprk3" || scheme == "rk4",
                   ExcMessage("scheme must be ssprk3 or rk4"));
     }
@@ -211,9 +245,12 @@ namespace AdvectionHybrid
     {
       const double a = -2 * numbers::PI * this->get_time();
       const double x = p[0] - 0.5, y = p[1] - 0.5;
-      const Point<dim> q(0.5 + std::cos(a) * x - std::sin(a) * y,
-                         0.5 + std::sin(a) * x + std::cos(a) * y);
-      return std::exp(-(q - Point<dim>(0.75, 0.5)).norm_square() / (sigma * sigma));
+      Point<dim>   q = p, center;
+      q[0] = 0.5 + std::cos(a) * x - std::sin(a) * y;
+      q[1] = 0.5 + std::sin(a) * x + std::cos(a) * y;
+      for (unsigned int d = 0; d < dim; ++d)
+        center[d] = d == 0 ? 0.75 : 0.5;
+      return std::exp(-(q - center).norm_square() / (sigma * sigma));
     }
 
   private:
@@ -222,6 +259,101 @@ namespace AdvectionHybrid
 
 
 
+#if ADV_DIM == 3
+  // The unit cube in octants of side 0.5 (as in heat_hybrid): hybrid21 with 6
+  // tetrahedra at the origin, 2 wedges in each face neighbor, 6 pyramids in
+  // [0.5,1]^3 and hexahedra elsewhere; hybrid16 with a hexahedron instead of
+  // the pyramids; hex with hexahedra only.
+  void
+  make_mesh(Triangulation<dim> &tria, const unsigned int, const std::string &type)
+  {
+    const bool              pyramids = type == "hybrid21";
+    const bool              hex_only = type == "hex";
+    std::vector<Point<dim>> vertices;
+    for (unsigned int z = 0; z <= 2; ++z)
+      for (unsigned int y = 0; y <= 2; ++y)
+        for (unsigned int x = 0; x <= 2; ++x)
+          vertices.emplace_back(0.5 * x, 0.5 * y, 0.5 * z);
+    const unsigned int apex = vertices.size();
+    if (pyramids)
+      vertices.emplace_back(0.75, 0.75, 0.75);
+    const auto volume = [&](unsigned int a, unsigned int b, unsigned int c, unsigned int d) {
+      return cross_product_3d(vertices[b] - vertices[a], vertices[c] - vertices[a]) *
+             (vertices[d] - vertices[a]);
+    };
+    std::vector<CellData<dim>> cells;
+    const auto                 add_cell = [&](const std::vector<unsigned int> &v) {
+      CellData<dim> cell(v.size());
+      for (unsigned int i = 0; i < v.size(); ++i)
+        cell.vertices[i] = v[i];
+      cells.push_back(cell);
+    };
+    static const unsigned int cube_faces[6][4] = {
+      {0, 2, 4, 6}, {1, 3, 5, 7}, {0, 4, 1, 5}, {2, 6, 3, 7}, {0, 1, 2, 3}, {4, 5, 6, 7}};
+    for (unsigned int oz = 0; oz < 2; ++oz)
+      for (unsigned int oy = 0; oy < 2; ++oy)
+        for (unsigned int ox = 0; ox < 2; ++ox)
+          {
+            const auto corner = [&](unsigned int i, unsigned int j, unsigned int k) {
+              return (ox + i) + 3 * ((oy + j) + 3 * (oz + k));
+            };
+            std::array<unsigned int, 8> cube;
+            for (unsigned int v = 0; v < 8; ++v)
+              cube[v] = corner(v & 1, (v >> 1) & 1, v >> 2);
+            const unsigned int n_offsets = ox + oy + oz;
+            if (hex_only)
+              add_cell({cube.begin(), cube.end()});
+            else if (n_offsets == 0)
+              {
+                std::array<unsigned int, 3> directions = {{0, 1, 2}};
+                do
+                  {
+                    const unsigned int v1 = 1u << directions[0], v2 = v1 | (1u << directions[1]);
+                    std::vector<unsigned int> t = {cube[0], cube[v1], cube[v2], cube[7]};
+                    if (volume(t[0], t[1], t[2], t[3]) < 0)
+                      std::swap(t[2], t[3]);
+                    add_cell(t);
+                  }
+                while (std::next_permutation(directions.begin(), directions.end()));
+              }
+            else if (n_offsets == 1)
+              {
+                const unsigned int a = ox ? 0 : (oy ? 1 : 2), b = (a + 1) % 3, c = (a + 2) % 3;
+                const auto         local = [&](unsigned int ia, unsigned int ib, unsigned int ic) {
+                  unsigned int idx[3];
+                  idx[a] = ia, idx[b] = ib, idx[c] = ic;
+                  return corner(idx[0], idx[1], idx[2]);
+                };
+                const unsigned int triangles[2][3][2] = {{{0, 0}, {1, 0}, {1, 1}},
+                                                         {{0, 0}, {1, 1}, {0, 1}}};
+                for (const auto &t : triangles)
+                  {
+                    std::vector<unsigned int> w(6);
+                    for (unsigned int i = 0; i < 3; ++i)
+                      w[i] = local(0, t[i][0], t[i][1]), w[i + 3] = local(1, t[i][0], t[i][1]);
+                    if (volume(w[0], w[1], w[2], w[3]) < 0)
+                      std::swap(w[1], w[2]), std::swap(w[4], w[5]);
+                    add_cell(w);
+                  }
+              }
+            else if (n_offsets == 3 && pyramids)
+              for (unsigned int f = 0; f < 6; ++f)
+                {
+                  std::vector<unsigned int> base = {cube[cube_faces[f][0]],
+                                                    cube[cube_faces[f][1]],
+                                                    cube[cube_faces[f][2]],
+                                                    cube[cube_faces[f][3]],
+                                                    apex};
+                  if (volume(base[0], base[1], base[2], apex) < 0)
+                    std::swap(base[1], base[2]);
+                  add_cell(base);
+                }
+            else
+              add_cell({cube.begin(), cube.end()});
+          }
+    tria.create_triangulation(vertices, cells, SubCellData());
+  }
+#else
   // the unit square in n x n squares: quadrilaterals, pairs of triangles, or
   // both in a checkerboard pattern (hybrid); as in heat_hybrid
   void
@@ -264,6 +396,7 @@ namespace AdvectionHybrid
         }
     tria.create_triangulation(vertices, cells, SubCellData());
   }
+#endif
 
 
 
@@ -279,8 +412,15 @@ namespace AdvectionHybrid
     unsigned int
     fe_index(const ReferenceCell &r) const
     {
-      return r == ReferenceCells::Quadrilateral ? 0 : 1;
+      return r == ReferenceCells::Quadrilateral || r == ReferenceCells::Hexahedron ? 0 :
+             r == ReferenceCells::Triangle || r == ReferenceCells::Tetrahedron     ? 1 :
+             r == ReferenceCells::Wedge                                           ? 2 :
+                                                                                     3;
     }
+
+    // the refinement indicator per active cell (Kelly or gradient)
+    void
+    compute_indicator(Vector<float> &indicator) const;
 
     void
     setup_system();
@@ -310,8 +450,10 @@ namespace AdvectionHybrid
     hp::FECollection<dim>                     fe;
     hp::MappingCollection<dim>                mapping;
     hp::QCollection<dim>                      quadrature;
-    hp::QCollection<dim - 1>                  face_quadrature;
-    DoFHandler<dim>                           dof_handler;
+    hp::QCollection<dim - 1>                  face_quadrature; // one per element (2D)
+    // per element, one quadrature per face of its reference cell
+    std::vector<hp::QCollection<dim - 1>> face_quadratures;
+    DoFHandler<dim>                       dof_handler;
 
     IndexSet                        locally_owned_dofs, locally_relevant_dofs;
     LA::MPI::SparseMatrix           system_matrix;
@@ -353,6 +495,60 @@ namespace AdvectionHybrid
     quadrature.push_back(QGaussSimplex<dim>(p + 1));
     face_quadrature.push_back(QGauss<dim - 1>(p + 1));
     face_quadrature.push_back(QGauss<dim - 1>(p + 1));
+#if ADV_DIM == 3
+    fe.push_back(FE_WedgeDGP<dim>(p));
+    fe.push_back(FE_PyramidDGP<dim>(p));
+    mapping.push_back(MappingFE<dim>(FE_WedgeP<dim>(1)));
+    mapping.push_back(MappingFE<dim>(FE_PyramidP<dim>(1)));
+    quadrature.push_back(QGaussWedge<dim>(p + 1));
+    quadrature.push_back(QGaussPyramid<dim>(p + 1));
+    const QGauss<dim - 1>        qq(p + 1);
+    const QGaussSimplex<dim - 1> qt(p + 1);
+    // the faces of the reference cells: hexahedron 6 quadrilaterals,
+    // tetrahedron 4 triangles, wedge 2 triangles and 3 quadrilaterals,
+    // pyramid 1 quadrilateral and 4 triangles
+    face_quadratures = {hp::QCollection<dim - 1>(qq),
+                        hp::QCollection<dim - 1>(qt),
+                        hp::QCollection<dim - 1>(qt, qt, qq, qq, qq),
+                        hp::QCollection<dim - 1>(qq, qt, qt, qt, qt)};
+#else
+    face_quadratures = {hp::QCollection<dim - 1>(QGauss<dim - 1>(p + 1)),
+                        hp::QCollection<dim - 1>(QGauss<dim - 1>(p + 1))};
+#endif
+  }
+
+
+
+  // Kelly: jumps of the normal derivative over the faces. gradient:
+  // h_K |grad u_h|_{L2(K)}, which needs no face quadrature.
+  void
+  AdvectionProblem::compute_indicator(Vector<float> &indicator) const
+  {
+    indicator.reinit(triangulation.n_active_cells());
+    if (parameters.estimator == "kelly")
+      {
+        KellyErrorEstimator<dim>::estimate(mapping,
+                                           dof_handler,
+                                           face_quadrature,
+                                           std::map<types::boundary_id, const Function<dim> *>(),
+                                           ghosted,
+                                           indicator);
+        return;
+      }
+    hp::FEValues<dim>           hp_fe_values(mapping, fe, quadrature, update_gradients | update_JxW_values);
+    std::vector<Tensor<1, dim>> gradients;
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          hp_fe_values.reinit(cell);
+          const FEValues<dim> &fv = hp_fe_values.get_present_fe_values();
+          gradients.resize(fv.n_quadrature_points);
+          fv.get_function_gradients(ghosted, gradients);
+          double s = 0;
+          for (const unsigned int q : fv.quadrature_point_indices())
+            s += gradients[q].norm_square() * fv.JxW(q);
+          indicator(cell->active_cell_index()) = cell->diameter() * std::sqrt(s);
+        }
   }
 
 
@@ -395,36 +591,74 @@ namespace AdvectionHybrid
       const UpdateFlags flags =
         update_values | update_gradients | update_quadrature_points | update_JxW_values;
       hp::FEValues<dim>     hp_fe_values(mapping, fe, quadrature, flags);
-      hp::FEFaceValues<dim> hp_fe_face_values(mapping,
-                                              fe,
-                                              face_quadrature,
-                                              update_values | update_quadrature_points |
-                                                update_normal_vectors | update_JxW_values);
-      FEInterfaceValues<dim> fe_iv(mapping,
-                                   fe,
-                                   face_quadrature,
-                                   update_values | update_quadrature_points |
-                                     update_normal_vectors | update_JxW_values);
+      const UpdateFlags     face_flags =
+        update_values | update_quadrature_points | update_normal_vectors | update_JxW_values;
+      hp::FEFaceValues<dim> hp_fe_face_values(mapping, fe, face_quadratures, face_flags);
+      hp::FEFaceValues<dim> hp_fe_face_values_neighbor(mapping, fe, face_quadratures, face_flags);
+      const bool            use_interface = parameters.faces == "interface";
+      std::unique_ptr<FEInterfaceValues<dim>> fe_iv;
+      if (use_interface)
+        fe_iv = std::make_unique<FEInterfaceValues<dim>>(mapping, fe, face_quadrature, face_flags);
       const AffineConstraints<double> no_constraints;
 
       FullMatrix<double>                   cell_matrix, cell_mass;
-      std::vector<types::global_dof_index> dof_indices;
+      std::vector<types::global_dof_index> dof_indices, neighbor_dof_indices, face_dof_indices;
 
-      const auto assemble_face = [&]() {
-        const unsigned int n = fe_iv.n_current_interface_dofs();
+      const auto assemble_interface_face = [&]() {
+        const unsigned int n = fe_iv->n_current_interface_dofs();
         FullMatrix<double> face_matrix(n, n);
-        const auto        &q_points = fe_iv.get_quadrature_points();
-        const auto        &normals  = fe_iv.get_normal_vectors();
-        for (unsigned int q = 0; q < q_points.size(); ++q)
+        const auto        &q_points = fe_iv->get_quadrature_points();
+        const auto        &normals  = fe_iv->get_normal_vectors();
+        for (unsigned int q = 0; q < fe_iv->n_quadrature_points; ++q)
           {
             const double beta_n = velocity(q_points[q]) * normals[q];
             for (unsigned int i = 0; i < n; ++i)
               for (unsigned int j = 0; j < n; ++j)
-                face_matrix(i, j) -= fe_iv.jump_in_shape_values(i, q) * beta_n *
-                                     fe_iv.shape_value(beta_n > 0, j, q) * fe_iv.JxW(q);
+                face_matrix(i, j) -= fe_iv->jump_in_shape_values(i, q) * beta_n *
+                                     fe_iv->shape_value(beta_n > 0, j, q) * fe_iv->JxW(q);
           }
-        const std::vector<types::global_dof_index> indices = fe_iv.get_interface_dof_indices();
+        const std::vector<types::global_dof_index> indices = fe_iv->get_interface_dof_indices();
         no_constraints.distribute_local_to_global(face_matrix, indices, system_matrix);
+      };
+
+      // the face term by hand: the quadrature of the face of `ffv` (this cell,
+      // outer normal), the shape values phi_n of the neighbor at its points;
+      // the rows and columns of this cell first, then those of the neighbor
+      FullMatrix<double> phi_n, face_matrix;
+      const auto assemble_manual_face = [&](const FEFaceValues<dim> &ffv) {
+        const unsigned int nc = dof_indices.size(), nn = neighbor_dof_indices.size();
+        face_matrix.reinit(nc + nn, nc + nn);
+        for (unsigned int q = 0; q < ffv.n_quadrature_points; ++q)
+          {
+            const double beta_n = velocity(ffv.quadrature_point(q)) * ffv.normal_vector(q);
+            const double w      = beta_n * ffv.JxW(q);
+            for (unsigned int i = 0; i < nc + nn; ++i)
+              {
+                const double jump = i < nc ? ffv.shape_value(i, q) : -phi_n(i - nc, q);
+                if (beta_n > 0)
+                  for (unsigned int j = 0; j < nc; ++j)
+                    face_matrix(i, j) -= jump * w * ffv.shape_value(j, q);
+                else
+                  for (unsigned int j = 0; j < nn; ++j)
+                    face_matrix(i, nc + j) -= jump * w * phi_n(j, q);
+              }
+          }
+        face_dof_indices = dof_indices;
+        face_dof_indices.insert(face_dof_indices.end(), neighbor_dof_indices.begin(), neighbor_dof_indices.end());
+        no_constraints.distribute_local_to_global(face_matrix, face_dof_indices, system_matrix);
+      };
+      // the shape values of a cell at the points of a face of a finer neighbor,
+      // through the inverse mapping (the shape functions of the DG elements are
+      // not transformed)
+      const auto shape_values_at = [&](const auto &c, const FEFaceValues<dim> &ffv) {
+        const unsigned int fi = fe_index(c->reference_cell());
+        phi_n.reinit(fe[fi].n_dofs_per_cell(), ffv.n_quadrature_points);
+        for (unsigned int q = 0; q < ffv.n_quadrature_points; ++q)
+          {
+            const Point<dim> x_unit = mapping[fi].transform_real_to_unit_cell(c, ffv.quadrature_point(q));
+            for (unsigned int i = 0; i < phi_n.m(); ++i)
+              phi_n(i, q) = fe[fi].shape_value(i, x_unit);
+          }
       };
 
       for (const auto &cell : dof_handler.active_cell_iterators())
@@ -477,27 +711,56 @@ namespace AdvectionHybrid
                 const auto neighbor = cell->neighbor(f);
                 if (neighbor->has_children())
                   continue; // assembled from the finer cells
-                if (cell->neighbor_is_coarser(f))
-                  {
-                    const auto [nf, nsf] = cell->neighbor_of_coarser_neighbor(f);
-                    fe_iv.reinit(cell, f, numbers::invalid_unsigned_int, neighbor, nf, nsf);
-                    assemble_face();
-                  }
-                else
+                const bool coarser = cell->neighbor_is_coarser(f);
+                if (!coarser)
                   {
                     const bool mine = neighbor->is_locally_owned() ?
                                         cell->id() < neighbor->id() :
                                         cell->subdomain_id() < neighbor->subdomain_id();
                     if (!mine)
                       continue;
-                    fe_iv.reinit(cell,
-                                 f,
-                                 numbers::invalid_unsigned_int,
-                                 neighbor,
-                                 cell->neighbor_of_neighbor(f),
-                                 numbers::invalid_unsigned_int);
-                    assemble_face();
                   }
+                if (use_interface)
+                  {
+                    if (coarser)
+                      {
+                        const auto [nf, nsf] = cell->neighbor_of_coarser_neighbor(f);
+                        fe_iv->reinit(cell, f, numbers::invalid_unsigned_int, neighbor, nf, nsf);
+                      }
+                    else
+                      fe_iv->reinit(cell,
+                                    f,
+                                    numbers::invalid_unsigned_int,
+                                    neighbor,
+                                    cell->neighbor_of_neighbor(f),
+                                    numbers::invalid_unsigned_int);
+                    assemble_interface_face();
+                    continue;
+                  }
+                hp_fe_face_values.reinit(cell, f);
+                const FEFaceValues<dim> &ffv = hp_fe_face_values.get_present_fe_values();
+                neighbor_dof_indices.resize(neighbor->get_fe().n_dofs_per_cell());
+                neighbor->get_dof_indices(neighbor_dof_indices);
+                if (coarser)
+                  shape_values_at(neighbor, ffv);
+                else
+                  {
+                    // conforming: the face quadrature of the neighbor gives the same points
+                    hp_fe_face_values_neighbor.reinit(neighbor, cell->neighbor_of_neighbor(f));
+                    const FEFaceValues<dim> &nfv = hp_fe_face_values_neighbor.get_present_fe_values();
+                    AssertThrow(nfv.n_quadrature_points == ffv.n_quadrature_points,
+                                ExcInternalError());
+                    phi_n.reinit(neighbor_dof_indices.size(), ffv.n_quadrature_points);
+                    for (unsigned int q = 0; q < ffv.n_quadrature_points; ++q)
+                      {
+                        AssertThrow(nfv.quadrature_point(q).distance(ffv.quadrature_point(q)) <
+                                      1e-10 * cell->diameter(),
+                                    ExcMessage("face quadrature points do not match"));
+                        for (unsigned int i = 0; i < phi_n.m(); ++i)
+                          phi_n(i, q) = nfv.shape_value(i, q);
+                      }
+                  }
+                assemble_manual_face(ffv);
               }
           }
       system_matrix.compress(VectorOperation::add);
@@ -583,15 +846,8 @@ namespace AdvectionHybrid
   {
     this->time("adapt", [&]() {
       update_ghosted();
-      Vector<float> estimate(triangulation.n_active_cells());
-      KellyErrorEstimator<dim>::estimate(mapping,
-                                         dof_handler,
-                                         face_quadrature,
-                                         std::map<types::boundary_id, const Function<dim> *>(),
-                                         ghosted,
-                                         estimate);
-      // the jump estimate scaled by h: cells are refined where the solution
-      // varies, independent of the mesh size so far
+      Vector<float> estimate;
+      compute_indicator(estimate);
       const double max_estimate =
         Utilities::MPI::max(estimate.size() ? *std::max_element(estimate.begin(), estimate.end()) : 0.f,
                             mpi_communicator);
@@ -634,6 +890,10 @@ namespace AdvectionHybrid
     const unsigned int   p = parameters.degree;
     hp::QCollection<dim> error_quadrature(QGauss<dim>(p + 3),
                                           QGaussSimplex<dim>(std::min(p + 3, 5u)));
+#if ADV_DIM == 3
+    error_quadrature.push_back(QGaussWedge<dim>(p + 3));
+    error_quadrature.push_back(QGaussPyramid<dim>(p + 3));
+#endif
     Vector<float>        cell_errors(triangulation.n_active_cells());
     VectorTools::integrate_difference(
       mapping, dof_handler, ghosted, exact, cell_errors, error_quadrature, VectorTools::L2_norm);
@@ -696,8 +956,9 @@ namespace AdvectionHybrid
   void
   AdvectionProblem::run()
   {
-    pcout << "advection_hybrid: " << Utilities::MPI::n_mpi_processes(mpi_communicator)
-          << " processes, mesh " << parameters.mesh << ", n " << parameters.n << ", degree "
+    pcout << "advection_hybrid: " << dim << "D, " << Utilities::MPI::n_mpi_processes(mpi_communicator)
+          << " processes, mesh " << parameters.mesh << ", n " << parameters.n << ", faces "
+          << parameters.faces << ", estimator " << parameters.estimator << ", degree "
           << parameters.degree << ", scheme " << parameters.scheme << ", cfl " << parameters.cfl
           << ", adapt " << parameters.adapt << std::endl;
 

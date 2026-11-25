@@ -60,3 +60,8 @@ deal_ii_initialize_cached_variables()
 set(CLEAN_UP_FILES *.log *.gmv *.gnuplot *.gpl *.eps *.pov *.vtk *.ucd *.d2 *.vtu *.pvtu)
 project(${TARGET})
 deal_ii_invoke_autopilot()
+
+# the 3D version (hexahedra, tetrahedra, wedges, pyramids)
+add_executable(advection_hybrid_3d advection_hybrid.cc)
+deal_ii_setup_target(advection_hybrid_3d)
+target_compile_definitions(advection_hybrid_3d PRIVATE ADV_DIM=3)
