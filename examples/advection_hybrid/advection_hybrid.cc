@@ -44,10 +44,11 @@
  *   estimator=kelly   kelly (2D) or gradient (h_K |grad u_h|_{L2(K)}, default
  *                     in 3D: the Kelly estimator takes one face quadrature
  *                     per element)
- *   partition=cells   the weights of the cells when t8code partitions the
+ *   partition=nnz     the weights of the cells when t8code partitions the
  *                     mesh: cells (equal), dofs (the DoFs of the cell), nnz
  *                     (an estimate of its share of the operator, n^2 (1 +
- *                     number of faces) for n DoFs of the cell)
+ *                     number of faces) for n DoFs of the cell; balances the
+ *                     time steps best on hybrid meshes)
  *   degree=2          polynomial degree
  *   global=3          global refinements
  *   max_delta=3       maximal number of adaptive levels above global
@@ -144,7 +145,7 @@ namespace AdvectionHybrid
     unsigned int n            = 4;
     std::string  faces        = dim == 2 ? "interface" : "manual";
     std::string  estimator    = dim == 2 ? "kelly" : "gradient";
-    std::string  partition    = "cells";
+    std::string  partition    = "nnz";
     unsigned int degree       = 2;
     unsigned int global       = 3;
     unsigned int max_delta    = 3;
