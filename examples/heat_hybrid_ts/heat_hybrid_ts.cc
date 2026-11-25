@@ -299,6 +299,22 @@ namespace HeatHybridTS
     transfer(const std::vector<VectorType> &all_in, std::vector<VectorType> &all_out, const double time);
     double
     l2_error(const VectorType &y, const double time);
+    // y with its constrained entries set by the constraints, ghosted. The
+    // solution the TS returns need not satisfy the constraints in the
+    // algebraic components: ARKIMEX in IMEX mode completes a step with
+    // y_n + h sum_j b_j y'_j, where PETSc sets the algebraic entries of the
+    // first-stage slope to zero; for hanging node DoFs these are not zero.
+    // The residual distributes the constraints itself.
+    VectorType
+    ghosted_consistent(const VectorType &y, const AffineConstraints<double> &constraints) const
+    {
+      VectorType tmp(locally_owned_dofs, mpi_communicator);
+      tmp = y;
+      constraints.distribute(tmp);
+      VectorType u(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+      u = tmp;
+      return u;
+    }
 
     const Parameters   parameters;
     MPI_Comm           mpi_communicator;
@@ -546,8 +562,9 @@ namespace HeatHybridTS
   void
   HeatEquation::mark_cells(const VectorType &y)
   {
-    VectorType u(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-    u = y;
+    // the constrained entries of the TS solution need not satisfy the
+    // constraints (see ghosted_consistent())
+    const VectorType u = ghosted_consistent(y, hanging_node_constraints);
     Vector<float> estimate(triangulation.n_active_cells());
     KellyErrorEstimator<dim>::estimate(mapping,
                                        dof_handler,
@@ -585,8 +602,7 @@ namespace HeatHybridTS
       std::vector<VectorType *>         out_ptr(all_in.size());
       for (unsigned int i = 0; i < all_in.size(); ++i)
         {
-          ghosted[i].reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-          ghosted[i] = all_in[i];
+          ghosted[i] = ghosted_consistent(all_in[i], hanging_node_constraints);
           in_ptr[i]  = &ghosted[i];
         }
       triangulation.prepare_coarsening_and_refinement();
@@ -615,8 +631,8 @@ namespace HeatHybridTS
   double
   HeatEquation::l2_error(const VectorType &y, const double time)
   {
-    VectorType u(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-    u = y;
+    update_current_constraints(time);
+    const VectorType u = ghosted_consistent(y, current_constraints);
     exact.set_time(time);
     const unsigned int   p = parameters.degree;
     hp::QCollection<dim> error_quadrature(QGauss<dim>(p + 3), QGaussSimplex<dim>(std::min(p + 3, 5u)));
