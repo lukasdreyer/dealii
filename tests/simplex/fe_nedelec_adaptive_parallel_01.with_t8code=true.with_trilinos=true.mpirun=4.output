@@ -1,0 +1,101 @@
+
+DEAL:0::tetrahedra:
+DEAL:0::  cells=320 dofs=532 levels=2 iterations=11 error=0.718 effectivity=8.2
+DEAL:0::  cells=327 dofs=557 levels=3 iterations=11 error=0.718 effectivity=7.9
+DEAL:0::  cells=348 dofs=605 levels=3 iterations=12 error=0.692 effectivity=7.3
+DEAL:0::  cells=390 dofs=685 levels=3 iterations=12 error=0.659 effectivity=7.0
+DEAL:0::  cells=460 dofs=854 levels=4 iterations=12 error=0.636 effectivity=6.6
+DEAL:0::pyramids and tetrahedra:
+DEAL:0::  cells=456 dofs=744 levels=2 iterations=12 error=0.912 effectivity=10.0
+DEAL:0::  cells=474 dofs=807 levels=3 iterations=12 error=0.880 effectivity=8.6
+DEAL:0::  cells=492 dofs=850 levels=3 iterations=13 error=0.830 effectivity=7.9
+DEAL:0::  cells=510 dofs=898 levels=3 iterations=13 error=0.783 effectivity=7.6
+DEAL:0::  cells=548 dofs=1005 levels=4 iterations=13 error=0.726 effectivity=7.2
+DEAL:0::hexahedra and pyramids:
+DEAL:0::  cells=272 dofs=580 levels=2 iterations=9 error=1.21 effectivity=8.7
+DEAL:0::  cells=279 dofs=631 levels=3 iterations=9 error=1.10 effectivity=6.9
+DEAL:0::  cells=286 dofs=670 levels=3 iterations=9 error=0.928 effectivity=7.4
+DEAL:0::  cells=328 dofs=889 levels=4 iterations=10 error=0.727 effectivity=7.0
+DEAL:0::  cells=335 dofs=931 levels=4 iterations=10 error=0.690 effectivity=6.8
+DEAL:0::wedges and tetrahedra:
+DEAL:0::  cells=256 dofs=492 levels=2 iterations=12 error=1.23 effectivity=8.3
+DEAL:0::  cells=263 dofs=530 levels=3 iterations=12 error=1.14 effectivity=7.4
+DEAL:0::  cells=270 dofs=554 levels=3 iterations=11 error=1.07 effectivity=7.3
+DEAL:0::  cells=277 dofs=580 levels=3 iterations=11 error=0.924 effectivity=7.7
+DEAL:0::  cells=326 dofs=750 levels=4 iterations=12 error=0.789 effectivity=7.3
+
+DEAL:1::tetrahedra:
+DEAL:1::  cells=320 dofs=532 levels=2 iterations=11 error=0.718 effectivity=8.2
+DEAL:1::  cells=327 dofs=557 levels=3 iterations=11 error=0.718 effectivity=7.9
+DEAL:1::  cells=348 dofs=605 levels=3 iterations=12 error=0.692 effectivity=7.3
+DEAL:1::  cells=390 dofs=685 levels=3 iterations=12 error=0.659 effectivity=7.0
+DEAL:1::  cells=460 dofs=854 levels=4 iterations=12 error=0.636 effectivity=6.6
+DEAL:1::pyramids and tetrahedra:
+DEAL:1::  cells=456 dofs=744 levels=2 iterations=12 error=0.912 effectivity=10.0
+DEAL:1::  cells=474 dofs=807 levels=3 iterations=12 error=0.880 effectivity=8.6
+DEAL:1::  cells=492 dofs=850 levels=3 iterations=13 error=0.830 effectivity=7.9
+DEAL:1::  cells=510 dofs=898 levels=3 iterations=13 error=0.783 effectivity=7.6
+DEAL:1::  cells=548 dofs=1005 levels=4 iterations=13 error=0.726 effectivity=7.2
+DEAL:1::hexahedra and pyramids:
+DEAL:1::  cells=272 dofs=580 levels=2 iterations=9 error=1.21 effectivity=8.7
+DEAL:1::  cells=279 dofs=631 levels=3 iterations=9 error=1.10 effectivity=6.9
+DEAL:1::  cells=286 dofs=670 levels=3 iterations=9 error=0.928 effectivity=7.4
+DEAL:1::  cells=328 dofs=889 levels=4 iterations=10 error=0.727 effectivity=7.0
+DEAL:1::  cells=335 dofs=931 levels=4 iterations=10 error=0.690 effectivity=6.8
+DEAL:1::wedges and tetrahedra:
+DEAL:1::  cells=256 dofs=492 levels=2 iterations=12 error=1.23 effectivity=8.3
+DEAL:1::  cells=263 dofs=530 levels=3 iterations=12 error=1.14 effectivity=7.4
+DEAL:1::  cells=270 dofs=554 levels=3 iterations=11 error=1.07 effectivity=7.3
+DEAL:1::  cells=277 dofs=580 levels=3 iterations=11 error=0.924 effectivity=7.7
+DEAL:1::  cells=326 dofs=750 levels=4 iterations=12 error=0.789 effectivity=7.3
+
+DEAL:2::tetrahedra:
+DEAL:2::  cells=320 dofs=532 levels=2 iterations=11 error=0.718 effectivity=8.2
+DEAL:2::  cells=327 dofs=557 levels=3 iterations=11 error=0.718 effectivity=7.9
+DEAL:2::  cells=348 dofs=605 levels=3 iterations=12 error=0.692 effectivity=7.3
+DEAL:2::  cells=390 dofs=685 levels=3 iterations=12 error=0.659 effectivity=7.0
+DEAL:2::  cells=460 dofs=854 levels=4 iterations=12 error=0.636 effectivity=6.6
+DEAL:2::pyramids and tetrahedra:
+DEAL:2::  cells=456 dofs=744 levels=2 iterations=12 error=0.912 effectivity=10.0
+DEAL:2::  cells=474 dofs=807 levels=3 iterations=12 error=0.880 effectivity=8.6
+DEAL:2::  cells=492 dofs=850 levels=3 iterations=13 error=0.830 effectivity=7.9
+DEAL:2::  cells=510 dofs=898 levels=3 iterations=13 error=0.783 effectivity=7.6
+DEAL:2::  cells=548 dofs=1005 levels=4 iterations=13 error=0.726 effectivity=7.2
+DEAL:2::hexahedra and pyramids:
+DEAL:2::  cells=272 dofs=580 levels=2 iterations=9 error=1.21 effectivity=8.7
+DEAL:2::  cells=279 dofs=631 levels=3 iterations=9 error=1.10 effectivity=6.9
+DEAL:2::  cells=286 dofs=670 levels=3 iterations=9 error=0.928 effectivity=7.4
+DEAL:2::  cells=328 dofs=889 levels=4 iterations=10 error=0.727 effectivity=7.0
+DEAL:2::  cells=335 dofs=931 levels=4 iterations=10 error=0.690 effectivity=6.8
+DEAL:2::wedges and tetrahedra:
+DEAL:2::  cells=256 dofs=492 levels=2 iterations=12 error=1.23 effectivity=8.3
+DEAL:2::  cells=263 dofs=530 levels=3 iterations=12 error=1.14 effectivity=7.4
+DEAL:2::  cells=270 dofs=554 levels=3 iterations=11 error=1.07 effectivity=7.3
+DEAL:2::  cells=277 dofs=580 levels=3 iterations=11 error=0.924 effectivity=7.7
+DEAL:2::  cells=326 dofs=750 levels=4 iterations=12 error=0.789 effectivity=7.3
+
+DEAL:3::tetrahedra:
+DEAL:3::  cells=320 dofs=532 levels=2 iterations=11 error=0.718 effectivity=8.2
+DEAL:3::  cells=327 dofs=557 levels=3 iterations=11 error=0.718 effectivity=7.9
+DEAL:3::  cells=348 dofs=605 levels=3 iterations=12 error=0.692 effectivity=7.3
+DEAL:3::  cells=390 dofs=685 levels=3 iterations=12 error=0.659 effectivity=7.0
+DEAL:3::  cells=460 dofs=854 levels=4 iterations=12 error=0.636 effectivity=6.6
+DEAL:3::pyramids and tetrahedra:
+DEAL:3::  cells=456 dofs=744 levels=2 iterations=12 error=0.912 effectivity=10.0
+DEAL:3::  cells=474 dofs=807 levels=3 iterations=12 error=0.880 effectivity=8.6
+DEAL:3::  cells=492 dofs=850 levels=3 iterations=13 error=0.830 effectivity=7.9
+DEAL:3::  cells=510 dofs=898 levels=3 iterations=13 error=0.783 effectivity=7.6
+DEAL:3::  cells=548 dofs=1005 levels=4 iterations=13 error=0.726 effectivity=7.2
+DEAL:3::hexahedra and pyramids:
+DEAL:3::  cells=272 dofs=580 levels=2 iterations=9 error=1.21 effectivity=8.7
+DEAL:3::  cells=279 dofs=631 levels=3 iterations=9 error=1.10 effectivity=6.9
+DEAL:3::  cells=286 dofs=670 levels=3 iterations=9 error=0.928 effectivity=7.4
+DEAL:3::  cells=328 dofs=889 levels=4 iterations=10 error=0.727 effectivity=7.0
+DEAL:3::  cells=335 dofs=931 levels=4 iterations=10 error=0.690 effectivity=6.8
+DEAL:3::wedges and tetrahedra:
+DEAL:3::  cells=256 dofs=492 levels=2 iterations=12 error=1.23 effectivity=8.3
+DEAL:3::  cells=263 dofs=530 levels=3 iterations=12 error=1.14 effectivity=7.4
+DEAL:3::  cells=270 dofs=554 levels=3 iterations=11 error=1.07 effectivity=7.3
+DEAL:3::  cells=277 dofs=580 levels=3 iterations=11 error=0.924 effectivity=7.7
+DEAL:3::  cells=326 dofs=750 levels=4 iterations=12 error=0.789 effectivity=7.3
+
