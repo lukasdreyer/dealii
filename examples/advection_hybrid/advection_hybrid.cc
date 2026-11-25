@@ -25,8 +25,8 @@
  * assembled once per mesh (cell terms, interior faces also between cells of
  * different shapes and at hanging faces, outflow boundary), and the block
  * diagonal mass matrix inverted cell by cell. The interior faces: with
- * FEInterfaceValues (2D, faces=interface), or by hand (faces=manual, always in
- * 3D): FEFaceValues with one quadrature per face of the reference cell (the
+ * FEInterfaceValues (faces=interface; in 3D with one face quadrature per face
+ * of each reference cell), or by hand (faces=manual): FEFaceValues with one quadrature per face of the reference cell (the
  * faces of wedges and pyramids are triangles and quadrilaterals) on both sides
  * of conforming faces; at hanging faces the quadrature of the fine face, and
  * the shape functions of the coarse cell at its points through the inverse
@@ -40,7 +40,11 @@
  *                     triangles), quad or tri, n x n squares. 3D: hybrid21
  *                     (all four shapes), hybrid16 (no pyramids) or hex
  *   n=4               coarse mesh size (2D)
- *   faces=interface   interface (FEInterfaceValues, 2D) or manual
+ *   faces=interface   interface (FEInterfaceValues), manual (by hand, the
+ *                     default in 3D), or compare (both, and the difference of
+ *                     the matrices; the interface path also checks that both
+ *                     sides of each face have the same points, weights, and
+ *                     opposite normals)
  *   estimator=kelly   kelly (2D) or gradient (h_K |grad u_h|_{L2(K)}, default
  *                     in 3D: the Kelly estimator takes one face quadrature
  *                     per element)
@@ -221,8 +225,8 @@ namespace AdvectionHybrid
       else
         AssertThrow(mesh == "hybrid21" || mesh == "hybrid16" || mesh == "hex",
                     ExcMessage("mesh must be hybrid21, hybrid16 or hex"));
-      AssertThrow(faces == "manual" || (faces == "interface" && dim == 2),
-                  ExcMessage("faces must be manual, or interface in 2D"));
+      AssertThrow(faces == "manual" || faces == "interface" || faces == "compare",
+                  ExcMessage("faces must be manual, interface, or compare"));
       AssertThrow(partition == "cells" || partition == "dofs" || partition == "nnz",
                   ExcMessage("partition must be cells, dofs or nnz"));
       AssertThrow(estimator == "gradient" || (estimator == "kelly" && dim == 2),
@@ -470,6 +474,8 @@ namespace AdvectionHybrid
 
     IndexSet                        locally_owned_dofs, locally_relevant_dofs;
     LA::MPI::SparseMatrix           system_matrix;
+    LA::MPI::SparseMatrix           reference_matrix;          // faces=compare
+    double                          max_matrix_difference = 0; // faces=compare
     std::vector<FullMatrix<double>> inverse_mass; // per active cell index
     LA::MPI::Vector                 solution;     // owned
     LA::MPI::Vector                 ghosted;      // locally relevant copy
@@ -627,6 +633,12 @@ namespace AdvectionHybrid
   AdvectionProblem::assemble_operator()
   {
     this->time("assembly", [&]() {
+      // faces=compare: by hand first (the reference), then with FEInterfaceValues
+      const std::vector<bool> passes =
+        parameters.faces == "compare" ? std::vector<bool>{false, true} :
+                                        std::vector<bool>{parameters.faces == "interface"};
+      for (unsigned int pass = 0; pass < passes.size(); ++pass)
+      {
       system_matrix = 0;
       inverse_mass.assign(triangulation.n_active_cells(), FullMatrix<double>());
       const UpdateFlags flags =
@@ -636,16 +648,36 @@ namespace AdvectionHybrid
         update_values | update_quadrature_points | update_normal_vectors | update_JxW_values;
       hp::FEFaceValues<dim> hp_fe_face_values(mapping, fe, face_quadratures, face_flags);
       hp::FEFaceValues<dim> hp_fe_face_values_neighbor(mapping, fe, face_quadratures, face_flags);
-      const bool            use_interface = parameters.faces == "interface";
+      const bool            use_interface = passes[pass];
       std::unique_ptr<FEInterfaceValues<dim>> fe_iv;
       if (use_interface)
-        fe_iv = std::make_unique<FEInterfaceValues<dim>>(mapping, fe, face_quadrature, face_flags);
+        fe_iv = dim == 2 ?
+                  std::make_unique<FEInterfaceValues<dim>>(mapping, fe, face_quadrature, face_flags) :
+                  std::make_unique<FEInterfaceValues<dim>>(mapping, fe, face_quadratures, face_flags);
       const AffineConstraints<double> no_constraints;
 
       FullMatrix<double>                   cell_matrix, cell_mass;
       std::vector<types::global_dof_index> dof_indices, neighbor_dof_indices, face_dof_indices;
 
       const auto assemble_interface_face = [&]() {
+        // both sides: the same points and weights, opposite normals
+        {
+          const FEFaceValuesBase<dim> &side0 = fe_iv->get_fe_face_values(0);
+          const FEFaceValuesBase<dim> &side1 = fe_iv->get_fe_face_values(1);
+          AssertThrow(side0.n_quadrature_points == side1.n_quadrature_points &&
+                        side0.n_quadrature_points == fe_iv->n_quadrature_points,
+                      ExcMessage("different numbers of points on the two sides"));
+          const double h = side0.get_cell()->diameter();
+          for (unsigned int q = 0; q < fe_iv->n_quadrature_points; ++q)
+            AssertThrow(side0.quadrature_point(q).distance(side1.quadrature_point(q)) < 1e-10 * h &&
+                          std::abs(side0.JxW(q) - side1.JxW(q)) < 1e-10 * std::abs(side0.JxW(q)) &&
+                          (side0.normal_vector(q) + side1.normal_vector(q)).norm() < 1e-10,
+                        ExcMessage("the two sides of a face (" + side0.get_cell()->reference_cell().to_string() +
+                                   " face " + std::to_string(side0.get_face_number()) + ", " +
+                                   side1.get_cell()->reference_cell().to_string() + " face " +
+                                   std::to_string(side1.get_face_number()) +
+                                   ") do not match at point " + std::to_string(q)));
+        }
         const unsigned int n = fe_iv->n_current_interface_dofs();
         FullMatrix<double> face_matrix(n, n);
         const auto        &q_points = fe_iv->get_quadrature_points();
@@ -819,6 +851,15 @@ namespace AdvectionHybrid
       system_matrix.compress(VectorOperation::add);
       times["assembly: compress"] +=
         std::chrono::duration<double>(std::chrono::steady_clock::now() - compress_start).count();
+      if (passes.size() == 2 && pass == 0)
+        reference_matrix.copy_from(system_matrix);
+      }
+      if (passes.size() == 2)
+        {
+          reference_matrix.add(-1.0, system_matrix);
+          const double difference = reference_matrix.frobenius_norm() / system_matrix.frobenius_norm();
+          max_matrix_difference   = std::max(max_matrix_difference, difference);
+        }
     });
   }
 
@@ -1170,6 +1211,9 @@ namespace AdvectionHybrid
     for (const std::string &phase : detail_phases)
       pcout << ' ' << phase << ' ' << total_times[phase + " (min)"] << ';';
     pcout << " assembly " << total_times["assembly (min)"] << ';' << std::endl;
+    if (parameters.faces == "compare")
+      pcout << "compare faces: max relative difference of the matrices (manual - interface) "
+            << max_matrix_difference << std::endl;
   }
 } // namespace AdvectionHybrid
 
