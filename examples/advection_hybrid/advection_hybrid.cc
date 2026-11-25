@@ -44,6 +44,10 @@
  *   estimator=kelly   kelly (2D) or gradient (h_K |grad u_h|_{L2(K)}, default
  *                     in 3D: the Kelly estimator takes one face quadrature
  *                     per element)
+ *   partition=cells   the weights of the cells when t8code partitions the
+ *                     mesh: cells (equal), dofs (the DoFs of the cell), nnz
+ *                     (an estimate of its share of the operator, n^2 (1 +
+ *                     number of faces) for n DoFs of the cell)
  *   degree=2          polynomial degree
  *   global=3          global refinements
  *   max_delta=3       maximal number of adaptive levels above global
@@ -140,6 +144,7 @@ namespace AdvectionHybrid
     unsigned int n            = 4;
     std::string  faces        = dim == 2 ? "interface" : "manual";
     std::string  estimator    = dim == 2 ? "kelly" : "gradient";
+    std::string  partition    = "cells";
     unsigned int degree       = 2;
     unsigned int global       = 3;
     unsigned int max_delta    = 3;
@@ -173,6 +178,8 @@ namespace AdvectionHybrid
             faces = value;
           else if (key == "estimator")
             estimator = value;
+          else if (key == "partition")
+            partition = value;
           else if (key == "degree")
             degree = std::stoi(value);
           else if (key == "global")
@@ -212,6 +219,8 @@ namespace AdvectionHybrid
                     ExcMessage("mesh must be hybrid21, hybrid16 or hex"));
       AssertThrow(faces == "manual" || (faces == "interface" && dim == 2),
                   ExcMessage("faces must be manual, or interface in 2D"));
+      AssertThrow(partition == "cells" || partition == "dofs" || partition == "nnz",
+                  ExcMessage("partition must be cells, dofs or nnz"));
       AssertThrow(estimator == "gradient" || (estimator == "kelly" && dim == 2),
                   ExcMessage("estimator must be gradient, or kelly in 2D"));
       AssertThrow(scheme == "ssprk3" || scheme == "rk4",
@@ -515,6 +524,26 @@ namespace AdvectionHybrid
     face_quadratures = {hp::QCollection<dim - 1>(QGauss<dim - 1>(p + 1)),
                         hp::QCollection<dim - 1>(QGauss<dim - 1>(p + 1))};
 #endif
+
+    // weighted partitioning: t8code asks for the weight of every cell of the
+    // new mesh. For a refined cell it passes the parent (one call per child):
+    // the children of a pyramid are 6 pyramids and 4 tetrahedra (t8code), so
+    // the mean over the children; all other shapes keep their shape.
+    if (parameters.partition != "cells")
+      {
+        const auto shape_weight = [this](const ReferenceCell &r) {
+          const double n = fe[fe_index(r)].n_dofs_per_cell();
+          return this->parameters.partition == "dofs" ? n : n * n * (1 + r.n_faces());
+        };
+        triangulation.signals.weight.connect(
+          [this, shape_weight](const typename Triangulation<dim>::cell_iterator &cell,
+                               const CellStatus                                 status) -> unsigned int {
+            double w = shape_weight(cell->reference_cell());
+            if (status == CellStatus::cell_will_be_refined && cell->reference_cell() == ReferenceCells::Pyramid)
+              w = (6 * shape_weight(ReferenceCells::Pyramid) + 4 * shape_weight(ReferenceCells::Tetrahedron)) / 10;
+            return static_cast<unsigned int>(std::round(w));
+          });
+      }
   }
 
 
@@ -958,7 +987,8 @@ namespace AdvectionHybrid
   {
     pcout << "advection_hybrid: " << dim << "D, " << Utilities::MPI::n_mpi_processes(mpi_communicator)
           << " processes, mesh " << parameters.mesh << ", n " << parameters.n << ", faces "
-          << parameters.faces << ", estimator " << parameters.estimator << ", degree "
+          << parameters.faces << ", estimator " << parameters.estimator << ", partition "
+          << parameters.partition << ", degree "
           << parameters.degree << ", scheme " << parameters.scheme << ", cfl " << parameters.cfl
           << ", adapt " << parameters.adapt << std::endl;
 
@@ -999,7 +1029,8 @@ namespace AdvectionHybrid
       {
         csv.open(parameters.csv);
         csv << "step,time,cells,dofs,cells_min,cells_max,l2_error,mass,time_step,adapt,assembly,"
-               "refine_adapt,refine_balance,refine_partition,refine_copy\n";
+               "refine_adapt,refine_balance,refine_partition,refine_copy,dofs_min,dofs_max,"
+               "time_step_min\n";
       }
     const double mass0 = mass();
     update_ghosted();
@@ -1019,6 +1050,11 @@ namespace AdvectionHybrid
             const double m     = mass();
             const auto   cells = Utilities::MPI::min_max_avg(
               1.0 * triangulation.n_locally_owned_active_cells(), mpi_communicator);
+            const auto dofs = Utilities::MPI::min_max_avg(1.0 * dof_handler.n_locally_owned_dofs(),
+                                                          mpi_communicator);
+            // the load balance of the time steps: the fastest process
+            const double time_step_min = Utilities::MPI::min(times["time step"], mpi_communicator);
+            total_times["time step (min)"] += time_step_min;
             std::map<std::string, double> t_max;
             for (const std::string phase : {"time step",
                                             "adapt",
@@ -1038,7 +1074,8 @@ namespace AdvectionHybrid
                   << std::setprecision(10) << error << ',' << m << ',' << std::setprecision(6)
                   << t_max["time step"] << ',' << t_max["adapt"] << ',' << t_max["assembly"]
                   << ',' << t_max["refine: adapt"] << ',' << t_max["refine: balance"] << ','
-                  << t_max["refine: partition"] << ',' << t_max["refine: copy"] << '\n';
+                  << t_max["refine: partition"] << ',' << t_max["refine: copy"] << ','
+                  << dofs.min << ',' << dofs.max << ',' << time_step_min << '\n';
             pcout << "step " << step << ", t " << t << ": " << triangulation.n_global_active_cells()
                   << " cells, " << dof_handler.n_dofs() << " dofs, L2 error " << error
                   << ", mass change " << (m - mass0) / mass0 << std::endl;
@@ -1051,7 +1088,8 @@ namespace AdvectionHybrid
     pcout << "final L2 error " << l2_error(n_steps * dt) << ", mass change "
           << (mass() - mass0) / mass0 << std::endl;
     pcout << "summary: steps " << n_steps << ", sum cells " << sum_cells << ", wall time " << wall
-          << " s (time steps " << total_times["time step"] << ", adapt " << total_times["adapt"]
+          << " s (time steps " << total_times["time step"] << " (fastest process "
+          << total_times["time step (min)"] << "), adapt " << total_times["adapt"]
           << ", assembly " << total_times["assembly"] << "; in adapt: refine adapt "
           << total_times["refine: adapt"] << ", balance " << total_times["refine: balance"]
           << ", partition " << total_times["refine: partition"] << ", copy "
