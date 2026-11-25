@@ -68,6 +68,10 @@
  * the smallest number among its cells; each subdomain solve keeps the
  * values of the DoFs of its part. overlap_mode=fine with one layer is
  * about the vertex ghost layer of the parallel version.
+ * With ghost_overlap_layers > 0, the ghost layer of the triangulation is an
+ * overlap of that many layers of cells of level ghost_overlap_level
+ * (Triangulation::set_ghost_overlap, t8code), so ras/oras use the same
+ * level-based overlap as overlap_mode=level of the serial emulation.
  * ras and oras take a coarse correction (coarse=additive|hybrid): the
  * problem on the coarse mesh (the mesh before the global refinement,
  * H = 2h), with the mass term k^2 (1 + i coarse_shift) eps M, solved by
@@ -128,6 +132,9 @@
 #include <deal.II/lac/sparsity_pattern.h>
 #include <deal.II/lac/sparsity_tools.h>
 
+#include <sc.h>
+#include <t8.h>
+
 #include <petscksp.h>
 #include <petscpc.h>
 
@@ -175,6 +182,10 @@ struct Parameters
   std::string  overlap_mode     = "fine"; // fine, level
   unsigned int overlap_layers   = 1;
   unsigned int overlap_level    = 0;
+  // ras/oras (parallel): the ghost layer as an overlap of this many layers of
+  // cells of level ghost_overlap_level (t8code); 0 = the vertex ghost layer
+  unsigned int ghost_overlap_level  = 0;
+  unsigned int ghost_overlap_layers = 0;
   // > 0: before the solve, run this many unrestarted GMRES iterations and
   // report the Ritz values of the preconditioned operator
   unsigned int ritz             = 0;
@@ -245,6 +256,10 @@ struct Parameters
           impedance_scale = std::stod(value);
         else if (key == "ritz")
           ritz = std::stoi(value);
+        else if (key == "ghost_overlap_level")
+          ghost_overlap_level = std::stoi(value);
+        else if (key == "ghost_overlap_layers")
+          ghost_overlap_layers = std::stoi(value);
         else if (key == "overlap_level")
           overlap_level = std::stoi(value);
         else if (key == "flat_interface")
@@ -1416,6 +1431,9 @@ private:
     coarse_cell_in_sphere =
       create_coarse_mesh(prm.a, prm.R, prm.hex_refine, coarse);
     coarse_tria.copy_triangulation(coarse);
+    // the subdomains of ras/oras are the owned and the ghost cells
+    if (prm.ghost_overlap_layers > 0)
+      tria.set_ghost_overlap(prm.ghost_overlap_level, prm.ghost_overlap_layers);
     tria.copy_triangulation(coarse);
 
     // New vertices on the interface are placed on the sphere: these are the
@@ -1607,6 +1625,16 @@ private:
         constant_fields[d].reinit(owned, comm);
         gradient.vmult(constant_fields[d], coordinate);
       }
+    {
+      unsigned int n_ghost = 0;
+      for (const auto &cell : tria.active_cell_iterators())
+        n_ghost += cell->is_ghost();
+      pcout << "ghost cells: " << Utilities::MPI::sum(n_ghost, comm)
+            << " (sum over the processes), owned and ghost DoFs per process "
+            << Utilities::MPI::sum<unsigned long>(relevant.n_elements(), comm) /
+                 Utilities::MPI::n_mpi_processes(comm)
+            << " (mean)" << std::endl;
+    }
     pcout << "dofs: " << 2 * dof_handler.n_dofs() << " (real and imaginary), "
           << constraints.n_constraints() << " local hanging node constraints"
           << std::endl;
@@ -3034,7 +3062,8 @@ private:
           out << "n,l,a,R,hex_refine,refine,interface_refine,procs,cells,dofs,precond,"
                  "ams_cycles,robin_real,coarse,coarse_op,coarse_shift,"
                  "gradient_correction,subdomains,overlap_mode,"
-                 "overlap_layers,overlap_level,flat_interface,local_shift,"
+                 "overlap_layers,overlap_level,ghost_overlap_level,"
+                 "ghost_overlap_layers,flat_interface,local_shift,"
                  "impedance_scale,alpha,inner_tol,k,amplitude,converged,iterations,"
                  "ams_applications,inner_iterations,rel_l2_error,setup_s,"
                  "solve_s\n";
@@ -3047,6 +3076,7 @@ private:
             << ',' << prm.coarse_shift << ',' << prm.gradient_correction
             << ',' << prm.subdomains << ',' << prm.overlap_mode << ','
             << prm.overlap_layers << ',' << prm.overlap_level << ','
+            << prm.ghost_overlap_level << ',' << prm.ghost_overlap_layers << ','
             << prm.flat_interface << ',' << prm.local_shift << ','
             << prm.impedance_scale
             << ',' << prm.alpha
@@ -3067,6 +3097,10 @@ main(int argc, char *argv[])
   try
     {
       Utilities::MPI::MPI_InitFinalize mpi(argc, argv, 1);
+      // deal.II initializes libsc and t8code silently, which also hides the
+      // messages of aborts
+      sc_set_log_defaults(nullptr, nullptr, SC_LP_ERROR);
+      sc_package_set_verbosity(t8_get_package_id(), SC_LP_ERROR);
       Parameters                       prm;
       prm.parse(argc, argv);
       if (prm.mode == "selftest")
