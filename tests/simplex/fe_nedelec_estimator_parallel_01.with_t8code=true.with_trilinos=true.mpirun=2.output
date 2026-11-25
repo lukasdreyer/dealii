@@ -1,0 +1,17 @@
+
+DEAL:0::tetrahedra: cells 1034, DoFs 1735, eta 2.841876085, largest indicator 0.4029047787
+DEAL:0::wedges: cells 443, DoFs 1346, eta 1.650004322, largest indicator 0.1957494766
+DEAL:0::hexahedra: cells 218, DoFs 1059, eta 0.9146075935, largest indicator 0.1807838380
+DEAL:0::pyramids: cells 1648, DoFs 3215, eta 9.616767768, largest indicator 1.159211278
+DEAL:0::pyramids and tetrahedra: cells 1523, DoFs 2621, eta 15.82157932, largest indicator 2.491997480
+DEAL:0::hexahedra and pyramids: cells 976, DoFs 2206, eta 9.302727305, largest indicator 2.564803600
+DEAL:0::wedges and tetrahedra: cells 837, DoFs 1622, eta 15.55215550, largest indicator 2.216438770
+
+DEAL:1::tetrahedra: cells 1034, DoFs 1735, eta 2.841876085, largest indicator 0.4029047787
+DEAL:1::wedges: cells 443, DoFs 1346, eta 1.650004322, largest indicator 0.1957494766
+DEAL:1::hexahedra: cells 218, DoFs 1059, eta 0.9146075935, largest indicator 0.1807838380
+DEAL:1::pyramids: cells 1648, DoFs 3215, eta 9.616767768, largest indicator 1.159211278
+DEAL:1::pyramids and tetrahedra: cells 1523, DoFs 2621, eta 15.82157932, largest indicator 2.491997480
+DEAL:1::hexahedra and pyramids: cells 976, DoFs 2206, eta 9.302727305, largest indicator 2.564803600
+DEAL:1::wedges and tetrahedra: cells 837, DoFs 1622, eta 15.55215550, largest indicator 2.216438770
+
