@@ -1,0 +1,33 @@
+
+DEAL:0::2d balance across faces: 168 cells, violations 0, level jumps across vertices yes
+DEAL:0::2d balance across vertices: 171 cells, violations 0, level jumps across vertices no
+DEAL:0::2d ghost layer across faces: 33 ghost cells (vertex layer 38), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:0::2d ghost layer across edges: 38 ghost cells (vertex layer 38), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:0::2d ghost layer across vertices: 38 ghost cells (vertex layer 38), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:0::2d overlap of one level-0 layer: 95 ghost cells, outside the overlap 0, contains the vertex layer on all processes yes
+DEAL:0::2d multigrid with balance across faces: rejected
+DEAL:0::3d balance across edges: 1840 cells, violations 0, level jumps across vertices yes
+DEAL:0::3d balance across vertices: 1847 cells, violations 0, level jumps across vertices no
+DEAL:0::3d ghost layer across faces: 392 ghost cells (vertex layer 422), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:0::3d ghost layer across edges: 420 ghost cells (vertex layer 422), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:0::3d ghost layer across vertices: 422 ghost cells (vertex layer 422), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:0::3d overlap of one level-0 layer: 923 ghost cells, outside the overlap 0, contains the vertex layer on all processes yes
+DEAL:0::3d balance across faces: rejected
+DEAL:0::3d multigrid with balance across edges: rejected
+
+DEAL:1::2d balance across faces: 168 cells, violations 0, level jumps across vertices yes
+DEAL:1::2d balance across vertices: 171 cells, violations 0, level jumps across vertices no
+DEAL:1::2d ghost layer across faces: 33 ghost cells (vertex layer 38), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:1::2d ghost layer across edges: 38 ghost cells (vertex layer 38), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:1::2d ghost layer across vertices: 38 ghost cells (vertex layer 38), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:1::2d overlap of one level-0 layer: 95 ghost cells, outside the overlap 0, contains the vertex layer on all processes yes
+DEAL:1::2d multigrid with balance across faces: rejected
+DEAL:1::3d balance across edges: 1840 cells, violations 0, level jumps across vertices yes
+DEAL:1::3d balance across vertices: 1847 cells, violations 0, level jumps across vertices no
+DEAL:1::3d ghost layer across faces: 392 ghost cells (vertex layer 422), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:1::3d ghost layer across edges: 420 ghost cells (vertex layer 422), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:1::3d ghost layer across vertices: 422 ghost cells (vertex layer 422), not touching an owned cell 0, in the vertex layer on all processes yes, same mesh yes
+DEAL:1::3d overlap of one level-0 layer: 923 ghost cells, outside the overlap 0, contains the vertex layer on all processes yes
+DEAL:1::3d balance across faces: rejected
+DEAL:1::3d multigrid with balance across edges: rejected
+
