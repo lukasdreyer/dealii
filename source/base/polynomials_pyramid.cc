@@ -523,6 +523,10 @@ ScalarLagrangePolynomialPyramid<dim>::evaluate(
   if (grad_grads.size() == this->n())
     for (unsigned int i = 0; i < this->n(); ++i)
       grad_grads[i] = compute_grad_grad(i, unit_point);
+
+  if (third_derivatives.size() == this->n())
+    for (unsigned int i = 0; i < this->n(); ++i)
+      third_derivatives[i] = compute_3rd_derivative(i, unit_point);
 }
 
 
@@ -555,12 +559,49 @@ ScalarLagrangePolynomialPyramid<dim>::compute_3rd_derivative(
   const unsigned int i,
   const Point<dim>  &p) const
 {
-  (void)i;
-  (void)p;
-
-  DEAL_II_NOT_IMPLEMENTED();
-
-  return {};
+  // Only for degree 1 (e.g. for the second derivatives of the Jacobian of
+  // MappingFE with FE_PyramidP(1)): the space is span{1, x, y, z, xy/(1-z)},
+  // so a function is a polynomial of degree 1 plus kappa xy/(1-z), and only
+  // the rational term has third derivatives. kappa follows from the second
+  // derivative d_xy = kappa/(1-z).
+  AssertDimension(dim, 3);
+  AssertThrow(this->degree() == 1,
+              ExcMessage("Third derivatives are only implemented for "
+                         "degree 1."));
+  Tensor<3, dim> result;
+  if constexpr (dim == 3)
+    {
+      // (at the apex the limit along the axis, as for the Nedelec pyramid)
+      const double C     = std::max(1. - p[2], 1e-12);
+      const double kappa = compute_grad_grad(i, p)[0][1] * C;
+      const double x = p[0], y = p[1];
+      // third derivatives of xy/C, symmetric in all indices
+      const double d_xyz = 1. / (C * C);
+      const double d_xzz = 2. * y / (C * C * C);
+      const double d_yzz = 2. * x / (C * C * C);
+      const double d_zzz = 6. * x * y / (C * C * C * C);
+      for (unsigned int a = 0; a < 3; ++a)
+        for (unsigned int b = 0; b < 3; ++b)
+          for (unsigned int c = 0; c < 3; ++c)
+            {
+              const unsigned int n_x = (a == 0) + (b == 0) + (c == 0);
+              const unsigned int n_y = (a == 1) + (b == 1) + (c == 1);
+              const unsigned int n_z = (a == 2) + (b == 2) + (c == 2);
+              double             t   = 0;
+              if (n_x == 1 && n_y == 1 && n_z == 1)
+                t = d_xyz;
+              else if (n_x == 1 && n_z == 2)
+                t = d_xzz;
+              else if (n_y == 1 && n_z == 2)
+                t = d_yzz;
+              else if (n_z == 3)
+                t = d_zzz;
+              result[a][b][c] = kappa * t;
+            }
+    }
+  else
+    (void)p, (void)i;
+  return result;
 }
 
 
