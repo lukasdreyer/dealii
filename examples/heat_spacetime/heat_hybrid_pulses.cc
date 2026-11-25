@@ -36,7 +36,15 @@
  *                     several time scales: n_pulses Gaussians in space and
  *                     time, sum_k exp(-|x - x_k|^2 / s^2 - (t - t_k)^2 / tau^2),
  *                     t_k = (k + 1/2) / n_pulses, quiet in between)
+ *                     or rotating (2D; advection-diffusion
+ *                     u_t + b . grad u - epsilon Laplace u = 0 with the solid
+ *                     body rotation b = 2 pi (-(y - 1/2), x - 1/2): the Gaussian
+ *                     starts at (1/2 + radius, 1/2) and spreads,
+ *                     u = s^2 / s(t)^2 exp(-|x - c(t)|^2 / s(t)^2),
+ *                     s(t)^2 = s^2 + 4 epsilon t; the operator is
+ *                     nonsymmetric, GMRES with AMG; the same as in heat_spacetime)
  *   n_pulses=8, pulse_sigma=0.05 (s), pulse_tau=0.02 (tau)
+ *   epsilon=1         diffusion (problem=rotating only)
  *   mesh=hybrid       hybrid (squares alternating with pairs of triangles,
  *                     checkerboard), quad or tri, n x n squares
  *   n=4               coarse mesh size
@@ -103,6 +111,7 @@
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparsity_tools.h>
 #include <deal.II/lac/vector.h>
 
@@ -226,6 +235,7 @@ namespace HeatHybrid
     double       t_end        = 1.0;
     double       sigma        = 0.1;
     double       radius       = 0.25;
+    double       epsilon      = 1.0;
     std::string  smoothing    = "none";
     std::string  csv          = "heat.csv";
     std::string  output       = "";
@@ -283,6 +293,8 @@ namespace HeatHybrid
             sigma = std::stod(value);
           else if (key == "radius")
             radius = std::stod(value);
+          else if (key == "epsilon")
+            epsilon = std::stod(value);
           else if (key == "smoothing")
             smoothing = value;
           else if (key == "csv")
@@ -302,8 +314,11 @@ namespace HeatHybrid
                     ExcMessage("mesh must be hybrid21, hybrid16 or hex"));
       AssertThrow(estimator == "kelly" || estimator == "gradient",
                   ExcMessage("estimator must be kelly or gradient"));
-      AssertThrow(problem == "gaussian" || (problem == "pulses" && dim == 2),
-                  ExcMessage("problem must be gaussian or pulses (2D)"));
+      AssertThrow(problem == "gaussian" || ((problem == "pulses" || problem == "rotating") && dim == 2),
+                  ExcMessage("problem must be gaussian, pulses (2D) or rotating (2D)"));
+      AssertThrow(problem == "rotating" || epsilon == 1.0,
+                  ExcMessage("epsilon != 1 only for problem=rotating"));
+      AssertThrow(epsilon >= 0, ExcMessage("epsilon must be >= 0"));
       AssertThrow(theta >= 0 && theta <= 1, ExcMessage("theta must be in [0,1]"));
       AssertThrow(scheme == "theta" || scheme == "sdirk2",
                   ExcMessage("scheme must be theta or sdirk2"));
@@ -318,11 +333,43 @@ namespace HeatHybrid
   class ExactSolution : public Function<dim>
   {
   public:
-    ExactSolution(const double sigma, const double radius, const Pulses *pulses = nullptr)
+    ExactSolution(const double  sigma,
+                  const double  radius,
+                  const Pulses *pulses   = nullptr,
+                  const bool    rotating = false,
+                  const double  epsilon  = 1.0)
       : sigma(sigma)
       , radius(radius)
+      , epsilon(epsilon)
+      , rotating(rotating)
       , pulses(pulses)
     {}
+
+    // the velocity b of u_t + b . grad u - epsilon Laplace u = f: the solid body
+    // rotation for problem=rotating, else 0
+    Tensor<1, dim>
+    advection(const Point<dim> &p) const
+    {
+      Tensor<1, dim> b;
+      if (rotating)
+        {
+          b[0] = -2 * numbers::PI * (p[1] - 0.5);
+          b[1] = 2 * numbers::PI * (p[0] - 0.5);
+        }
+      return b;
+    }
+
+    double
+    diffusion() const
+    {
+      return epsilon;
+    }
+
+    bool
+    nonsymmetric() const
+    {
+      return rotating;
+    }
 
     // problem=pulses: u, u_t, grad u, Laplace u at p (x and y)
     void
@@ -364,13 +411,20 @@ namespace HeatHybrid
           evaluate_pulses(p, u, u_t, lap);
           return u;
         }
+      if (rotating)
+        {
+          const double w2 = sigma * sigma + 4 * epsilon * this->get_time();
+          return sigma * sigma / w2 * std::exp(-(p - center()).norm_square() / w2);
+        }
       return std::exp(-(p - center()).norm_square() / (sigma * sigma));
     }
 
-    // f = u_t - Laplace u
+    // f = u_t + b . grad u - epsilon Laplace u
     double
     source(const Point<dim> &p) const
     {
+      if (rotating)
+        return 0;
       if (pulses)
         {
           double u, u_t, lap;
@@ -386,7 +440,8 @@ namespace HeatHybrid
     }
 
   private:
-    const double  sigma, radius;
+    const double  sigma, radius, epsilon;
+    const bool    rotating;
     const Pulses *pulses; // problem=pulses if not null
   };
 
@@ -626,7 +681,9 @@ namespace HeatHybrid
     , dof_handler(triangulation)
     , exact(parameters.sigma,
             parameters.radius,
-            parameters.problem == "pulses" ? &this->parameters.pulses : nullptr)
+            parameters.problem == "pulses" ? &this->parameters.pulses : nullptr,
+            parameters.problem == "rotating",
+            parameters.epsilon)
   {
     const unsigned int p = parameters.degree;
     // equidistant FE_Q, so that the DoFs on the edges coincide with those of
@@ -782,6 +839,8 @@ namespace HeatHybrid
             tmp.reinit(n);
             for (const unsigned int q : fv.quadrature_point_indices())
               {
+                const Tensor<1, dim> b   = exact.advection(fv.quadrature_point(q));
+                const double         eps = exact.diffusion();
                 double f = diag * exact.source(fv.quadrature_point(q));
                 for (unsigned int j = 0; j < terms.size(); ++j)
                   f += std::get<0>(terms[j]) * term_exact[j].source(fv.quadrature_point(q));
@@ -791,8 +850,11 @@ namespace HeatHybrid
                       {
                         cell_mass(i, j) +=
                           fv.shape_value(i, q) * fv.shape_value(j, q) * fv.JxW(q);
+                        // A: epsilon (grad u, grad v) + (b . grad u, v)
                         cell_laplace(i, j) +=
-                          fv.shape_grad(i, q) * fv.shape_grad(j, q) * fv.JxW(q);
+                          (eps * fv.shape_grad(i, q) * fv.shape_grad(j, q) +
+                           (b * fv.shape_grad(j, q)) * fv.shape_value(i, q)) *
+                          fv.JxW(q);
                       }
                     cell_rhs(i) += f * fv.shape_value(i, q) * fv.JxW(q);
                   }
@@ -825,7 +887,7 @@ namespace HeatHybrid
         preconditioner = std::make_unique<LA::MPI::PreconditionAMG>();
         LA::MPI::PreconditionAMG::AdditionalData data;
 #ifdef USE_PETSC_LA
-        data.symmetric_operator = true;
+        data.symmetric_operator = !exact.nonsymmetric();
 #endif
         preconditioner->initialize(system_matrix, data);
       });
@@ -835,8 +897,18 @@ namespace HeatHybrid
       distributed = old_solution; // start from the old solution
       constraints.set_zero(distributed);
       SolverControl solver_control(1000, 1e-10 * system_rhs.l2_norm());
-      LA::SolverCG  cg(solver_control);
-      cg.solve(system_matrix, distributed, system_rhs, *preconditioner);
+      if (exact.nonsymmetric())
+        {
+          // problem=rotating: deal.II's GMRES, right preconditioned (as heat_spacetime)
+          SolverGMRES<LA::MPI::Vector> gmres(solver_control,
+                                             SolverGMRES<LA::MPI::Vector>::AdditionalData(100, true));
+          gmres.solve(system_matrix, distributed, system_rhs, *preconditioner);
+        }
+      else
+        {
+          LA::SolverCG cg(solver_control);
+          cg.solve(system_matrix, distributed, system_rhs, *preconditioner);
+        }
       constraints.distribute(distributed);
       result = distributed;
       last_iterations += solver_control.last_step();
