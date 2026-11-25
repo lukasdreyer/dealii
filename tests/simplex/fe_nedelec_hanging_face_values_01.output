@@ -1,0 +1,42 @@
+
+DEAL::tetrahedra:
+DEAL::  hanging triangles between Tet and Tet: 332
+DEAL::  same points: OK, n x u continuous: OK, n . curl u continuous: OK
+DEAL::wedges:
+DEAL::  hanging quadrilaterals between Wedge and Wedge: 136
+DEAL::  hanging triangles between Wedge and Wedge: 104
+DEAL::  same points: OK, n x u continuous: OK, n . curl u continuous: OK
+DEAL::hexahedra:
+DEAL::  hanging quadrilaterals between Hex and Hex: 176
+DEAL::  same points: OK, n x u continuous: OK, n . curl u continuous: OK
+DEAL::pyramids:
+DEAL::  hanging quadrilaterals between Pyramid and Pyramid: 36
+DEAL::  hanging triangles between Pyramid and Pyramid: 194
+DEAL::  hanging triangles between Pyramid and Tet: 92
+DEAL::  hanging triangles between Tet and Pyramid: 214
+DEAL::  hanging triangles between Tet and Tet: 52
+DEAL::  same points: OK, n x u continuous: OK, n . curl u continuous: OK
+DEAL::pyramids and tetrahedra:
+DEAL::  hanging quadrilaterals between Pyramid and Pyramid: 16
+DEAL::  hanging triangles between Pyramid and Pyramid: 73
+DEAL::  hanging triangles between Pyramid and Tet: 36
+DEAL::  hanging triangles between Tet and Pyramid: 103
+DEAL::  hanging triangles between Tet and Tet: 268
+DEAL::  same points: OK, n x u continuous: OK, n . curl u continuous: OK
+DEAL::hexahedra and pyramids:
+DEAL::  hanging quadrilaterals between Hex and Hex: 64
+DEAL::  hanging quadrilaterals between Hex and Pyramid: 8
+DEAL::  hanging quadrilaterals between Pyramid and Hex: 16
+DEAL::  hanging quadrilaterals between Pyramid and Pyramid: 20
+DEAL::  hanging triangles between Pyramid and Pyramid: 84
+DEAL::  hanging triangles between Pyramid and Tet: 56
+DEAL::  hanging triangles between Tet and Pyramid: 92
+DEAL::  hanging triangles between Tet and Tet: 32
+DEAL::  same points: OK, n x u continuous: OK, n . curl u continuous: OK
+DEAL::wedges and tetrahedra:
+DEAL::  hanging quadrilaterals between Wedge and Wedge: 56
+DEAL::  hanging triangles between Tet and Tet: 168
+DEAL::  hanging triangles between Tet and Wedge: 12
+DEAL::  hanging triangles between Wedge and Tet: 4
+DEAL::  hanging triangles between Wedge and Wedge: 52
+DEAL::  same points: OK, n x u continuous: OK, n . curl u continuous: OK

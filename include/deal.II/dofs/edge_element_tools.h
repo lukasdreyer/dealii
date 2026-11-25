@@ -20,6 +20,7 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/mpi.h>
+#include <deal.II/base/qprojector.h>
 #include <deal.II/base/quadrature_lib.h>
 
 #include <deal.II/dofs/dof_accessor.h>
@@ -602,6 +603,99 @@ namespace internal
     }
   } // namespace EdgeElementTools
 } // namespace internal
+
+
+
+namespace EdgeElementTools
+{
+  /**
+   * The reference points on the coarser neighbor of @p cell across face
+   * @p face_no (a hanging face: the face of @p cell is a child of the face
+   * of the neighbor) of the points of @p face_quadrature on this face, in
+   * the order used by FEFaceValues on @p cell. With FEFaceValues on @p cell
+   * and FEValues on the neighbor with these points, both sides of a hanging
+   * face can be evaluated at the same points; this replaces FESubfaceValues
+   * on the coarse side, which deal.II does not support for wedges and
+   * pyramids (cells with faces of different shapes).
+   *
+   * The positions of the vertices of the face of @p cell in the reference
+   * cell of the neighbor follow from the topology (vertices, midpoints of the
+   * lines and, for quadrilaterals, the center of the face of the neighbor),
+   * and the points are interpolated with the linear vertex functions of the
+   * reference cell of @p cell. As for the hanging node constraints, this
+   * assumes that the children of a face are the images of the reference
+   * children (straight lines; flat faces or the d-linear mappings of
+   * MappingFE with linear elements, for which the physical points of both
+   * sides are the same).
+   */
+  template <int dim, int spacedim>
+  std::vector<Point<dim>>
+  face_points_on_coarser_neighbor(
+    const typename Triangulation<dim, spacedim>::cell_iterator &cell,
+    const unsigned int                                          face_no,
+    const Quadrature<dim - 1>                                  &face_quadrature)
+  {
+    Assert(cell->neighbor_is_coarser(face_no),
+           ExcMessage("The neighbor across this face must be coarser."));
+    const auto neighbor = cell->neighbor(face_no);
+    const unsigned int neighbor_face_no =
+      cell->neighbor_of_coarser_neighbor(face_no).first;
+    const auto          neighbor_face  = neighbor->face(neighbor_face_no);
+    const ReferenceCell neighbor_shape = neighbor->reference_cell();
+
+    // reference positions on the neighbor of the vertices of its face, of
+    // the midpoints of the lines of the face and of the center
+    std::map<unsigned int, Point<dim>> reference_points;
+    for (const unsigned int v : neighbor->vertex_indices())
+      reference_points[neighbor->vertex_index(v)] =
+        neighbor_shape.template vertex<dim>(v);
+    Point<dim> center;
+    for (unsigned int v = 0; v < neighbor_face->n_vertices(); ++v)
+      center += reference_points[neighbor_face->vertex_index(v)];
+    center /= neighbor_face->n_vertices();
+    if constexpr (dim == 3)
+      for (unsigned int l = 0; l < neighbor_face->n_lines(); ++l)
+        {
+          const auto line = neighbor_face->line(l);
+          Assert(line->has_children(), ExcInternalError());
+          reference_points[line->child(0)->vertex_index(1)] =
+            0.5 * (reference_points.at(line->vertex_index(0)) +
+                   reference_points.at(line->vertex_index(1)));
+        }
+    else
+      {
+        // in 2d the face is a line, whose child 0 ends at the midpoint
+        reference_points[neighbor_face->child(0)->vertex_index(1)] = center;
+      }
+    for (unsigned int c = 0; c < neighbor_face->n_children(); ++c)
+      for (unsigned int v = 0; v < neighbor_face->child(c)->n_vertices(); ++v)
+        reference_points.emplace(neighbor_face->child(c)->vertex_index(v),
+                                 center);
+
+    // the points on the reference cell of cell, and their images
+    const Quadrature<dim> cell_points =
+      QProjector<dim>::project_to_face(cell->reference_cell(),
+                                       face_quadrature,
+                                       face_no,
+                                       cell->combined_face_orientation(
+                                         face_no));
+    std::vector<Point<dim>> points(cell_points.size());
+    for (unsigned int q = 0; q < cell_points.size(); ++q)
+      for (const unsigned int v : cell->vertex_indices())
+        {
+          const double phi = cell->reference_cell().d_linear_shape_function(
+            cell_points.point(q), v);
+          // (only the vertices of the face contribute on the face)
+          if (std::abs(phi) > 1e-12)
+            {
+              const auto it = reference_points.find(cell->vertex_index(v));
+              Assert(it != reference_points.end(), ExcInternalError());
+              points[q] += phi * it->second;
+            }
+        }
+    return points;
+  }
+} // namespace EdgeElementTools
 
 
 
