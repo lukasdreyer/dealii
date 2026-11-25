@@ -49,7 +49,7 @@
  *                     (an estimate of its share of the operator, n^2 (1 +
  *                     number of faces) for n DoFs of the cell; balances the
  *                     time steps best on hybrid meshes)
- *   degree=2          polynomial degree
+ *   degree=2         polynomial degree
  *   global=3          global refinements
  *   max_delta=3       maximal number of adaptive levels above global
  *   adapt=1           0: no adaptation
@@ -71,6 +71,9 @@
 #include <deal.II/base/mpi.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/timer.h>
+
+#include <algorithm>
+#include <chrono>
 #include <deal.II/base/utilities.h>
 
 #include <deal.II/distributed/grid_refinement.h>
@@ -586,23 +589,31 @@ namespace AdvectionHybrid
   void
   AdvectionProblem::setup_system()
   {
-    for (const auto &cell : dof_handler.active_cell_iterators())
-      if (cell->is_locally_owned())
-        cell->set_active_fe_index(fe_index(cell->reference_cell()));
-    dof_handler.distribute_dofs(fe);
-    locally_owned_dofs    = dof_handler.locally_owned_dofs();
-    locally_relevant_dofs = DoFTools::extract_locally_relevant_dofs(dof_handler);
+    this->time("setup: dofs", [&]() {
+      for (const auto &cell : dof_handler.active_cell_iterators())
+        if (cell->is_locally_owned())
+          cell->set_active_fe_index(fe_index(cell->reference_cell()));
+      dof_handler.distribute_dofs(fe);
+      locally_owned_dofs    = dof_handler.locally_owned_dofs();
+      locally_relevant_dofs = DoFTools::extract_locally_relevant_dofs(dof_handler);
+    });
 
-    DynamicSparsityPattern dsp(locally_relevant_dofs);
-    DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
-    SparsityTools::distribute_sparsity_pattern(dsp,
-                                               locally_owned_dofs,
-                                               mpi_communicator,
-                                               locally_relevant_dofs);
-    system_matrix.reinit(locally_owned_dofs, locally_owned_dofs, dsp, mpi_communicator);
-    solution.reinit(locally_owned_dofs, mpi_communicator);
-    tmp.reinit(locally_owned_dofs, mpi_communicator);
-    ghosted.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+    this->time("setup: sparsity", [&]() {
+      DynamicSparsityPattern dsp(locally_relevant_dofs);
+      this->time("sparsity: flux", [&]() { DoFTools::make_flux_sparsity_pattern(dof_handler, dsp); });
+      this->time("sparsity: distribute", [&]() {
+        SparsityTools::distribute_sparsity_pattern(dsp,
+                                                   locally_owned_dofs,
+                                                   mpi_communicator,
+                                                   locally_relevant_dofs);
+      });
+      this->time("sparsity: matrix", [&]() {
+        system_matrix.reinit(locally_owned_dofs, locally_owned_dofs, dsp, mpi_communicator);
+      });
+      solution.reinit(locally_owned_dofs, mpi_communicator);
+      tmp.reinit(locally_owned_dofs, mpi_communicator);
+      ghosted.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+    });
     assemble_operator();
   }
 
@@ -680,7 +691,12 @@ namespace AdvectionHybrid
       // the shape values of a cell at the points of a face of a finer neighbor,
       // through the inverse mapping (the shape functions of the DG elements are
       // not transformed)
+      double     hanging_time    = 0; // the inverse mapping at hanging faces
       const auto shape_values_at = [&](const auto &c, const FEFaceValues<dim> &ffv) {
+        const auto         start = std::chrono::steady_clock::now();
+        const auto         stop  = [&]() {
+          hanging_time += std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+        };
         const unsigned int fi = fe_index(c->reference_cell());
         phi_n.reinit(fe[fi].n_dofs_per_cell(), ffv.n_quadrature_points);
         for (unsigned int q = 0; q < ffv.n_quadrature_points; ++q)
@@ -689,6 +705,7 @@ namespace AdvectionHybrid
             for (unsigned int i = 0; i < phi_n.m(); ++i)
               phi_n(i, q) = fe[fi].shape_value(i, x_unit);
           }
+        stop();
       };
 
       for (const auto &cell : dof_handler.active_cell_iterators())
@@ -793,7 +810,15 @@ namespace AdvectionHybrid
                 assemble_manual_face(ffv);
               }
           }
+      times["assembly: hanging"] += hanging_time;
+      // the time until all processes have assembled (imbalance), then the compress itself
+      const auto barrier_start = std::chrono::steady_clock::now();
+      MPI_Barrier(mpi_communicator);
+      const auto compress_start = std::chrono::steady_clock::now();
+      times["assembly: wait"] += std::chrono::duration<double>(compress_start - barrier_start).count();
       system_matrix.compress(VectorOperation::add);
+      times["assembly: compress"] +=
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - compress_start).count();
     });
   }
 
@@ -875,28 +900,35 @@ namespace AdvectionHybrid
   AdvectionProblem::adapt_mesh()
   {
     this->time("adapt", [&]() {
-      update_ghosted();
       Vector<float> estimate;
-      compute_indicator(estimate);
-      const double max_estimate =
-        Utilities::MPI::max(estimate.size() ? *std::max_element(estimate.begin(), estimate.end()) : 0.f,
-                            mpi_communicator);
-      const unsigned int max_level = parameters.global + parameters.max_delta;
-      for (const auto &cell : triangulation.active_cell_iterators())
-        if (cell->is_locally_owned())
-          {
-            const double e = estimate(cell->active_cell_index());
-            if (e > parameters.refine * max_estimate && cell->level() < static_cast<int>(max_level))
-              cell->set_refine_flag();
-            else if (e < parameters.coarsen * max_estimate &&
-                     cell->level() > static_cast<int>(parameters.global))
-              cell->set_coarsen_flag();
-          }
+      this->time("adapt: indicator", [&]() {
+        update_ghosted();
+        compute_indicator(estimate);
+      });
+      this->time("adapt: flags", [&]() {
+        const double max_estimate = Utilities::MPI::max(
+          estimate.size() ? *std::max_element(estimate.begin(), estimate.end()) : 0.f, mpi_communicator);
+        const unsigned int max_level = parameters.global + parameters.max_delta;
+        for (const auto &cell : triangulation.active_cell_iterators())
+          if (cell->is_locally_owned())
+            {
+              const double e = estimate(cell->active_cell_index());
+              if (e > parameters.refine * max_estimate && cell->level() < static_cast<int>(max_level))
+                cell->set_refine_flag();
+              else if (e < parameters.coarsen * max_estimate &&
+                       cell->level() > static_cast<int>(parameters.global))
+                cell->set_coarsen_flag();
+            }
+      });
 
       SolutionTransfer<dim, LA::MPI::Vector> transfer(dof_handler);
-      triangulation.prepare_coarsening_and_refinement();
-      transfer.prepare_for_coarsening_and_refinement(ghosted);
-      triangulation.execute_coarsening_and_refinement();
+      this->time("adapt: prepare", [&]() {
+        triangulation.prepare_coarsening_and_refinement();
+        transfer.prepare_for_coarsening_and_refinement(ghosted);
+      });
+      // t8code (adapt, balance, partition, copy) and the deal.II side: rebuilding
+      // the levels of the triangulation and packing/unpacking the transfer data
+      this->time("adapt: execute", [&]() { triangulation.execute_coarsening_and_refinement(); });
       // the parts of the refinement in the backend (t8code): adapt, balance, partition, copy
       {
         const auto &rt = triangulation.get_refinement_times();
@@ -906,7 +938,7 @@ namespace AdvectionHybrid
         times["refine: copy"] += rt.copy;
       }
       setup_system();
-      transfer.interpolate(solution);
+      this->time("adapt: interpolate", [&]() { transfer.interpolate(solution); });
     });
   }
 
@@ -1025,13 +1057,36 @@ namespace AdvectionHybrid
     const double dt = parameters.t_end / n_steps;
     pcout << "h_min " << h_min << ", " << n_steps << " steps of " << dt << std::endl;
 
+    // the parts of the mesh adaptation (adapt = indicator + flags + prepare +
+    // execute + setup + assembly + interpolate)
+    const std::vector<std::string> detail_phases = {"adapt: indicator",
+                                                    "adapt: flags",
+                                                    "adapt: prepare",
+                                                    "adapt: execute",
+                                                    "setup: dofs",
+                                                    "setup: sparsity",
+                                                    "assembly: hanging",
+                                                    "assembly: compress",
+                                                    "adapt: interpolate",
+                                                    "sparsity: flux",
+                                                    "sparsity: distribute",
+                                                    "sparsity: matrix",
+                                                    "assembly: wait"};
     std::ofstream csv;
     if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
       {
         csv.open(parameters.csv);
         csv << "step,time,cells,dofs,cells_min,cells_max,l2_error,mass,time_step,adapt,assembly,"
                "refine_adapt,refine_balance,refine_partition,refine_copy,dofs_min,dofs_max,"
-               "time_step_min\n";
+               "time_step_min";
+        for (const std::string &phase : detail_phases)
+          {
+            std::string column = phase;
+            std::replace(column.begin(), column.end(), ':', '_');
+            column.erase(std::remove(column.begin(), column.end(), ' '), column.end());
+            csv << ',' << column;
+          }
+        csv << '\n';
       }
     const double mass0 = mass();
     update_ghosted();
@@ -1068,6 +1123,13 @@ namespace AdvectionHybrid
                 t_max[phase] = Utilities::MPI::max(times[phase], mpi_communicator);
                 total_times[phase] += t_max[phase];
               }
+            for (const std::string &phase : detail_phases)
+              {
+                t_max[phase] = Utilities::MPI::max(times[phase], mpi_communicator);
+                total_times[phase] += t_max[phase];
+                total_times[phase + " (min)"] += Utilities::MPI::min(times[phase], mpi_communicator);
+              }
+            total_times["assembly (min)"] += Utilities::MPI::min(times["assembly"], mpi_communicator);
             times.clear();
             if (csv.is_open())
               csv << step << ',' << t << ',' << triangulation.n_global_active_cells() << ','
@@ -1076,7 +1138,13 @@ namespace AdvectionHybrid
                   << t_max["time step"] << ',' << t_max["adapt"] << ',' << t_max["assembly"]
                   << ',' << t_max["refine: adapt"] << ',' << t_max["refine: balance"] << ','
                   << t_max["refine: partition"] << ',' << t_max["refine: copy"] << ','
-                  << dofs.min << ',' << dofs.max << ',' << time_step_min << '\n';
+                  << dofs.min << ',' << dofs.max << ',' << time_step_min;
+            if (csv.is_open())
+              {
+                for (const std::string &phase : detail_phases)
+                  csv << ',' << t_max[phase];
+                csv << '\n';
+              }
             pcout << "step " << step << ", t " << t << ": " << triangulation.n_global_active_cells()
                   << " cells, " << dof_handler.n_dofs() << " dofs, L2 error " << error
                   << ", mass change " << (m - mass0) / mass0 << std::endl;
@@ -1095,6 +1163,13 @@ namespace AdvectionHybrid
           << total_times["refine: adapt"] << ", balance " << total_times["refine: balance"]
           << ", partition " << total_times["refine: partition"] << ", copy "
           << total_times["refine: copy"] << ")" << std::endl;
+    pcout << "summary of adapt (maxima over the processes):";
+    for (const std::string &phase : detail_phases)
+      pcout << ' ' << phase << ' ' << total_times[phase] << ';';
+    pcout << std::endl << "summary of adapt (minima over the processes):";
+    for (const std::string &phase : detail_phases)
+      pcout << ' ' << phase << ' ' << total_times[phase + " (min)"] << ';';
+    pcout << " assembly " << total_times["assembly (min)"] << ';' << std::endl;
   }
 } // namespace AdvectionHybrid
 
