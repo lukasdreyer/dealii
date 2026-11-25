@@ -715,13 +715,16 @@ FE_PyramidDGP<dim, spacedim>::compare_for_domination(
   if (codim > 0)
     return FiniteElementDomination::no_requirements;
 
-  // cell domination
-  if (const FE_PyramidDGP<dim, spacedim> *fe_dgp_other =
-        dynamic_cast<const FE_PyramidDGP<dim, spacedim> *>(&fe_other))
+  // cell domination: by degree among the discontinuous elements on all
+  // reference cells (the children of a pyramid are pyramids and tetrahedra)
+  if (dynamic_cast<const FE_PyramidDGP<dim, spacedim> *>(&fe_other) ||
+      dynamic_cast<const FE_WedgeDGP<dim, spacedim> *>(&fe_other) ||
+      dynamic_cast<const FE_SimplexDGP<dim, spacedim> *>(&fe_other) ||
+      dynamic_cast<const FE_DGQ<dim, spacedim> *>(&fe_other))
     {
-      if (this->degree < fe_dgp_other->degree)
+      if (this->degree < fe_other.degree)
         return FiniteElementDomination::this_element_dominates;
-      else if (this->degree == fe_dgp_other->degree)
+      else if (this->degree == fe_other.degree)
         return FiniteElementDomination::either_element_can_dominate;
       else
         return FiniteElementDomination::other_element_dominates;

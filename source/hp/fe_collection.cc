@@ -1031,12 +1031,87 @@ namespace hp
                   ExcMessage("The transfer between cells and children of "
                              "other types is only implemented for elements "
                              "with support points."));
-      AssertThrow(!parent_fe.restriction_is_additive(0),
-                  ExcMessage("The transfer between cells and children of "
-                             "other types is only implemented for continuous "
-                             "elements."));
       Assert(child_fe.reference_cell() == child_map.reference_cell,
              ExcInternalError());
+
+      if (parent_fe.restriction_is_additive(0))
+        {
+          // Discontinuous elements: the L2 projections between the parent
+          // and the child (the restriction matrices of the children add up to
+          // the L2 projection onto the parent). With the affine map
+          // x = F(y) of the reference child into the reference parent and
+          // B(j,i) = int_child phi_j^child(y) phi_i^parent(F(y)) dy:
+          // prolongation M_child^{-1} B, restriction
+          // |det A| M_parent^{-1} B^T.
+          AssertThrow(parent_fe.n_components() == 1 &&
+                        child_fe.n_components() == 1,
+                      ExcMessage("The transfer between cells and children "
+                                 "of other types is only implemented for "
+                                 "scalar discontinuous elements."));
+          for (unsigned int i = 0; i < parent_fe.n_dofs_per_cell(); ++i)
+            AssertThrow(parent_fe.restriction_is_additive(i),
+                        ExcMessage("Elements with both additive and "
+                                   "non-additive restriction are not "
+                                   "supported."));
+          // the shape functions on pyramids are rational: a few more points
+          // than for the product of two polynomials
+          const unsigned int n_points =
+            std::max(parent_fe.degree, child_fe.degree) + 2;
+          const auto quadrature_on = [n_points](const ReferenceCell &cell) {
+            return cell.get_gauss_type_quadrature<dim>(
+              cell.is_simplex() ? std::min(n_points, 4u) : n_points);
+          };
+          const Quadrature<dim> q_child =
+            quadrature_on(child_map.reference_cell);
+          const Quadrature<dim> q_parent =
+            quadrature_on(parent_fe.reference_cell());
+          const unsigned int n_p = parent_fe.n_dofs_per_cell(),
+                             n_c = child_fe.n_dofs_per_cell();
+
+          FullMatrix<double> B(n_c, n_p), mass_child(n_c, n_c),
+            mass_parent(n_p, n_p);
+          std::vector<double> phi_c(n_c), phi_p(n_p);
+          for (unsigned int q = 0; q < q_child.size(); ++q)
+            {
+              const Point<dim> x = child_map.to_parent(q_child.point(q));
+              for (unsigned int j = 0; j < n_c; ++j)
+                phi_c[j] = child_fe.shape_value(j, q_child.point(q));
+              for (unsigned int i = 0; i < n_p; ++i)
+                phi_p[i] = parent_fe.shape_value(i, x);
+              for (unsigned int j = 0; j < n_c; ++j)
+                {
+                  for (unsigned int i = 0; i < n_p; ++i)
+                    B(j, i) += phi_c[j] * phi_p[i] * q_child.weight(q);
+                  for (unsigned int k = 0; k < n_c; ++k)
+                    mass_child(j, k) += phi_c[j] * phi_c[k] * q_child.weight(q);
+                }
+            }
+          for (unsigned int q = 0; q < q_parent.size(); ++q)
+            {
+              for (unsigned int i = 0; i < n_p; ++i)
+                phi_p[i] = parent_fe.shape_value(i, q_parent.point(q));
+              for (unsigned int i = 0; i < n_p; ++i)
+                for (unsigned int k = 0; k < n_p; ++k)
+                  mass_parent(i, k) +=
+                    phi_p[i] * phi_p[k] * q_parent.weight(q);
+            }
+
+          if (!restriction)
+            {
+              mass_child.gauss_jordan();
+              FullMatrix<double> matrix(n_c, n_p);
+              mass_child.mmult(matrix, B);
+              return matrix;
+            }
+          else
+            {
+              mass_parent.gauss_jordan();
+              FullMatrix<double> matrix(n_p, n_c);
+              mass_parent.mTmult(matrix, B);
+              matrix *= std::abs(determinant(child_map.A));
+              return matrix;
+            }
+        }
 
       if (!restriction)
         {

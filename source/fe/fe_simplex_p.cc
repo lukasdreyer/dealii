@@ -1022,6 +1022,18 @@ FE_SimplexDGP<dim, spacedim>::compare_for_domination(
       else
         return FiniteElementDomination::other_element_dominates;
     }
+  else if (dynamic_cast<const FE_WedgeDGP<dim, spacedim> *>(&fe_other) ||
+           dynamic_cast<const FE_PyramidDGP<dim, spacedim> *>(&fe_other))
+    {
+      // discontinuous elements on other reference cells (the children of a
+      // pyramid are pyramids and tetrahedra): by degree
+      if (this->degree < fe_other.degree)
+        return FiniteElementDomination::this_element_dominates;
+      else if (this->degree == fe_other.degree)
+        return FiniteElementDomination::either_element_can_dominate;
+      else
+        return FiniteElementDomination::other_element_dominates;
+    }
   else if (const FE_Nothing<dim, spacedim> *fe_nothing =
              dynamic_cast<const FE_Nothing<dim, spacedim> *>(&fe_other))
     {
