@@ -111,10 +111,10 @@ face_quadratures(const ReferenceCell &reference_cell)
   const QGauss<2>        quadrilateral(3);
   hp::QCollection<2>     quadratures;
   for (const unsigned int f : reference_cell.face_indices())
-    quadratures.push_back(
-      reference_cell.face_reference_cell(f) == ReferenceCells::Triangle ?
-        static_cast<const Quadrature<2> &>(triangle) :
-        quadrilateral);
+    quadratures.push_back(reference_cell.face_reference_cell(f) ==
+                              ReferenceCells::Triangle ?
+                            static_cast<const Quadrature<2> &>(triangle) :
+                            quadrilateral);
   return quadratures;
 }
 
@@ -165,9 +165,9 @@ check(Triangulation<3> &tria, const std::string &name)
     }
 
   std::map<std::string, unsigned int> n_faces;
-  bool         same_number_of_points = true;
-  double       max_point_distance = 0, max_weight_difference = 0,
-         max_normal_sum = 0, max_value_jump = 0, max_area_difference = 0;
+  bool                                same_number_of_points = true;
+  double max_point_distance = 0, max_weight_difference = 0, max_normal_sum = 0,
+         max_value_jump = 0, max_area_difference = 0;
   std::vector<types::global_dof_index> dofs, child_dofs;
   for (const auto &cell : dof_handler.active_cell_iterators())
     for (const unsigned int f : cell->face_indices())
@@ -183,8 +183,8 @@ check(Triangulation<3> &tria, const std::string &name)
                ++q)
             {
               area += fe_face_values[i]->JxW(q);
-              vector_area += fe_face_values[i]->JxW(q) *
-                             fe_face_values[i]->normal_vector(q);
+              vector_area +=
+                fe_face_values[i]->JxW(q) * fe_face_values[i]->normal_vector(q);
             }
           const double length = std::sqrt(area);
 
@@ -207,8 +207,8 @@ check(Triangulation<3> &tria, const std::string &name)
 
               FESubfaceValues<3> &coarse = *fe_subface_values[i];
               coarse.reinit(cell, f, s);
-              const unsigned int j = child->active_fe_index();
-              FEFaceValues<3>   &fine  = *fe_face_values[j];
+              const unsigned int j    = child->active_fe_index();
+              FEFaceValues<3>   &fine = *fe_face_values[j];
               fine.reinit(child, g);
               child_dofs.resize(c.fe[j].n_dofs_per_cell());
               child->get_dof_indices(child_dofs);
@@ -233,10 +233,10 @@ check(Triangulation<3> &tria, const std::string &name)
                   max_normal_sum = std::max(
                     max_normal_sum,
                     (coarse.normal_vector(q) + fine.normal_vector(q)).norm());
-                  max_value_jump = std::max(
-                    max_value_jump,
-                    std::abs(function_value(coarse, dofs, u, q) -
-                             function_value(fine, child_dofs, u, q)));
+                  max_value_jump =
+                    std::max(max_value_jump,
+                             std::abs(function_value(coarse, dofs, u, q) -
+                                      function_value(fine, child_dofs, u, q)));
                 }
             }
           max_area_difference =
@@ -251,16 +251,15 @@ check(Triangulation<3> &tria, const std::string &name)
   deallog << "  same number of points: " << ok(same_number_of_points)
           << ", same points: " << ok(max_point_distance < 1e-12)
           << ", same weights: " << ok(max_weight_difference < 1e-12)
-          << ", opposite normals: " << ok(max_normal_sum < 1e-12)
-          << std::endl;
+          << ", opposite normals: " << ok(max_normal_sum < 1e-12) << std::endl;
   deallog << "  continuous function: " << ok(max_value_jump < 1e-12)
           << ", subfaces cover the face: " << ok(max_area_difference < 1e-12)
           << std::endl;
   if (max_point_distance >= 1e-12 || max_weight_difference >= 1e-12 ||
       max_normal_sum >= 1e-12 || max_value_jump >= 1e-12 ||
       max_area_difference >= 1e-12)
-    deallog << "  " << max_point_distance << ' ' << max_weight_difference
-            << ' ' << max_normal_sum << ' ' << max_value_jump << ' '
+    deallog << "  " << max_point_distance << ' ' << max_weight_difference << ' '
+            << max_normal_sum << ' ' << max_value_jump << ' '
             << max_area_difference << std::endl;
 }
 

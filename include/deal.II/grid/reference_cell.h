@@ -3350,45 +3350,38 @@ ReferenceCell::child_cell_on_face(
         }
       case ReferenceCells::Tetrahedron:
         {
-            AssertIndexRange(face, 4);
-            AssertIndexRange(subface, 4);
-            AssertIndexRange(combined_orientation, 6);
+          AssertIndexRange(face, 4);
+          AssertIndexRange(subface, 4);
+          AssertIndexRange(combined_orientation, 6);
 
-            // the subface is given in the numbering of the face, so map it
-            // back to the face in standard orientation (with the inverse
-            // orientation, which differs for the rotations 2 and 4)
-            const unsigned int std_subface = (subface < 3) ?
-              triangle_vertex_permutations
-                [this->face_reference_cell(face)
-                   .get_inverse_combined_orientation(combined_orientation)]
-                [subface] :
+          // the subface is given in the numbering of the face, so map it
+          // back to the face in standard orientation (with the inverse
+          // orientation, which differs for the rotations 2 and 4)
+          const unsigned int std_subface =
+            (subface < 3) ?
+              triangle_vertex_permutations[this->face_reference_cell(face)
+                                             .get_inverse_combined_orientation(
+                                               combined_orientation)][subface] :
               subface;
 
-            static constexpr unsigned int
-              child_table[4][4] =
-              {
-                  /* face 0 */ {0,1,2,4},
-                  /* face 1 */ {1,0,3,5},
-                  /* face 2 */ {0,2,3,6},
-                  /* face 3 */ {2,1,3,7}
-              };
+          static constexpr unsigned int child_table[4][4] = {
+            /* face 0 */ {0, 1, 2, 4},
+            /* face 1 */ {1, 0, 3, 5},
+            /* face 2 */ {0, 2, 3, 6},
+            /* face 3 */ {2, 1, 3, 7}};
 
-            // tetrahedra inside pyramids: corner tetrahedra 0-3 and the
-            // pyramids 4 (apex at the middle of line 0) and 5 (apex at the
-            // middle of line 5)
-            static constexpr unsigned int
-              child_table_pyramid_family[4][4] =
-              {
-                  /* face 0 */ {0,1,2,4},
-                  /* face 1 */ {1,0,3,4},
-                  /* face 2 */ {0,2,3,5},
-                  /* face 3 */ {2,1,3,5}
-              };
+          // tetrahedra inside pyramids: corner tetrahedra 0-3 and the
+          // pyramids 4 (apex at the middle of line 0) and 5 (apex at the
+          // middle of line 5)
+          static constexpr unsigned int child_table_pyramid_family[4][4] = {
+            /* face 0 */ {0, 1, 2, 4},
+            /* face 1 */ {1, 0, 3, 4},
+            /* face 2 */ {0, 2, 3, 5},
+            /* face 3 */ {2, 1, 3, 5}};
 
-            return refinement_case == RefinementPossibilities<3>::cut_z ?
-                     child_table_pyramid_family[face][std_subface] :
-                     child_table[face][std_subface];
-
+          return refinement_case == RefinementPossibilities<3>::cut_z ?
+                   child_table_pyramid_family[face][std_subface] :
+                   child_table[face][std_subface];
         }
       case ReferenceCells::Pyramid:
         {
@@ -4796,8 +4789,10 @@ ReferenceCell::face_to_cell_line_orientation(
           standard_face_vertex = v;
       Assert(standard_face_vertex != numbers::invalid_unsigned_int,
              ExcInternalError());
-      const unsigned int real_face_vertex = standard_to_real_face_vertex(
-        standard_face_vertex, face_no, combined_face_orientation);
+      const unsigned int real_face_vertex =
+        standard_to_real_face_vertex(standard_face_vertex,
+                                     face_no,
+                                     combined_face_orientation);
 
       // the line of the face in its own numbering and its first vertex
       const unsigned int real_face_line =
@@ -4805,8 +4800,9 @@ ReferenceCell::face_to_cell_line_orientation(
                                    face_no,
                                    combined_face_orientation);
       const unsigned int first_line_vertex =
-        face_cell.face_to_cell_vertices(
-          real_face_line, line_orientation == D ? 0 : 1, D);
+        face_cell.face_to_cell_vertices(real_face_line,
+                                        line_orientation == D ? 0 : 1,
+                                        D);
 
       return first_line_vertex == real_face_vertex ?
                numbers::default_geometric_orientation :

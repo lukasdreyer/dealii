@@ -364,11 +364,11 @@ private:
     dealii::internal::FEValuesImplementation::FiniteElementRelatedData<2, 2>
       &output_data) const override;
 
+  using FiniteElement<2, 2>::fill_fe_subface_values;
+
   /**
    * Compute the data on the subface of the current cell.
    */
-  using FiniteElement<2, 2>::fill_fe_subface_values;
-
   virtual void
   fill_fe_subface_values(
     const Triangulation<2, 2>::cell_iterator &cell,

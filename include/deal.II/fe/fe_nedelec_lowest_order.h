@@ -193,11 +193,11 @@ protected:
     dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim, dim>
       &data) const override;
 
-        /**
-   * Not implemented.
-   */
   using FiniteElement<dim, dim>::fill_fe_subface_values;
 
+  /**
+   * Not implemented.
+   */
   virtual void
   fill_fe_subface_values(
     const typename Triangulation<dim, dim>::cell_iterator &cell,
@@ -224,14 +224,16 @@ protected:
     {}
     /**
      * Storage for shape functions on the reference element. We only pre-compute
-     * the values on the reference cell for the edge dofs and transform mapping and edge_sign for each cell individually
+     * the values on the reference cell for the edge dofs and transform mapping
+     * and edge_sign for each cell individually
      *
      */
     std::vector<std::vector<Tensor<1, dim>>> shape_values;
 
     /**
      * Storage for shape function gradients on the reference element. We only
-     * the gradients on the reference cell for the edge dofs and transform mapping and edge_sign for each cell individually
+     * the gradients on the reference cell for the edge dofs and transform
+     * mapping and edge_sign for each cell individually
      *
      */
     std::vector<std::vector<Tensor<2, dim>>> shape_grads;
@@ -260,7 +262,8 @@ private:
    * fills the edge signs
    */
   std::vector<int>
-  compute_edge_sign(const typename Triangulation<dim, dim>::cell_iterator &cell) const;
+  compute_edge_sign(
+    const typename Triangulation<dim, dim>::cell_iterator &cell) const;
 
   /**
    * Transform the values, gradients and Hessians on the reference cell at
@@ -281,7 +284,6 @@ private:
     const InternalData &fe_data,
     dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim, dim>
       &data) const;
-
 };
 
 

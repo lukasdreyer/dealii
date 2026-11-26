@@ -110,10 +110,10 @@ face_quadratures(const ReferenceCell &reference_cell)
   const QGauss<2>        quadrilateral(3);
   hp::QCollection<2>     quadratures;
   for (const unsigned int f : reference_cell.face_indices())
-    quadratures.push_back(
-      reference_cell.face_reference_cell(f) == ReferenceCells::Triangle ?
-        static_cast<const Quadrature<2> &>(triangle) :
-        quadrilateral);
+    quadratures.push_back(reference_cell.face_reference_cell(f) ==
+                              ReferenceCells::Triangle ?
+                            static_cast<const Quadrature<2> &>(triangle) :
+                            quadrilateral);
   return quadratures;
 }
 
@@ -138,13 +138,10 @@ check(Triangulation<3> &tria, const std::string &name)
   std::vector<hp::QCollection<2>> quadratures;
   for (unsigned int i = 0; i < c.fe.size(); ++i)
     quadratures.push_back(face_quadratures(c.fe[i].reference_cell()));
-  const UpdateFlags     flags = update_values | update_quadrature_points |
+  const UpdateFlags flags = update_values | update_quadrature_points |
                             update_JxW_values | update_normal_vectors;
-  FEInterfaceValues<3>  fe_interface_values(c.mapping,
-                                           c.fe,
-                                           quadratures,
-                                           flags);
-  hp::FEFaceValues<3>   hp_fe_face_values(c.mapping, c.fe, quadratures, flags);
+  FEInterfaceValues<3> fe_interface_values(c.mapping, c.fe, quadratures, flags);
+  hp::FEFaceValues<3>  hp_fe_face_values(c.mapping, c.fe, quadratures, flags);
 
   std::map<std::string, unsigned int> n_faces;
   double max_point_distance = 0, max_jump = 0, interface_area = 0,
@@ -158,9 +155,9 @@ check(Triangulation<3> &tria, const std::string &name)
         const auto neighbor = cell->neighbor(f);
         const bool hanging  = cell->neighbor_is_coarser(f);
         // each regular face once, each hanging face from the fine side
-        if (!hanging && (cell->face(f)->has_children() ||
-                         neighbor->active_cell_index() <
-                           cell->active_cell_index()))
+        if (!hanging &&
+            (cell->face(f)->has_children() ||
+             neighbor->active_cell_index() < cell->active_cell_index()))
           continue;
 
         // the area of the face on this side
@@ -208,11 +205,10 @@ check(Triangulation<3> &tria, const std::string &name)
              fe_interface_values.quadrature_point_indices())
           {
             interface_area += fe_interface_values.JxW(q);
-            max_point_distance =
-              std::max(max_point_distance,
-                       side_0.quadrature_point(q).distance(
-                         side_1.quadrature_point(q)));
-            max_jump = std::max(max_jump, std::abs(jumps[q]));
+            max_point_distance = std::max(max_point_distance,
+                                          side_0.quadrature_point(q).distance(
+                                            side_1.quadrature_point(q)));
+            max_jump           = std::max(max_jump, std::abs(jumps[q]));
           }
       }
 

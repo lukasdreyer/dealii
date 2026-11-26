@@ -2222,7 +2222,7 @@ private:
    */
   bool quadrature_for_each_element_and_face = false;
 
-    std::unique_ptr<hp::FEFaceValues<dim, spacedim>> internal_hp_fe_face_values;
+  std::unique_ptr<hp::FEFaceValues<dim, spacedim>> internal_hp_fe_face_values;
 
   /**
    * An hp::FEValues object for the FESubfaceValues on the
@@ -2661,11 +2661,12 @@ FEInterfaceValues<dim, spacedim>::reinit(
         }
       if (sub_face_no_neighbor == numbers::invalid_unsigned_int)
         {
-          internal_hp_fe_face_values_neighbor->reinit(cell_neighbor,
-                                                      face_no_neighbor,
-                                                      used_q_index_neighbor,
-                                                      used_mapping_index_neighbor,
-                                                      active_fe_index_neighbor);
+          internal_hp_fe_face_values_neighbor->reinit(
+            cell_neighbor,
+            face_no_neighbor,
+            used_q_index_neighbor,
+            used_mapping_index_neighbor,
+            active_fe_index_neighbor);
 
           fe_face_values_neighbor = &const_cast<FEFaceValues<dim, spacedim> &>(
             internal_hp_fe_face_values_neighbor->get_present_fe_values());

@@ -1480,8 +1480,8 @@ namespace internal
                     {
                       const double area_ratio =
                         1. / cell->reference_cell()
-                                .face_reference_cell(face_no)
-                                .n_isotropic_children();
+                               .face_reference_cell(face_no)
+                               .n_isotropic_children();
                       output_data.JxW_values[i] *= area_ratio;
                     }
                 }

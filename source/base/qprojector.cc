@@ -803,7 +803,8 @@ QProjector<dim>::DataSetDescriptor::subface(
   AssertIndexRange(face_no, reference_cell.n_faces());
   AssertIndexRange(combined_orientation,
                    reference_cell.n_face_orientations(face_no));
-  Assert(quadrature.size() == 1 || quadrature.size() == reference_cell.n_faces(),
+  Assert(quadrature.size() == 1 ||
+           quadrature.size() == reference_cell.n_faces(),
          ExcDimensionMismatch(quadrature.size(), reference_cell.n_faces()));
 
   const auto [final_subface_no, final_refinement_case] =
@@ -849,8 +850,8 @@ QProjector<dim>::DataSetDescriptor::subface(
         return index + (combined_orientation * n_children + final_subface_no) *
                          n_q_points;
       else
-        index += reference_cell.n_face_orientations(face_no) * n_children *
-                 n_q_points;
+        index +=
+          reference_cell.n_face_orientations(face_no) * n_children * n_q_points;
     }
   DEAL_II_ASSERT_UNREACHABLE();
 
