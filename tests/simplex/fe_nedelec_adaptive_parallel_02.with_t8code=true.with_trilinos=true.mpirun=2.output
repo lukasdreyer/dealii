@@ -1,0 +1,44 @@
+
+DEAL:0::exact solution: u = grad (S chi) OK, grad f OK, branch on the boundary OK, n x u = 0 OK
+DEAL:0::tetrahedra:
+DEAL:0::  cells=240 dofs=426 levels=2 iterations=11 error=0.998 effectivity=5.7
+DEAL:0::  cells=681 dofs=1278 levels=3 iterations=13 error=0.954 effectivity=4.4 rate=0.04
+DEAL:0::  cells=1633 dofs=2684 levels=4 iterations=12 error=0.720 effectivity=4.6 rate=0.38
+DEAL:0::  cells=5770 dofs=9994 levels=4 iterations=14 error=0.559 effectivity=4.5 rate=0.19
+DEAL:0::pyramids and tetrahedra:
+DEAL:0::  cells=342 dofs=581 levels=2 iterations=13 error=0.926 effectivity=6.2
+DEAL:0::  cells=946 dofs=1822 levels=3 iterations=14 error=0.863 effectivity=5.0 rate=0.06
+DEAL:0::  cells=2484 dofs=4335 levels=4 iterations=15 error=0.605 effectivity=5.4 rate=0.41
+DEAL:0::  cells=7904 dofs=14118 levels=4 iterations=17 error=0.469 effectivity=5.2 rate=0.22
+DEAL:0::hexahedra and pyramids:
+DEAL:0::  cells=204 dofs=454 levels=2 iterations=10 error=0.704 effectivity=7.2
+DEAL:0::  cells=424 dofs=1350 levels=3 iterations=10 error=0.602 effectivity=6.1 rate=0.14
+DEAL:0::  cells=1177 dofs=3511 levels=4 iterations=12 error=0.456 effectivity=5.8 rate=0.29
+DEAL:0::  cells=3360 dofs=9401 levels=4 iterations=12 error=0.318 effectivity=6.0 rate=0.37
+DEAL:0::wedges and tetrahedra:
+DEAL:0::  cells=192 dofs=392 levels=2 iterations=11 error=0.932 effectivity=6.5
+DEAL:0::  cells=535 dofs=1209 levels=3 iterations=13 error=0.863 effectivity=5.2 rate=0.07
+DEAL:0::  cells=1333 dofs=2621 levels=4 iterations=14 error=0.620 effectivity=5.6 rate=0.43
+DEAL:0::  cells=4140 dofs=8440 levels=4 iterations=16 error=0.491 effectivity=5.3 rate=0.20
+
+DEAL:1::exact solution: u = grad (S chi) OK, grad f OK, branch on the boundary OK, n x u = 0 OK
+DEAL:1::tetrahedra:
+DEAL:1::  cells=240 dofs=426 levels=2 iterations=11 error=0.998 effectivity=5.7
+DEAL:1::  cells=681 dofs=1278 levels=3 iterations=13 error=0.954 effectivity=4.4 rate=0.04
+DEAL:1::  cells=1633 dofs=2684 levels=4 iterations=12 error=0.720 effectivity=4.6 rate=0.38
+DEAL:1::  cells=5770 dofs=9994 levels=4 iterations=14 error=0.559 effectivity=4.5 rate=0.19
+DEAL:1::pyramids and tetrahedra:
+DEAL:1::  cells=342 dofs=581 levels=2 iterations=13 error=0.926 effectivity=6.2
+DEAL:1::  cells=946 dofs=1822 levels=3 iterations=14 error=0.863 effectivity=5.0 rate=0.06
+DEAL:1::  cells=2484 dofs=4335 levels=4 iterations=15 error=0.605 effectivity=5.4 rate=0.41
+DEAL:1::  cells=7904 dofs=14118 levels=4 iterations=17 error=0.469 effectivity=5.2 rate=0.22
+DEAL:1::hexahedra and pyramids:
+DEAL:1::  cells=204 dofs=454 levels=2 iterations=10 error=0.704 effectivity=7.2
+DEAL:1::  cells=424 dofs=1350 levels=3 iterations=10 error=0.602 effectivity=6.1 rate=0.14
+DEAL:1::  cells=1177 dofs=3511 levels=4 iterations=12 error=0.456 effectivity=5.8 rate=0.29
+DEAL:1::  cells=3360 dofs=9401 levels=4 iterations=12 error=0.318 effectivity=6.0 rate=0.37
+DEAL:1::wedges and tetrahedra:
+DEAL:1::  cells=192 dofs=392 levels=2 iterations=11 error=0.932 effectivity=6.5
+DEAL:1::  cells=535 dofs=1209 levels=3 iterations=13 error=0.863 effectivity=5.2 rate=0.07
+DEAL:1::  cells=1333 dofs=2621 levels=4 iterations=14 error=0.620 effectivity=5.6 rate=0.43
+DEAL:1::  cells=4140 dofs=8440 levels=4 iterations=16 error=0.491 effectivity=5.3 rate=0.20
