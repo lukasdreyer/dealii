@@ -3186,6 +3186,17 @@ private:
     SolverFGMRES<PETScWrappers::MPI::BlockVector>::AdditionalData data;
     data.max_basis_size = prm.restart;
     SolverFGMRES<PETScWrappers::MPI::BlockVector> solver(solver_control, data);
+    // the residual history every 50 iterations, to tell stagnation from
+    // slow convergence (the FGMRES restarts every prm.restart iterations)
+    const double rhs_norm = rhs.l2_norm();
+    solver.connect([&](const unsigned int                     iteration,
+                       const double                           residual,
+                       const PETScWrappers::MPI::BlockVector &) {
+      if (iteration % 50 == 0 && iteration > 0)
+        pcout << "iteration " << iteration << ": relative residual "
+              << residual / rhs_norm << std::endl;
+      return SolverControl::success;
+    });
     unsigned int n_inner   = 0;
     bool         converged = true;
     try
