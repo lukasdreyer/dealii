@@ -83,6 +83,10 @@
  * not contained in their coarse cells (the vertices moved onto the sphere),
  * so the spaces are not nested and only "algebraic" gives the exact
  * Galerkin operator of P (E = I - P A_H^-1 P^T A is then a projection).
+ * coarse_solver=distributed factorizes the coarse problem with one MUMPS
+ * over all ranks, each providing its rows of P^T A P, instead of a
+ * sequential MUMPS on every rank (redundant); the coarse right hand side is
+ * summed over the ranks, solved, and the solution broadcast.
  * ras and oras also take a correction in the space of gradients
  * (gradient_correction=amg|exact): on gradient fields G phi the operator is
  * about -k^2 L with L = G^T M G, so x0 = -G L^-1 G^T r / k^2, with L^-1 one
@@ -175,6 +179,9 @@ struct Parameters
   std::string  coarse           = "none"; // ras/oras: none, additive, hybrid
   double       coarse_shift     = 0.;    // absorption of the coarse problem
   std::string  coarse_op        = "algebraic"; // algebraic, galerkin, rediscretize
+  // the coarse solve: MUMPS on every rank (redundant) or one distributed
+  // MUMPS over all ranks (distributed, only with coarse_op=algebraic)
+  std::string  coarse_solver    = "redundant";
   std::string  gradient_correction = "none"; // ras/oras: none, amg, exact
   bool         checks           = false; // tests of the Schwarz components
   // oras_serial / ras_serial: subdomains emulated on one process
@@ -268,6 +275,8 @@ struct Parameters
           checks = (value == "1" || value == "true");
         else if (key == "gradient_correction")
           gradient_correction = value;
+        else if (key == "coarse_solver")
+          coarse_solver = value;
         else if (key == "coarse_op")
           coarse_op = value;
         else if (key == "coarse_shift")
@@ -293,6 +302,10 @@ struct Parameters
     AssertThrow(R > a, ExcMessage("The cube must contain the sphere."));
     AssertThrow(coarse == "none" || coarse == "additive" || coarse == "hybrid",
                 ExcMessage("Unknown coarse correction " + coarse));
+    AssertThrow(coarse_solver == "redundant" ||
+                  (coarse_solver == "distributed" && coarse_op == "algebraic"),
+                ExcMessage("coarse_solver must be redundant, or distributed "
+                           "with coarse_op=algebraic."));
     AssertThrow(coarse_op == "algebraic" || coarse_op == "galerkin" ||
                   coarse_op == "rediscretize",
                 ExcMessage("Unknown coarse operator " + coarse_op));
@@ -812,6 +825,102 @@ private:
 
 
 /**
+ * A sparse LU factorization by MUMPS distributed over a communicator (real
+ * arithmetic): every process provides some entries of the matrix (MUMPS'
+ * distributed assembled input), the right hand side and the solution are
+ * replicated on all processes.
+ */
+class DistributedMUMPS
+{
+public:
+  DistributedMUMPS(const MPI_Comm comm)
+    : comm(comm)
+  {
+    id.comm_fortran = static_cast<MUMPS_INT>(MPI_Comm_c2f(comm));
+    id.par          = 1;
+    id.sym          = 0;
+    id.job          = -1;
+    dmumps_c(&id);
+    check("initialization");
+    id.icntl[0]  = -1;
+    id.icntl[1]  = -1;
+    id.icntl[2]  = -1;
+    id.icntl[3]  = 0;
+    id.icntl[13] = 50;
+    // distributed assembled matrix
+    id.icntl[17] = 3;
+  }
+
+  ~DistributedMUMPS()
+  {
+    id.job = -2;
+    dmumps_c(&id);
+  }
+
+  DistributedMUMPS(const DistributedMUMPS &) = delete;
+  DistributedMUMPS &
+  operator=(const DistributedMUMPS &) = delete;
+
+  /// Analysis and factorization; the triplets (0-based) of this process.
+  void
+  factorize(const unsigned int             n,
+            const std::vector<MUMPS_INT>  &rows,
+            const std::vector<MUMPS_INT>  &cols,
+            const std::vector<double>     &values)
+  {
+    irn.resize(rows.size());
+    jcn.resize(cols.size());
+    for (std::size_t i = 0; i < rows.size(); ++i)
+      {
+        irn[i] = rows[i] + 1;
+        jcn[i] = cols[i] + 1;
+      }
+    a          = values;
+    id.n       = n;
+    id.nnz_loc = static_cast<MUMPS_INT8>(a.size());
+    id.irn_loc = irn.data();
+    id.jcn_loc = jcn.data();
+    id.a_loc   = a.data();
+    id.job     = 4;
+    dmumps_c(&id);
+    check("factorization");
+  }
+
+  /// Solves in place; rhs is replicated on all processes (on input the
+  /// right hand side of the first process is used).
+  void
+  solve(std::vector<double> &rhs)
+  {
+    AssertDimension(rhs.size(), static_cast<std::size_t>(id.n));
+    id.rhs  = rhs.data();
+    id.nrhs = 1;
+    id.lrhs = id.n;
+    id.job  = 3;
+    dmumps_c(&id);
+    check("solve");
+    MPI_Bcast(rhs.data(), rhs.size(), MPI_DOUBLE, 0, comm);
+  }
+
+private:
+  const MPI_Comm         comm;
+  DMUMPS_STRUC_C         id;
+  std::vector<MUMPS_INT> irn, jcn;
+  std::vector<double>    a;
+
+  void
+  check(const char *phase) const
+  {
+    // INFOG is the same on all processes
+    AssertThrow(id.infog[0] >= 0,
+                ExcMessage(std::string("distributed MUMPS ") + phase +
+                           " failed: INFOG(1)=" + std::to_string(id.infog[0]) +
+                           " INFOG(2)=" + std::to_string(id.infog[1])));
+  }
+};
+
+
+
+/**
  * Accumulates the complex matrix A + i B of a local problem as triplets and
  * factorizes its real block form [A -B; B A].
  */
@@ -891,6 +1000,27 @@ private:
   std::map<std::pair<unsigned int, unsigned int>, std::array<double, 2>>
                          entries;
   std::set<unsigned int> dirichlet;
+};
+
+
+
+/**
+ * The solver of the coarse problem: a sequential MUMPS on every rank, or a
+ * distributed one. The coarse vectors are replicated on all ranks.
+ */
+struct CoarseSolver
+{
+  SequentialMUMPS                   redundant;
+  std::unique_ptr<DistributedMUMPS> distributed;
+
+  void
+  solve(std::vector<double> &coarse)
+  {
+    if (distributed)
+      distributed->solve(coarse);
+    else
+      redundant.solve(coarse);
+  }
 };
 
 
@@ -1144,7 +1274,7 @@ struct TwoLevelSchwarz
   const ComplexBlockMatrix                   &system;
   const std::vector<types::global_dof_index> &owned_indices;
   const std::vector<Row>                     &prolongation;
-  SequentialMUMPS                            &coarse_solver;
+  CoarseSolver                               &coarse_solver;
   const unsigned int                          n_coarse;
   const bool                                  hybrid;
   const MPI_Comm                              comm;
@@ -1783,7 +1913,7 @@ private:
   factorize_algebraic_coarse_problem(const double                            k,
                                      const PETScWrappers::MPI::SparseMatrix &A,
                                      const PETScWrappers::MPI::SparseMatrix &B,
-                                     SequentialMUMPS &mumps) const
+                                     CoarseSolver &coarse_solver) const
   {
     const PetscInt n_coarse = coarse_dh.n_dofs();
     Mat            P_mat;
@@ -1826,8 +1956,9 @@ private:
     if (prm.coarse_shift != 0.)
       B_coarse.add(-prm.coarse_shift * k * k, M);
 
-    // the real and the imaginary part, each gathered on every rank
-    std::array<Mat, 2> products, copies;
+    // the real and the imaginary part, distributed by rows
+    const bool         distributed = (prm.coarse_solver == "distributed");
+    std::array<Mat, 2> products, copies = {{nullptr, nullptr}};
     const std::array<Mat, 2> parts = {{static_cast<Mat>(A),
                                        static_cast<Mat>(B_coarse)}};
     for (unsigned int part = 0; part < 2; ++part)
@@ -1838,6 +1969,56 @@ private:
                        PETSC_DETERMINE,
                        &products[part]);
         AssertThrow(ierr == 0, ExcPETScError(ierr));
+      }
+    if (distributed)
+      {
+        // every rank provides the entries of its rows of the real block
+        // form [A_H -B_H; B_H A_H]
+        std::vector<MUMPS_INT> rows, cols;
+        std::vector<double>    values;
+        for (unsigned int part = 0; part < 2; ++part)
+          {
+            PetscInt row_begin, row_end;
+            MatGetOwnershipRange(products[part], &row_begin, &row_end);
+            for (PetscInt row = row_begin; row < row_end; ++row)
+              {
+                PetscInt           n_cols;
+                const PetscInt    *cols_row;
+                const PetscScalar *vals;
+                MatGetRow(products[part], row, &n_cols, &cols_row, &vals);
+                for (PetscInt e = 0; e < n_cols; ++e)
+                  {
+                    const PetscInt col = cols_row[e];
+                    const double   v   = vals[e];
+                    if (part == 0)
+                      {
+                        rows.push_back(row);
+                        cols.push_back(col);
+                        values.push_back(v);
+                        rows.push_back(row + n_coarse);
+                        cols.push_back(col + n_coarse);
+                        values.push_back(v);
+                      }
+                    else
+                      {
+                        rows.push_back(row);
+                        cols.push_back(col + n_coarse);
+                        values.push_back(-v);
+                        rows.push_back(row + n_coarse);
+                        cols.push_back(col);
+                        values.push_back(v);
+                      }
+                  }
+                MatRestoreRow(products[part], row, &n_cols, &cols_row, &vals);
+              }
+          }
+        coarse_solver.distributed = std::make_unique<DistributedMUMPS>(comm);
+        coarse_solver.distributed->factorize(2 * n_coarse, rows, cols, values);
+      }
+    // the redundant copies: for the redundant solve, and for the tests
+    if (!distributed || prm.checks)
+      for (unsigned int part = 0; part < 2; ++part)
+      {
         ierr = MatCreateRedundantMatrix(products[part],
                                         Utilities::MPI::n_mpi_processes(comm),
                                         MPI_COMM_NULL,
@@ -1846,6 +2027,7 @@ private:
         AssertThrow(ierr == 0, ExcPETScError(ierr));
       }
     ComplexTriplets triplets;
+    if (!distributed || prm.checks)
     for (unsigned int part = 0; part < 2; ++part)
       for (PetscInt row = 0; row < n_coarse; ++row)
         {
@@ -1863,10 +2045,12 @@ private:
     for (unsigned int part = 0; part < 2; ++part)
       {
         MatDestroy(&products[part]);
-        MatDestroy(&copies[part]);
+        if (copies[part] != nullptr)
+          MatDestroy(&copies[part]);
       }
     MatDestroy(&P_mat);
-    triplets.factorize(n_coarse, mumps);
+    if (!distributed)
+      triplets.factorize(n_coarse, coarse_solver.redundant);
     if (prm.checks)
       coarse_triplets = std::make_unique<ComplexTriplets>(triplets);
   }
@@ -2694,7 +2878,7 @@ private:
   void
   check_coarse_correction(const TwoLevelSchwarz    &two_level,
                           const ComplexBlockMatrix &system,
-                          SequentialMUMPS          &coarse_solver) const
+                          CoarseSolver             &coarse_solver) const
   {
     const unsigned int  n_coarse = coarse_dh.n_dofs();
     std::vector<double> c(2 * n_coarse);
@@ -2900,7 +3084,8 @@ private:
     PreconditionAMS ams;
     if (!schwarz)
       ams.initialize(P, gradient, constant_fields);
-    SequentialMUMPS mumps, coarse_mumps;
+    SequentialMUMPS mumps;
+    CoarseSolver    coarse_mumps;
     SerialSchwarz   serial;
     if (serial_schwarz)
       setup_serial_schwarz(k, serial);
@@ -2911,7 +3096,7 @@ private:
         if (prm.coarse_op == "algebraic")
           factorize_algebraic_coarse_problem(k, A, B, coarse_mumps);
         else
-          factorize_coarse_problem(k, coarse_mumps);
+          factorize_coarse_problem(k, coarse_mumps.redundant);
       }
     const double setup_time = timer.wall_time();
     timer.restart();
