@@ -68,7 +68,7 @@ namespace internal
         }
 
       if (dim == 3)
-        for (unsigned int i = 1; i <= 3; ++i)
+        for (unsigned int i = 1; i <= 4; ++i)
           if (quad == QGaussWedge<dim>(i))
             {
               QGauss<dim - 1>        quad(i);
@@ -80,7 +80,7 @@ namespace internal
             }
 
       if (dim == 3)
-        for (unsigned int i = 1; i <= 2; ++i)
+        for (unsigned int i = 1; i <= 4; ++i)
           if (quad == QGaussPyramid<dim>(i))
             {
               QGauss<dim - 1>        quad(i);
@@ -166,12 +166,12 @@ namespace internal
         }
 
       if (dim == 3)
-        for (unsigned int i = 1; i <= 3; ++i)
+        for (unsigned int i = 1; i <= 4; ++i)
           if (quad == QGaussWedge<dim>(i))
             return {QGauss<dim - 1>(i), QGaussSimplex<dim - 1>(i)};
 
       if (dim == 3)
-        for (unsigned int i = 1; i <= 2; ++i)
+        for (unsigned int i = 1; i <= 4; ++i)
           if (quad == QGaussPyramid<dim>(i))
             return {QGauss<dim - 1>(i), QGaussSimplex<dim - 1>(i)};
 

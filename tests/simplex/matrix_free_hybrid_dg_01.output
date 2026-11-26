@@ -1,0 +1,29 @@
+
+DEAL::tetrahedra, degree 1, 40 cells: OK
+DEAL::tetrahedra, degree 2, 40 cells: OK
+DEAL::wedges, degree 1, 16 cells: OK
+DEAL::wedges, degree 2, 16 cells: OK
+DEAL::hexahedra, degree 1, 8 cells: OK
+DEAL::hexahedra, degree 2, 8 cells: OK
+DEAL::pyramids, degree 1, 48 cells: OK
+DEAL::pyramids, degree 2, 48 cells: OK
+DEAL::pyramids and tetrahedra, degree 1, 52 cells: OK
+DEAL::pyramids and tetrahedra, degree 2, 52 cells: OK
+DEAL::hexahedra and pyramids, degree 1, 28 cells: OK
+DEAL::hexahedra and pyramids, degree 2, 28 cells: OK
+DEAL::wedges and tetrahedra, degree 1, 32 cells: OK
+DEAL::wedges and tetrahedra, degree 2, 32 cells: OK
+DEAL::tetrahedra with hanging faces, degree 1, 1020 cells: OK
+DEAL::tetrahedra with hanging faces, degree 2, 1020 cells: OK
+DEAL::wedges with hanging faces, degree 1, 450 cells: OK
+DEAL::wedges with hanging faces, degree 2, 450 cells: OK
+DEAL::hexahedra with hanging faces, degree 1, 218 cells: OK
+DEAL::hexahedra with hanging faces, degree 2, 218 cells: OK
+DEAL::pyramids with hanging faces, degree 1, 1639 cells: OK
+DEAL::pyramids with hanging faces, degree 2, 1639 cells: OK
+DEAL::pyramids and tetrahedra with hanging faces, degree 1, 1523 cells: OK
+DEAL::pyramids and tetrahedra with hanging faces, degree 2, 1523 cells: OK
+DEAL::hexahedra and pyramids with hanging faces, degree 1, 962 cells: OK
+DEAL::hexahedra and pyramids with hanging faces, degree 2, 962 cells: OK
+DEAL::wedges and tetrahedra with hanging faces, degree 1, 830 cells: OK
+DEAL::wedges and tetrahedra with hanging faces, degree 2, 830 cells: OK

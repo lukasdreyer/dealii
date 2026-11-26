@@ -478,6 +478,79 @@ namespace internal
                             }
                       }
                   }
+
+                // the same for the subfaces of isotropically refined faces,
+                // the coarse side of hanging faces, with the points in the
+                // order of FESubfaceValues
+                if constexpr (dim == 3)
+                  {
+                    unsigned int n_max_subfaces = 0;
+                    for (unsigned int f = 0; f < n_faces; ++f)
+                      n_max_subfaces =
+                        std::max(n_max_subfaces,
+                                 reference_cell.face_reference_cell(f)
+                                   .n_isotropic_children());
+
+                    const auto projected_quad_subface =
+                      QProjector<dim>::project_to_all_subfaces(reference_cell,
+                                                               quad_face);
+
+                    auto &shape_values_subface =
+                      univariate_shape_data.shape_values_subface;
+                    auto &shape_gradients_subface =
+                      univariate_shape_data.shape_gradients_subface;
+                    shape_values_subface.reinit({n_faces,
+                                                 n_max_face_orientations,
+                                                 n_max_subfaces,
+                                                 n_dofs * n_q_points_face_max});
+                    shape_gradients_subface.reinit(
+                      {n_faces,
+                       n_max_face_orientations,
+                       n_max_subfaces,
+                       dim * n_dofs * n_q_points_face_max});
+
+                    for (unsigned int f = 0; f < n_faces; ++f)
+                      {
+                        const unsigned int n_q_points_face =
+                          quad_face[quad_face.size() == 1 ? 0 : f].size();
+                        const unsigned int n_subfaces =
+                          reference_cell.face_reference_cell(f)
+                            .n_isotropic_children();
+
+                        for (types::geometric_orientation orientation = 0;
+                             orientation <
+                             reference_cell.n_face_orientations(f);
+                             ++orientation)
+                          for (unsigned int s = 0; s < n_subfaces; ++s)
+                            {
+                              const unsigned int offset =
+                                QProjector<dim>::DataSetDescriptor::subface(
+                                  reference_cell, f, s, orientation, quad_face);
+
+                              for (unsigned int i = 0; i < n_dofs; ++i)
+                                for (unsigned int q = 0; q < n_q_points_face;
+                                     ++q)
+                                  {
+                                    const auto &point =
+                                      projected_quad_subface.point(q + offset);
+                                    shape_values_subface(f,
+                                                         orientation,
+                                                         s,
+                                                         i * n_q_points_face +
+                                                           q) =
+                                      fe.shape_value(i, point);
+                                    const auto grad = fe.shape_grad(i, point);
+                                    for (unsigned int d = 0; d < dim; ++d)
+                                      shape_gradients_subface(
+                                        f,
+                                        orientation,
+                                        s,
+                                        i * dim * n_q_points_face + q * dim +
+                                          d) = grad[d];
+                                  }
+                            }
+                      }
+                  }
               }
           }
 

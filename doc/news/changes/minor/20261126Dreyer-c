@@ -1,0 +1,7 @@
+Fixed: MatrixFree now supports discontinuous elements on 3D meshes with
+tetrahedra, wedges, pyramids and hexahedra, also mixed in one mesh and
+with hanging faces. Before, face integrals between cells of different
+shapes or across hanging faces of non-hexahedral cells could be wrong,
+and setting up MatrixFree on such meshes could write out of bounds.
+<br>
+(Lukas Dreyer, 2026/11/26)

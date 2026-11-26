@@ -389,6 +389,14 @@ namespace internal
     inline void
     HangingNodes<3>::setup_line_to_cell(const Triangulation<3> &triangulation)
     {
+      // The mapping from lines to cells below assumes hexahedra (12 lines per
+      // cell, the line numbering of the children); it is only needed for the
+      // hanging node constraints of continuous elements on hexahedra. Do not
+      // set it up on meshes with other cells, where the loops would run past
+      // the lines of the cells.
+      if (triangulation.all_reference_cells_are_hyper_cube() == false)
+        return;
+
       // Check if we there are no hanging nodes on the current MPI process,
       // which we do by checking if the second finest level holds no active
       // non-artificial cell

@@ -1467,13 +1467,24 @@ namespace internal
 
       const unsigned int face_no          = fe_eval.get_face_no();
       const unsigned int face_orientation = fe_eval.get_face_orientation();
-      const std::size_t  n_dofs     = shape_info.dofs_per_component_on_cell;
-      const std::size_t  n_q_points = shape_info.n_q_points_faces[face_no];
+      // the coarse side of a hanging face: the points of the subface
+      const unsigned int subface_index = fe_eval.get_subface_index();
+      const bool         on_subface =
+        subface_index < GeometryInfo<dim>::max_children_per_cell;
+      Assert(!on_subface || shape_data.shape_values_subface.size(0) > 0,
+             ExcNotImplemented());
+      const std::size_t n_dofs     = shape_info.dofs_per_component_on_cell;
+      const std::size_t n_q_points = shape_info.n_q_points_faces[face_no];
 
       if (evaluation_flag & EvaluationFlags::values)
         {
           const auto *const shape_values =
-            &shape_data.shape_values_face(face_no, face_orientation, 0);
+            on_subface ?
+              &shape_data.shape_values_subface(face_no,
+                                               face_orientation,
+                                               subface_index,
+                                               0) :
+              &shape_data.shape_values_face(face_no, face_orientation, 0);
 
           auto *out = fe_eval.begin_values();
           auto *in  = values_dofs;
@@ -1522,7 +1533,12 @@ namespace internal
           const auto *in  = values_dofs;
 
           const auto *const shape_gradients =
-            &shape_data.shape_gradients_face(face_no, face_orientation, 0);
+            on_subface ?
+              &shape_data.shape_gradients_subface(face_no,
+                                                  face_orientation,
+                                                  subface_index,
+                                                  0) :
+              &shape_data.shape_gradients_face(face_no, face_orientation, 0);
 
           for (unsigned int c = 0; c < n_components; c += 3)
             {
@@ -1937,14 +1953,25 @@ namespace internal
 
       const unsigned int face_no          = fe_eval.get_face_no();
       const unsigned int face_orientation = fe_eval.get_face_orientation();
-      const std::size_t  n_dofs     = shape_info.dofs_per_component_on_cell;
-      const std::size_t  n_q_points = shape_info.n_q_points_faces[face_no];
+      // the coarse side of a hanging face: the points of the subface
+      const unsigned int subface_index = fe_eval.get_subface_index();
+      const bool         on_subface =
+        subface_index < GeometryInfo<dim>::max_children_per_cell;
+      Assert(!on_subface || shape_data.shape_values_subface.size(0) > 0,
+             ExcNotImplemented());
+      const std::size_t n_dofs     = shape_info.dofs_per_component_on_cell;
+      const std::size_t n_q_points = shape_info.n_q_points_faces[face_no];
 
 
       if (integration_flag & EvaluationFlags::values)
         {
           const auto *const shape_values =
-            &shape_data.shape_values_face(face_no, face_orientation, 0);
+            on_subface ?
+              &shape_data.shape_values_subface(face_no,
+                                               face_orientation,
+                                               subface_index,
+                                               0) :
+              &shape_data.shape_values_face(face_no, face_orientation, 0);
 
           auto *in  = fe_eval.begin_values();
           auto *out = values_dofs;
@@ -2028,7 +2055,12 @@ namespace internal
           auto *out = values_dofs;
 
           const auto *const shape_gradients =
-            &shape_data.shape_gradients_face(face_no, face_orientation, 0);
+            on_subface ?
+              &shape_data.shape_gradients_subface(face_no,
+                                                  face_orientation,
+                                                  subface_index,
+                                                  0) :
+              &shape_data.shape_gradients_face(face_no, face_orientation, 0);
 
           for (unsigned int c = 0; c < n_components; ++c)
             {

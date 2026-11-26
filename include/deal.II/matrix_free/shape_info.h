@@ -380,6 +380,23 @@ namespace internal
        * (no tensor-product structure exploited).
        */
       Table<3, Number> shape_gradients_face;
+
+      /**
+       * Stores the shape values of the finite element evaluated at all
+       * quadrature points of the subfaces of all faces (isotropic
+       * refinement) and orientations, for the coarse side of hanging faces
+       * (no tensor-product structure exploited). The indices are the face,
+       * the orientation, the subface, and the shape function and quadrature
+       * point as in shape_values_face.
+       */
+      Table<4, Number> shape_values_subface;
+
+      /**
+       * Stores the shape gradients of the finite element evaluated at all
+       * quadrature points of the subfaces of all faces and orientations, as
+       * shape_values_subface (no tensor-product structure exploited).
+       */
+      Table<4, Number> shape_gradients_subface;
     };
 
 

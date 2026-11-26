@@ -1586,7 +1586,13 @@ namespace internal
                 &tria, cell_level_index[c].first, cell_level_index[c].second);
               Assert(cell->level() > 0, ExcInternalError());
               const auto parent = cell->parent();
-              auto      &entry = cell_parents[parent->level()][parent->index()];
+              // only families of max_children_per_cell children are scheduled
+              // together; skip parents with a different number of children
+              // (e.g. pyramids with 10 children), which would not fit into
+              // the array
+              if (parent->n_children() != max_children_per_cell)
+                continue;
+              auto &entry = cell_parents[parent->level()][parent->index()];
               entry.second[entry.first++] = c;
             }
         unsigned int position = 0;

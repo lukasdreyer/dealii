@@ -837,10 +837,37 @@ namespace internal
                                   }
                                 const types::subdomain_id neigh_domain =
                                   neighbor_c->subdomain_id();
-                                const unsigned int neighbor_face_no =
+                                // the number of the face in the child behind
+                                // the subface: the number of the face in the
+                                // neighbor for isotropically refined
+                                // hexahedra, otherwise (the middle child of a
+                                // tetrahedron, the tetrahedral children of a
+                                // pyramid, ...) search for it
+                                unsigned int neighbor_face_no =
                                   dcell->has_periodic_neighbor(f) ?
                                     dcell->periodic_neighbor_face_no(f) :
                                     dcell->neighbor_face_no(f);
+                                if (dim > 1 &&
+                                    !dcell->has_periodic_neighbor(f) &&
+                                    (neighbor_face_no >=
+                                       neighbor_c->n_faces() ||
+                                     neighbor_c->face(neighbor_face_no) !=
+                                       dcell->face(f)->child(c)))
+                                  {
+                                    neighbor_face_no =
+                                      numbers::invalid_unsigned_int;
+                                    for (const unsigned int g :
+                                         neighbor_c->face_indices())
+                                      if (neighbor_c->face(g) ==
+                                          dcell->face(f)->child(c))
+                                        {
+                                          neighbor_face_no = g;
+                                          break;
+                                        }
+                                    Assert(neighbor_face_no !=
+                                             numbers::invalid_unsigned_int,
+                                           ExcInternalError());
+                                  }
                                 const unsigned int child_face_index =
                                   dim > 1 ? dcell->face(f)->child(c)->index() :
                                             dcell->face(f)->index();
@@ -1004,7 +1031,9 @@ namespace internal
       Assert(neighbor->level() <= cell->level(), ExcInternalError());
 
       // for dim > 1 and hanging faces we must set a subface index
-      if (dim > 1 && cell->level() > neighbor->level())
+      if (dim > 1 && (cell->has_periodic_neighbor(face_no) ?
+                        cell->level() > neighbor->level() :
+                        cell->neighbor_is_coarser(face_no)))
         {
           if (cell->has_periodic_neighbor(face_no))
             info.subface_index =
@@ -1043,8 +1072,9 @@ namespace internal
 
           // make sure to select correct subface index in case of non-standard
           // orientation of the coarser neighbor face
-          if (cell->level() > neighbor->level() &&
-              exterior_face_orientation > 0)
+          if (info.subface_index < GeometryInfo<dim>::max_children_per_cell &&
+              exterior_face_orientation > 0 &&
+              neighbor->reference_cell().is_hyper_cube())
             {
               const Table<2, unsigned int> orientation =
                 ShapeInfo<double>::compute_orientation_table(2);
