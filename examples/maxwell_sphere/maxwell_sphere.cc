@@ -86,7 +86,9 @@
  * coarse_solver=distributed factorizes the coarse problem with one MUMPS
  * over all ranks, each providing its rows of P^T A P, instead of a
  * sequential MUMPS on every rank (redundant); the coarse right hand side is
- * summed over the ranks, solved, and the solution broadcast.
+ * summed over the ranks, solved, and the solution broadcast. MUMPS runs
+ * on coarse_procs processes (every m-th rank; 0 = all), the other ranks send
+ * their rows to them.
  * ras and oras also take a correction in the space of gradients
  * (gradient_correction=amg|exact): on gradient fields G phi the operator is
  * about -k^2 L with L = G^T M G, so x0 = -G L^-1 G^T r / k^2, with L^-1 one
@@ -182,6 +184,8 @@ struct Parameters
   // the coarse solve: MUMPS on every rank (redundant) or one distributed
   // MUMPS over all ranks (distributed, only with coarse_op=algebraic)
   std::string  coarse_solver    = "redundant";
+  // coarse_solver=distributed: the number of processes running MUMPS (0: all)
+  unsigned int coarse_procs     = 0;
   std::string  gradient_correction = "none"; // ras/oras: none, amg, exact
   bool         checks           = false; // tests of the Schwarz components
   // oras_serial / ras_serial: subdomains emulated on one process
@@ -277,6 +281,8 @@ struct Parameters
           gradient_correction = value;
         else if (key == "coarse_solver")
           coarse_solver = value;
+        else if (key == "coarse_procs")
+          coarse_procs = std::stoi(value);
         else if (key == "coarse_op")
           coarse_op = value;
         else if (key == "coarse_shift")
@@ -825,18 +831,32 @@ private:
 
 
 /**
- * A sparse LU factorization by MUMPS distributed over a communicator (real
- * arithmetic): every process provides some entries of the matrix (MUMPS'
- * distributed assembled input), the right hand side and the solution are
- * replicated on all processes.
+ * A sparse LU factorization by MUMPS distributed over a subset of the
+ * processes of a communicator (real arithmetic): every m-th process runs
+ * MUMPS (m = ceil(P / n_procs)), the other processes send their entries of
+ * the matrix to the MUMPS process of their group (MUMPS' distributed
+ * assembled input on the MUMPS processes). The right hand side and the
+ * solution are replicated on all processes.
  */
 class DistributedMUMPS
 {
 public:
-  DistributedMUMPS(const MPI_Comm comm)
+  /// n_procs = 0: all processes run MUMPS.
+  DistributedMUMPS(const MPI_Comm comm, const unsigned int n_procs)
     : comm(comm)
   {
-    id.comm_fortran = static_cast<MUMPS_INT>(MPI_Comm_c2f(comm));
+    const unsigned int rank   = Utilities::MPI::this_mpi_process(comm);
+    const unsigned int size   = Utilities::MPI::n_mpi_processes(comm);
+    const unsigned int procs  = (n_procs == 0 || n_procs > size) ? size : n_procs;
+    stride                    = (size + procs - 1) / procs;
+    member                    = (rank % stride == 0);
+    // the group of a MUMPS process: itself and the next stride - 1 processes
+    MPI_Comm_split(comm, rank / stride, rank, &group_comm);
+    MPI_Comm_split(comm, member ? 0 : MPI_UNDEFINED, rank, &mumps_comm);
+    n_mumps_procs = (size + stride - 1) / stride;
+    if (!member)
+      return;
+    id.comm_fortran = static_cast<MUMPS_INT>(MPI_Comm_c2f(mumps_comm));
     id.par          = 1;
     id.sym          = 0;
     id.job          = -1;
@@ -853,13 +873,25 @@ public:
 
   ~DistributedMUMPS()
   {
-    id.job = -2;
-    dmumps_c(&id);
+    if (member)
+      {
+        id.job = -2;
+        dmumps_c(&id);
+        MPI_Comm_free(&mumps_comm);
+      }
+    MPI_Comm_free(&group_comm);
   }
 
   DistributedMUMPS(const DistributedMUMPS &) = delete;
   DistributedMUMPS &
   operator=(const DistributedMUMPS &) = delete;
+
+  /// The number of processes running MUMPS.
+  unsigned int
+  n_processes() const
+  {
+    return n_mumps_procs;
+  }
 
   /// Analysis and factorization; the triplets (0-based) of this process.
   void
@@ -868,14 +900,35 @@ public:
             const std::vector<MUMPS_INT>  &cols,
             const std::vector<double>     &values)
   {
-    irn.resize(rows.size());
-    jcn.resize(cols.size());
-    for (std::size_t i = 0; i < rows.size(); ++i)
+    static_assert(sizeof(MUMPS_INT) == sizeof(int));
+    // collect the triplets of the group on its MUMPS process
+    const int           count = static_cast<int>(values.size());
+    const unsigned int  group_size = Utilities::MPI::n_mpi_processes(group_comm);
+    std::vector<int>    counts(member ? group_size : 0), offsets;
+    MPI_Gather(&count, 1, MPI_INT, counts.data(), 1, MPI_INT, 0, group_comm);
+    std::size_t total = 0;
+    for (const int c : counts)
       {
-        irn[i] = rows[i] + 1;
-        jcn[i] = cols[i] + 1;
+        offsets.push_back(static_cast<int>(total));
+        total += c;
       }
-    a          = values;
+    std::vector<MUMPS_INT> all_rows(total), all_cols(total);
+    a.resize(member ? total : 0);
+    MPI_Gatherv(rows.data(), count, MPI_INT, all_rows.data(), counts.data(),
+                offsets.data(), MPI_INT, 0, group_comm);
+    MPI_Gatherv(cols.data(), count, MPI_INT, all_cols.data(), counts.data(),
+                offsets.data(), MPI_INT, 0, group_comm);
+    MPI_Gatherv(values.data(), count, MPI_DOUBLE, a.data(), counts.data(),
+                offsets.data(), MPI_DOUBLE, 0, group_comm);
+    if (!member)
+      return;
+    irn.resize(total);
+    jcn.resize(total);
+    for (std::size_t i = 0; i < total; ++i)
+      {
+        irn[i] = all_rows[i] + 1;
+        jcn[i] = all_cols[i] + 1;
+      }
     id.n       = n;
     id.nnz_loc = static_cast<MUMPS_INT8>(a.size());
     id.irn_loc = irn.data();
@@ -891,18 +944,27 @@ public:
   void
   solve(std::vector<double> &rhs)
   {
-    AssertDimension(rhs.size(), static_cast<std::size_t>(id.n));
-    id.rhs  = rhs.data();
-    id.nrhs = 1;
-    id.lrhs = id.n;
-    id.job  = 3;
-    dmumps_c(&id);
-    check("solve");
+    if (member)
+      {
+        AssertDimension(rhs.size(), static_cast<std::size_t>(id.n));
+        id.rhs  = rhs.data();
+        id.nrhs = 1;
+        id.lrhs = id.n;
+        id.job  = 3;
+        dmumps_c(&id);
+        check("solve");
+      }
+    // process 0 of comm is the MUMPS host
     MPI_Bcast(rhs.data(), rhs.size(), MPI_DOUBLE, 0, comm);
   }
 
 private:
   const MPI_Comm         comm;
+  MPI_Comm               group_comm = MPI_COMM_NULL;
+  MPI_Comm               mumps_comm = MPI_COMM_NULL;
+  unsigned int           stride        = 1;
+  unsigned int           n_mumps_procs = 1;
+  bool                   member        = true;
   DMUMPS_STRUC_C         id;
   std::vector<MUMPS_INT> irn, jcn;
   std::vector<double>    a;
@@ -910,7 +972,7 @@ private:
   void
   check(const char *phase) const
   {
-    // INFOG is the same on all processes
+    // INFOG is the same on all MUMPS processes
     AssertThrow(id.infog[0] >= 0,
                 ExcMessage(std::string("distributed MUMPS ") + phase +
                            " failed: INFOG(1)=" + std::to_string(id.infog[0]) +
@@ -1013,13 +1075,21 @@ struct CoarseSolver
   SequentialMUMPS                   redundant;
   std::unique_ptr<DistributedMUMPS> distributed;
 
+  unsigned int n_solves = 0;
+
   void
   solve(std::vector<double> &coarse)
   {
+    Timer timer;
     if (distributed)
       distributed->solve(coarse);
     else
       redundant.solve(coarse);
+    // the wall time of the first solves, to see slow coarse solves early
+    if (n_solves++ < 3 &&
+        Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
+      std::cout << "coarse solve " << n_solves << ": " << timer.wall_time()
+                << " s" << std::endl;
   }
 };
 
@@ -2012,8 +2082,14 @@ private:
                 MatRestoreRow(products[part], row, &n_cols, &cols_row, &vals);
               }
           }
-        coarse_solver.distributed = std::make_unique<DistributedMUMPS>(comm);
+        Timer timer;
+        coarse_solver.distributed =
+          std::make_unique<DistributedMUMPS>(comm, prm.coarse_procs);
         coarse_solver.distributed->factorize(2 * n_coarse, rows, cols, values);
+        MPI_Barrier(comm);
+        pcout << "coarse factorization: distributed MUMPS on "
+              << coarse_solver.distributed->n_processes() << " processes, "
+              << timer.wall_time() << " s" << std::endl;
       }
     // the redundant copies: for the redundant solve, and for the tests
     if (!distributed || prm.checks)
