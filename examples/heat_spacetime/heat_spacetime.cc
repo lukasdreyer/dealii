@@ -559,47 +559,65 @@ namespace HeatSpaceTime
   // to other processes are dropped (block Jacobi between the processes), so
   // GMRES has to carry the information across process boundaries. jacobi:
   // block Jacobi (no off-diagonal blocks), for comparison.
+  // The blocks are filled by the assembly (assemble_dg): for every locally owned
+  // cell (numbered in the order of the active cell iterators) its diagonal block
+  // and its nonzero couplings to the other locally owned cells, so the setup only
+  // inverts the diagonal blocks.
   class BlockSweep
   {
   public:
+    // the owned cells: position[active_cell_index] = their number here
     void
-    initialize(const MatrixType                                        &matrix,
-               const IndexSet                                          &owned,
-               const std::vector<std::vector<types::global_dof_index>> &blocks,
-               const bool                                               jacobi)
+    reinit(const std::vector<unsigned int> &cell_position, const unsigned int n_cells)
     {
-      block_dofs.clear();
-      inverses.clear();
-      row_start.assign(1, 0);
-      columns.clear();
-      values.clear();
-      for (const auto &dofs : blocks)
-        {
-          const unsigned int        n = dofs.size();
-          std::vector<unsigned int> local(n);
-          for (unsigned int i = 0; i < n; ++i)
-            local[i] = owned.index_within_set(dofs[i]);
-          FullMatrix<double> block(n, n);
-          for (unsigned int i = 0; i < n; ++i)
-            {
-              for (auto it = matrix.begin(dofs[i]); it != matrix.end(dofs[i]); ++it)
-                {
-                  const types::global_dof_index col = it->column();
-                  const auto pos = std::find(dofs.begin(), dofs.end(), col);
-                  if (pos != dofs.end())
-                    block(i, pos - dofs.begin()) = it->value();
-                  else if (!jacobi && owned.is_element(col) && it->value() != 0)
-                    {
-                      columns.push_back(owned.index_within_set(col));
-                      values.push_back(it->value());
-                    }
-                }
-              row_start.push_back(columns.size());
-            }
-          block.gauss_jordan();
-          inverses.push_back(std::move(block));
-          block_dofs.push_back(std::move(local));
-        }
+      position = cell_position;
+      dofs.assign(n_cells, {});
+      blocks.assign(n_cells, FullMatrix<double>());
+      couplings.assign(n_cells, {});
+      order.clear();
+    }
+
+    unsigned int
+    cell(const unsigned int active_cell_index) const
+    {
+      return position[active_cell_index];
+    }
+
+    // assembly: the diagonal block of a cell, its local dof indices
+    void
+    set_block(const unsigned int k, const std::vector<unsigned int> &local_dofs, const FullMatrix<double> &block)
+    {
+      dofs[k]   = local_dofs;
+      blocks[k] = block;
+    }
+
+    // assembly: the block of the rows of cell k and the columns of cell j,
+    // stored negated (vmult adds)
+    void
+    add_coupling(const unsigned int k, const unsigned int j, const FullMatrix<double> &coupling)
+    {
+      if (coupling.linfty_norm() == 0)
+        return;
+      for (auto &[other, block] : couplings[k])
+        if (other == j)
+          {
+            block.add(-1., coupling);
+            return;
+          }
+      couplings[k].emplace_back(j, FullMatrix<double>(coupling.m(), coupling.n()));
+      couplings[k].back().second.add(-1., coupling);
+    }
+
+    // the order of the sweep (cell numbers), invert the diagonal blocks
+    void
+    initialize(std::vector<unsigned int> &&cell_order, const bool jacobi)
+    {
+      order = std::move(cell_order);
+      for (auto &block : blocks)
+        block.gauss_jordan();
+      if (jacobi)
+        for (auto &c : couplings)
+          c.clear();
     }
 
     void
@@ -608,33 +626,34 @@ namespace HeatSpaceTime
       dst = 0;
       double       *x = dst.begin();
       const double *b = src.begin();
-      Vector<double> r, y;
-      unsigned int   row = 0;
-      for (unsigned int k = 0; k < block_dofs.size(); ++k)
+      Vector<double> r, y, xj;
+      for (const unsigned int k : order)
         {
-          const auto &dofs = block_dofs[k];
-          r.reinit(dofs.size());
-          y.reinit(dofs.size());
-          for (unsigned int i = 0; i < dofs.size(); ++i, ++row)
+          const auto        &local = dofs[k];
+          const unsigned int n     = local.size();
+          r.reinit(n, true);
+          y.reinit(n, true);
+          xj.reinit(n, true);
+          for (unsigned int i = 0; i < n; ++i)
+            r(i) = b[local[i]];
+          for (const auto &[j, block] : couplings[k])
             {
-              double v = b[dofs[i]];
-              for (unsigned int e = row_start[row]; e < row_start[row + 1]; ++e)
-                v -= values[e] * x[columns[e]];
-              r(i) = v;
+              for (unsigned int i = 0; i < n; ++i)
+                xj(i) = x[dofs[j][i]];
+              block.vmult(r, xj, true); // r -= A_kj x_j
             }
-          inverses[k].vmult(y, r);
-          for (unsigned int i = 0; i < dofs.size(); ++i)
-            x[dofs[i]] = y(i);
+          blocks[k].vmult(y, r);
+          for (unsigned int i = 0; i < n; ++i)
+            x[local[i]] = y(i);
         }
     }
 
   private:
-    std::vector<std::vector<unsigned int>> block_dofs; // local indices
-    std::vector<FullMatrix<double>>        inverses;
-    // the couplings to the other blocks of this process, row by row in the
-    // order of the blocks
-    std::vector<unsigned int> row_start, columns;
-    std::vector<double>       values;
+    std::vector<unsigned int>              position;
+    std::vector<std::vector<unsigned int>> dofs;   // local indices
+    std::vector<FullMatrix<double>>        blocks; // inverses after initialize()
+    std::vector<std::vector<std::pair<unsigned int, FullMatrix<double>>>> couplings;
+    std::vector<unsigned int>                                             order;
   };
 
 
@@ -748,6 +767,9 @@ namespace HeatSpaceTime
     // fosls: the initial values at the quadrature points of the bottom faces,
     // in the order of for_bottom_faces()
     std::vector<double> bottom_values;
+
+    // dg, precondition=sweep|jacobi: the blocks, filled by assemble_dg()
+    BlockSweep sweep;
 
     unsigned int last_iterations = 0;
 
@@ -866,7 +888,7 @@ namespace HeatSpaceTime
   // neighbors across the faces where a . n_K < 0 (at the center of the face,
   // or of the subface at a hanging face, so that both sides see the same
   // sign). Kahn's algorithm, among the ready cells the earliest t first; a
-  // cycle (possible for curved b on coarse cells) is broken by taking the
+  // cycle (curved b) is broken at a cell found on it by walking upwind from the
   // earliest remaining cell. For b = 0 this orders by t.
   std::vector<typename DoFHandler<3>::active_cell_iterator>
   SpaceTimeHeat::downstream_cells() const
@@ -881,7 +903,7 @@ namespace HeatSpaceTime
           cells.push_back(cell);
         }
     const unsigned int                     n = cells.size();
-    std::vector<std::vector<unsigned int>> downstream(n);
+    std::vector<std::vector<unsigned int>> downstream(n), upwind(n);
     std::vector<unsigned int>              n_upwind(n, 0);
     const auto                             inflow = [&](const unsigned int i,
                                     const Iterator    &other,
@@ -896,6 +918,7 @@ namespace HeatSpaceTime
         {
           const unsigned int j = local[other->active_cell_index()];
           downstream[j].push_back(i);
+          upwind[i].push_back(j);
           ++n_upwind[i];
         }
     };
@@ -927,8 +950,9 @@ namespace HeatSpaceTime
     std::sort(by_t.begin(), by_t.end(), [&](const unsigned int a, const unsigned int b) {
       return later(b, a);
     });
-    std::vector<bool>     done(n, false);
-    std::vector<Iterator> order;
+    std::vector<bool>         done(n, false);
+    std::vector<unsigned int> visited(n, 0); // number of the break that last visited the cell
+    std::vector<Iterator>     order;
     order.reserve(n);
     unsigned int next_by_t = 0, n_cycles = 0;
     while (order.size() < n)
@@ -943,10 +967,21 @@ namespace HeatSpaceTime
           }
         else
           {
+            // every remaining cell waits for a remaining upwind cell: walk
+            // upwind from the earliest remaining cell until a cell repeats; it
+            // lies on a cycle, take it (its pending inflow is dropped)
             while (done[by_t[next_by_t]])
               ++next_by_t;
             i = by_t[next_by_t];
             ++n_cycles;
+            while (visited[i] != n_cycles)
+              {
+                visited[i] = n_cycles;
+                const auto next =
+                  std::find_if(upwind[i].begin(), upwind[i].end(), [&](const unsigned int j) { return !done[j]; });
+                Assert(next != upwind[i].end(), ExcInternalError());
+                i = *next;
+              }
           }
         done[i] = true;
         order.push_back(cells[i]);
@@ -1294,6 +1329,26 @@ namespace HeatSpaceTime
         }
     };
 
+    // the blocks of the sweep: the owned cells numbered in iteration order
+    const bool                use_sweep = parameters.precondition != "amg";
+    std::vector<unsigned int> local_dofs(n);
+    if (use_sweep)
+      {
+        std::vector<unsigned int> position(triangulation->n_active_cells(), numbers::invalid_unsigned_int);
+        unsigned int              n_owned = 0;
+        for (const auto &cell : dof_handler->active_cell_iterators())
+          if (cell->is_locally_owned())
+            position[cell->active_cell_index()] = n_owned++;
+        sweep.reinit(position, n_owned);
+      }
+    // the coupling of this cell to a neighbor into the matrix and the sweep
+    const auto add_coupling = [&](const auto &cell, const auto &other) {
+      other->get_dof_indices(neighbor_indices);
+      constraints.distribute_local_to_global(coupling, dof_indices, neighbor_indices, system_matrix);
+      if (use_sweep && other->is_locally_owned())
+        sweep.add_coupling(sweep.cell(cell->active_cell_index()), sweep.cell(other->active_cell_index()), coupling);
+    };
+
     unsigned int bottom_q = 0; // position in bottom_values
     for (const auto &cell : dof_handler->active_cell_iterators())
       if (cell->is_locally_owned())
@@ -1367,8 +1422,7 @@ namespace HeatSpaceTime
                     subface_this.reinit(cell, f, sf);
                     face_other.reinit(child, GeometryInfo<dim>::opposite_face[f]);
                     interior(subface_this, face_other, std::min(h_cell, std::cbrt(child->measure())));
-                    child->get_dof_indices(neighbor_indices);
-                    constraints.distribute_local_to_global(coupling, dof_indices, neighbor_indices, system_matrix);
+                    add_coupling(cell, child);
                   }
               else
                 {
@@ -1384,11 +1438,16 @@ namespace HeatSpaceTime
                       face_other.reinit(neighbor, cell->neighbor_of_neighbor(f));
                       interior(face_this, face_other, std::min(h_cell, std::cbrt(neighbor->measure())));
                     }
-                  neighbor->get_dof_indices(neighbor_indices);
-                  constraints.distribute_local_to_global(coupling, dof_indices, neighbor_indices, system_matrix);
+                  add_coupling(cell, neighbor);
                 }
             }
           constraints.distribute_local_to_global(cell_matrix, cell_rhs, dof_indices, system_matrix, system_rhs);
+          if (use_sweep)
+            {
+              for (unsigned int i = 0; i < n; ++i)
+                local_dofs[i] = locally_owned_dofs.index_within_set(dof_indices[i]);
+              sweep.set_block(sweep.cell(cell->active_cell_index()), local_dofs, cell_matrix);
+            }
         }
     AssertThrow(bottom_q == bottom_values.size(), ExcInternalError());
     system_matrix.compress(VectorOperation::add);
@@ -1515,20 +1574,16 @@ namespace HeatSpaceTime
   SpaceTimeHeat::solve()
   {
     TrilinosWrappers::PreconditionAMG preconditioner;
-    BlockSweep                        sweep;
     const bool                        use_sweep = parameters.precondition != "amg";
     this->time("amg setup", [&]() {
       if (use_sweep)
         {
-          // dg: the cells (blocks) in upwind order along a = (b, 1)
-          const auto cells = downstream_cells();
-          std::vector<std::vector<types::global_dof_index>> blocks(cells.size());
+          // dg: the cells (blocks, filled by assemble_dg) in upwind order along a = (b, 1)
+          const auto                cells = downstream_cells();
+          std::vector<unsigned int> order(cells.size());
           for (unsigned int k = 0; k < cells.size(); ++k)
-            {
-              blocks[k].resize(fe.n_dofs_per_cell());
-              cells[k]->get_dof_indices(blocks[k]);
-            }
-          sweep.initialize(system_matrix, locally_owned_dofs, blocks, parameters.precondition == "jacobi");
+            order[k] = sweep.cell(cells[k]->active_cell_index());
+          sweep.initialize(std::move(order), parameters.precondition == "jacobi");
           return;
         }
       TrilinosWrappers::PreconditionAMG::AdditionalData data;
