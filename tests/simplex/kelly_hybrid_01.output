@@ -1,0 +1,10 @@
+
+DEAL::tetrahedra: 1020 cells, 83 hanging faces, estimate as reference: OK
+DEAL::  one face quadrature per element gives the same: OK
+DEAL::wedges: 450 cells, 60 hanging faces, estimate as reference: OK
+DEAL::hexahedra: 218 cells, 44 hanging faces, estimate as reference: OK
+DEAL::  one face quadrature per element gives the same: OK
+DEAL::pyramids: 1639 cells, 147 hanging faces, estimate as reference: OK
+DEAL::pyramids and tetrahedra: 1523 cells, 124 hanging faces, estimate as reference: OK
+DEAL::hexahedra and pyramids: 962 cells, 93 hanging faces, estimate as reference: OK
+DEAL::wedges and tetrahedra: 830 cells, 73 hanging faces, estimate as reference: OK

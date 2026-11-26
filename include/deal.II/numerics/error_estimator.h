@@ -24,6 +24,7 @@
 #include <deal.II/lac/read_vector.h>
 
 #include <map>
+#include <vector>
 
 DEAL_II_NAMESPACE_OPEN
 
@@ -552,6 +553,58 @@ public:
   estimate(
     const DoFHandler<dim, spacedim> &dof,
     const hp::QCollection<dim - 1>  &quadrature,
+    const std::map<types::boundary_id, const Function<spacedim, Number> *>
+                                                &neumann_bc,
+    const ArrayView<const ReadVector<Number> *> &solutions,
+    ArrayView<Vector<float> *>                  &errors,
+    const ComponentMask                         &component_mask = {},
+    const Function<spacedim>                    *coefficients   = nullptr,
+    const unsigned int        n_threads    = numbers::invalid_unsigned_int,
+    const types::subdomain_id subdomain_id = numbers::invalid_subdomain_id,
+    const types::material_id  material_id  = numbers::invalid_material_id,
+    const Strategy            strategy     = cell_diameter_over_24);
+
+  /**
+   * Equivalent to the functions above that take a mapping collection, except
+   * that this one takes one collection of face quadratures for each finite
+   * element of the DoFHandler: `face_quadratures[i]` contains either a single
+   * rule for all faces of the cells with the finite element `i`, or one rule
+   * for each face of the reference cell of this element. This is needed for
+   * meshes with wedges and pyramids, whose faces are triangles and
+   * quadrilaterals. The vector may also contain a single collection, used for
+   * all finite elements.
+   *
+   * In contrast to the functions above, each side of a face uses the rules of
+   * its own finite element. The rules on the two sides of a face therefore
+   * have to produce the same points, for example the same QGauss rule on all
+   * quadrilaterals and the same QGaussSimplex rule on all triangles.
+   */
+  template <typename Number>
+  static void
+  estimate(
+    const hp::MappingCollection<dim, spacedim>  &mapping,
+    const DoFHandler<dim, spacedim>             &dof,
+    const std::vector<hp::QCollection<dim - 1>> &face_quadratures,
+    const std::map<types::boundary_id, const Function<spacedim, Number> *>
+                             &neumann_bc,
+    const ReadVector<Number> &solution,
+    Vector<float>            &error,
+    const ComponentMask      &component_mask = {},
+    const Function<spacedim> *coefficients   = nullptr,
+    const unsigned int        n_threads      = numbers::invalid_unsigned_int,
+    const types::subdomain_id subdomain_id   = numbers::invalid_subdomain_id,
+    const types::material_id  material_id    = numbers::invalid_material_id,
+    const Strategy            strategy       = cell_diameter_over_24);
+
+  /**
+   * Equivalent to the function above, but for several solution vectors.
+   */
+  template <typename Number>
+  static void
+  estimate(
+    const hp::MappingCollection<dim, spacedim>  &mapping,
+    const DoFHandler<dim, spacedim>             &dof,
+    const std::vector<hp::QCollection<dim - 1>> &face_quadratures,
     const std::map<types::boundary_id, const Function<spacedim, Number> *>
                                                 &neumann_bc,
     const ArrayView<const ReadVector<Number> *> &solutions,
