@@ -1,0 +1,7 @@
+New: KellyErrorEstimator::estimate() has new variants that take one
+hp::QCollection of face quadratures for each finite element, with one
+rule for each face of the reference cell. This allows estimating the
+error on meshes with wedges and pyramids, including hanging faces between
+cells of different shapes.
+<br>
+(Lukas Dreyer, 2026/11/26)

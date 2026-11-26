@@ -1,0 +1,9 @@
+New: FESubfaceValues and hp::FESubfaceValues accept an hp::QCollection
+with one face quadrature for each face of the reference cell, as
+FEFaceValues already does. This makes subfaces of wedges and pyramids
+possible, whose faces are triangles and quadrilaterals. FEInterfaceValues
+has a new constructor that takes one such collection for each finite
+element; each side of a face then uses the quadrature of its own element,
+so that hanging faces between cells of different shapes are supported.
+<br>
+(Lukas Dreyer, 2026/11/26)

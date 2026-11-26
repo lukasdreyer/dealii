@@ -45,9 +45,10 @@
  *                     the matrices; the interface path also checks that both
  *                     sides of each face have the same points, weights, and
  *                     opposite normals)
- *   estimator=kelly   kelly (2D) or gradient (h_K |grad u_h|_{L2(K)}, default
- *                     in 3D: the Kelly estimator takes one face quadrature
- *                     per element)
+ *   estimator=kelly   kelly (jumps of the normal derivative over the faces,
+ *                     default in 2D; in 3D with one face quadrature per face
+ *                     of each reference cell) or gradient (h_K
+ *                     |grad u_h|_{L2(K)}, default in 3D)
  *   partition=nnz     the weights of the cells when t8code partitions the
  *                     mesh: cells (equal), dofs (the DoFs of the cell), nnz
  *                     (an estimate of its share of the operator, n^2 (1 +
@@ -230,8 +231,8 @@ namespace AdvectionHybrid
       AssertThrow(partition == "cells" || partition == "dofs" ||
                     partition == "nnz",
                   ExcMessage("partition must be cells, dofs or nnz"));
-      AssertThrow(estimator == "gradient" || (estimator == "kelly" && dim == 2),
-                  ExcMessage("estimator must be gradient, or kelly in 2D"));
+      AssertThrow(estimator == "gradient" || estimator == "kelly",
+                  ExcMessage("estimator must be kelly or gradient"));
       AssertThrow(scheme == "ssprk3" || scheme == "rk4",
                   ExcMessage("scheme must be ssprk3 or rk4"));
     }
@@ -572,8 +573,10 @@ namespace AdvectionHybrid
 
 
 
-  // Kelly: jumps of the normal derivative over the faces. gradient:
-  // h_K |grad u_h|_{L2(K)}, which needs no face quadrature.
+  // Kelly: jumps of the normal derivative over the faces, with one face
+  // quadrature per face of each reference cell (the faces of wedges and
+  // pyramids are triangles and quadrilaterals). gradient: h_K
+  // |grad u_h|_{L2(K)}, which needs no face quadrature.
   void AdvectionProblem::compute_indicator(Vector<float> &indicator) const
   {
     indicator.reinit(triangulation.n_active_cells());
@@ -582,7 +585,7 @@ namespace AdvectionHybrid
         KellyErrorEstimator<dim>::estimate(
           mapping,
           dof_handler,
-          face_quadrature,
+          face_quadratures,
           std::map<types::boundary_id, const Function<dim> *>(),
           ghosted,
           indicator);
