@@ -1,0 +1,68 @@
+
+DEAL::tetrahedra:
+DEAL::  hanging Tri faces between Tet and Tet: 332
+DEAL::  regular Tri faces between Tet and Tet: 1714
+DEAL::  same points: OK, continuous function without jumps: OK, area of all faces: OK
+DEAL::wedges:
+DEAL::  hanging Quad faces between Wedge and Wedge: 136
+DEAL::  hanging Tri faces between Wedge and Wedge: 104
+DEAL::  regular Quad faces between Wedge and Wedge: 546
+DEAL::  regular Tri faces between Wedge and Wedge: 338
+DEAL::  same points: OK, continuous function without jumps: OK, area of all faces: OK
+DEAL::hexahedra:
+DEAL::  hanging Quad faces between Hex and Hex: 176
+DEAL::  regular Quad faces between Hex and Hex: 472
+DEAL::  same points: OK, continuous function without jumps: OK, area of all faces: OK
+DEAL::pyramids:
+DEAL::  hanging Quad faces between Pyramid and Pyramid: 36
+DEAL::  hanging Tri faces between Pyramid and Pyramid: 194
+DEAL::  hanging Tri faces between Pyramid and Tet: 92
+DEAL::  hanging Tri faces between Tet and Pyramid: 214
+DEAL::  hanging Tri faces between Tet and Tet: 52
+DEAL::  regular Quad faces between Pyramid and Pyramid: 363
+DEAL::  regular Tri faces between Pyramid and Pyramid: 414
+DEAL::  regular Tri faces between Pyramid and Tet: 1309
+DEAL::  regular Tri faces between Tet and Pyramid: 991
+DEAL::  regular Tri faces between Tet and Tet: 219
+DEAL::  same points: OK, continuous function without jumps: OK, area of all faces: OK
+DEAL::pyramids and tetrahedra:
+DEAL::  hanging Quad faces between Pyramid and Pyramid: 16
+DEAL::  hanging Tri faces between Pyramid and Pyramid: 73
+DEAL::  hanging Tri faces between Pyramid and Tet: 36
+DEAL::  hanging Tri faces between Tet and Pyramid: 103
+DEAL::  hanging Tri faces between Tet and Tet: 268
+DEAL::  regular Quad faces between Pyramid and Pyramid: 116
+DEAL::  regular Tri faces between Pyramid and Pyramid: 108
+DEAL::  regular Tri faces between Pyramid and Tet: 528
+DEAL::  regular Tri faces between Tet and Pyramid: 327
+DEAL::  regular Tri faces between Tet and Tet: 1726
+DEAL::  same points: OK, continuous function without jumps: OK, area of all faces: OK
+DEAL::hexahedra and pyramids:
+DEAL::  hanging Quad faces between Hex and Hex: 64
+DEAL::  hanging Quad faces between Hex and Pyramid: 8
+DEAL::  hanging Quad faces between Pyramid and Hex: 16
+DEAL::  hanging Quad faces between Pyramid and Pyramid: 20
+DEAL::  hanging Tri faces between Pyramid and Pyramid: 84
+DEAL::  hanging Tri faces between Pyramid and Tet: 56
+DEAL::  hanging Tri faces between Tet and Pyramid: 92
+DEAL::  hanging Tri faces between Tet and Tet: 32
+DEAL::  regular Quad faces between Hex and Hex: 206
+DEAL::  regular Quad faces between Hex and Pyramid: 58
+DEAL::  regular Quad faces between Pyramid and Hex: 56
+DEAL::  regular Quad faces between Pyramid and Pyramid: 122
+DEAL::  regular Tri faces between Pyramid and Pyramid: 222
+DEAL::  regular Tri faces between Pyramid and Tet: 686
+DEAL::  regular Tri faces between Tet and Pyramid: 506
+DEAL::  regular Tri faces between Tet and Tet: 113
+DEAL::  same points: OK, continuous function without jumps: OK, area of all faces: OK
+DEAL::wedges and tetrahedra:
+DEAL::  hanging Quad faces between Wedge and Wedge: 56
+DEAL::  hanging Tri faces between Tet and Tet: 168
+DEAL::  hanging Tri faces between Tet and Wedge: 12
+DEAL::  hanging Tri faces between Wedge and Tet: 4
+DEAL::  hanging Tri faces between Wedge and Wedge: 52
+DEAL::  regular Quad faces between Wedge and Wedge: 240
+DEAL::  regular Tri faces between Tet and Tet: 1061
+DEAL::  regular Tri faces between Wedge and Tet: 73
+DEAL::  regular Tri faces between Wedge and Wedge: 104
+DEAL::  same points: OK, continuous function without jumps: OK, area of all faces: OK

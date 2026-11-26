@@ -1,0 +1,49 @@
+
+DEAL::tetrahedra:
+DEAL::  Tri subfaces between Tet and Tet: 332
+DEAL::  same number of points: OK, same points: OK, same weights: OK, opposite normals: OK
+DEAL::  continuous function: OK, subfaces cover the face: OK
+DEAL::wedges:
+DEAL::  Quad subfaces between Wedge and Wedge: 136
+DEAL::  Tri subfaces between Wedge and Wedge: 104
+DEAL::  same number of points: OK, same points: OK, same weights: OK, opposite normals: OK
+DEAL::  continuous function: OK, subfaces cover the face: OK
+DEAL::hexahedra:
+DEAL::  Quad subfaces between Hex and Hex: 176
+DEAL::  same number of points: OK, same points: OK, same weights: OK, opposite normals: OK
+DEAL::  continuous function: OK, subfaces cover the face: OK
+DEAL::pyramids:
+DEAL::  Quad subfaces between Pyramid and Pyramid: 36
+DEAL::  Tri subfaces between Pyramid and Pyramid: 194
+DEAL::  Tri subfaces between Pyramid and Tet: 214
+DEAL::  Tri subfaces between Tet and Pyramid: 92
+DEAL::  Tri subfaces between Tet and Tet: 52
+DEAL::  same number of points: OK, same points: OK, same weights: OK, opposite normals: OK
+DEAL::  continuous function: OK, subfaces cover the face: OK
+DEAL::pyramids and tetrahedra:
+DEAL::  Quad subfaces between Pyramid and Pyramid: 16
+DEAL::  Tri subfaces between Pyramid and Pyramid: 73
+DEAL::  Tri subfaces between Pyramid and Tet: 103
+DEAL::  Tri subfaces between Tet and Pyramid: 36
+DEAL::  Tri subfaces between Tet and Tet: 268
+DEAL::  same number of points: OK, same points: OK, same weights: OK, opposite normals: OK
+DEAL::  continuous function: OK, subfaces cover the face: OK
+DEAL::hexahedra and pyramids:
+DEAL::  Quad subfaces between Hex and Hex: 64
+DEAL::  Quad subfaces between Hex and Pyramid: 16
+DEAL::  Quad subfaces between Pyramid and Hex: 8
+DEAL::  Quad subfaces between Pyramid and Pyramid: 20
+DEAL::  Tri subfaces between Pyramid and Pyramid: 84
+DEAL::  Tri subfaces between Pyramid and Tet: 92
+DEAL::  Tri subfaces between Tet and Pyramid: 56
+DEAL::  Tri subfaces between Tet and Tet: 32
+DEAL::  same number of points: OK, same points: OK, same weights: OK, opposite normals: OK
+DEAL::  continuous function: OK, subfaces cover the face: OK
+DEAL::wedges and tetrahedra:
+DEAL::  Quad subfaces between Wedge and Wedge: 56
+DEAL::  Tri subfaces between Tet and Tet: 168
+DEAL::  Tri subfaces between Tet and Wedge: 4
+DEAL::  Tri subfaces between Wedge and Tet: 12
+DEAL::  Tri subfaces between Wedge and Wedge: 52
+DEAL::  same number of points: OK, same points: OK, same weights: OK, opposite normals: OK
+DEAL::  continuous function: OK, subfaces cover the face: OK

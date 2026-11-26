@@ -513,8 +513,8 @@ public:
   /**
    * Like the function above, but taking a collection of quadrature rules.
    *
-   * @note We require, in contrast to FEFaceValues, that the number of quadrature
-   *   rules in the collection is one.
+   * @note As for FEFaceValues, the collection contains either a single rule for
+   *   all faces or one rule for each face of the reference cell.
    */
   FESubfaceValues(const Mapping<dim, spacedim>       &mapping,
                   const FiniteElement<dim, spacedim> &fe,
@@ -533,8 +533,8 @@ public:
   /**
    * Like the function above, but taking a collection of quadrature rules.
    *
-   * @note We require, in contrast to FEFaceValues, that the number of quadrature
-   *   rules in the collection is one.
+   * @note As for FEFaceValues, the collection contains either a single rule for
+   *   all faces or one rule for each face of the reference cell.
    */
   FESubfaceValues(const FiniteElement<dim, spacedim> &fe,
                   const hp::QCollection<dim - 1>     &face_quadrature,
