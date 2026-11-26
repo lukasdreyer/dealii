@@ -175,6 +175,26 @@ FE_Nothing<dim, spacedim>::fill_fe_subface_values(
   const typename Triangulation<dim, spacedim>::cell_iterator &,
   const unsigned int,
   const unsigned int,
+  const hp::QCollection<dim - 1> &,
+  const Mapping<dim, spacedim> &,
+  const typename Mapping<dim, spacedim>::InternalDataBase &,
+  const internal::FEValuesImplementation::MappingRelatedData<dim, spacedim> &,
+  const typename FiniteElement<dim, spacedim>::InternalDataBase &,
+  dealii::internal::FEValuesImplementation::FiniteElementRelatedData<dim,
+                                                                     spacedim>
+    &) const
+{
+  // leave data fields empty
+}
+
+
+
+template <int dim, int spacedim>
+void
+FE_Nothing<dim, spacedim>::fill_fe_subface_values(
+  const typename Triangulation<dim, spacedim>::cell_iterator &,
+  const unsigned int,
+  const unsigned int,
   const Quadrature<dim - 1> &,
   const Mapping<dim, spacedim> &,
   const typename Mapping<dim, spacedim>::InternalDataBase &,
