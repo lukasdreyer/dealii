@@ -1176,6 +1176,13 @@ namespace VectorTools
    * that curved boundaries are taken into account. Lines that are already
    * constrained (e.g. hanging lines) are not changed, so the hanging node
    * constraints should be computed first.
+   *
+   * With hanging nodes, a refined line can still carry a DoF, if a coarser
+   * cell touches the boundary only along this line (e.g. a tetrahedron with
+   * one edge on the boundary). Such a line is not a line of any active
+   * boundary face, but its children on the boundary are constrained to it.
+   * These lines are found by their boundary id (lines on the boundary carry
+   * the boundary id of a face they lie on) and get the same values.
    */
   template <int dim, int spacedim, typename number>
   void
@@ -1229,12 +1236,49 @@ namespace VectorTools
       return *entry;
     };
 
+    // the line integral of the tangential component of the function along
+    // line l of the cell, in the direction of the line object
     Vector<number> g;
+    const auto     constrain_line = [&](const auto              &cell,
+                                    const unsigned int        l,
+                                    const Function<spacedim, number> &function) {
+      const types::global_dof_index dof =
+        cell->line(l)->dof_index(0, cell->active_fe_index());
+      if (constraints.is_constrained(dof) ||
+          constraints.can_store_line(dof) == false)
+        return;
+      Assert(function.n_components >= first_vector_component + spacedim,
+             ExcMessage("The boundary function has too few components."));
+      g.reinit(function.n_components);
+
+      const ReferenceCell      ref_cell = cell->reference_cell();
+      FEValues<dim, spacedim> &values =
+        get_line_values(cell->active_fe_index(), l);
+      values.reinit(cell);
+      const Tensor<1, dim> reference_tangent =
+        ref_cell.template vertex<dim>(ref_cell.line_to_cell_vertices(l, 1)) -
+        ref_cell.template vertex<dim>(ref_cell.line_to_cell_vertices(l, 0));
+      number integral = 0;
+      for (unsigned int q = 0; q < q_line.size(); ++q)
+        {
+          // derivative of the mapped line with respect to the line parameter
+          const Tensor<1, spacedim> tangent =
+            apply_transformation(values.jacobian(q), reference_tangent);
+          function.vector_value(values.quadrature_point(q), g);
+          for (unsigned int d = 0; d < spacedim; ++d)
+            integral +=
+              q_line.weight(q) * g(first_vector_component + d) * tangent[d];
+        }
+      // the DoF refers to the direction of the line object
+      if (cell->line_orientation(l) != numbers::default_geometric_orientation)
+        integral = -integral;
+      constraints.add_constraint(dof, {}, integral);
+    };
+
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
         if (cell->is_artificial())
           continue;
-        const ReferenceCell ref_cell = cell->reference_cell();
         for (const unsigned int f : cell->face_indices())
           {
             if (cell->at_boundary(f) == false)
@@ -1243,10 +1287,6 @@ namespace VectorTools
               function_map.find(cell->face(f)->boundary_id());
             if (function == function_map.end())
               continue;
-            Assert(function->second->n_components >=
-                     first_vector_component + spacedim,
-                   ExcMessage("The boundary function has too few components."));
-            g.reinit(function->second->n_components);
 
             for (unsigned int l = 0; l < cell->n_lines(); ++l)
               {
@@ -1258,44 +1298,21 @@ namespace VectorTools
                   for (const unsigned int k : cell->face(f)->line_indices())
                     on_face |=
                       (cell->line_index(l) == cell->face(f)->line_index(k));
-                if (on_face == false)
-                  continue;
-
-                const types::global_dof_index dof =
-                  cell->line(l)->dof_index(0, cell->active_fe_index());
-                if (constraints.is_constrained(dof) ||
-                    constraints.can_store_line(dof) == false)
-                  continue;
-
-                FEValues<dim, spacedim> &values =
-                  get_line_values(cell->active_fe_index(), l);
-                values.reinit(cell);
-                const Tensor<1, dim> reference_tangent =
-                  ref_cell.template vertex<dim>(
-                    ref_cell.line_to_cell_vertices(l, 1)) -
-                  ref_cell.template vertex<dim>(
-                    ref_cell.line_to_cell_vertices(l, 0));
-                number integral = 0;
-                for (unsigned int q = 0; q < q_line.size(); ++q)
-                  {
-                    // derivative of the mapped line with respect to the
-                    // line parameter
-                    const Tensor<1, spacedim> tangent =
-                      apply_transformation(values.jacobian(q),
-                                           reference_tangent);
-                    function->second->vector_value(values.quadrature_point(q),
-                                                   g);
-                    for (unsigned int d = 0; d < spacedim; ++d)
-                      integral += q_line.weight(q) *
-                                  g(first_vector_component + d) * tangent[d];
-                  }
-                // the DoF refers to the direction of the line object
-                if (cell->line_orientation(l) !=
-                    numbers::default_geometric_orientation)
-                  integral = -integral;
-                constraints.add_constraint(dof, {}, integral);
+                if (on_face)
+                  constrain_line(cell, l, *function->second);
               }
           }
+
+        // refined lines on the boundary that still carry a DoF of this cell
+        if constexpr (dim == 3)
+          for (unsigned int l = 0; l < cell->n_lines(); ++l)
+            if (cell->line(l)->has_children())
+              {
+                const auto function =
+                  function_map.find(cell->line(l)->boundary_id());
+                if (function != function_map.end())
+                  constrain_line(cell, l, *function->second);
+              }
       }
   }
 

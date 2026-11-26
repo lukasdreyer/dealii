@@ -1,0 +1,7 @@
+
+DEAL::tetrahedra: 312 boundary lines, 24 of them refined, all constrained to the line integral
+DEAL::pyramids: 216 boundary lines, 24 of them refined, all constrained to the line integral
+DEAL::hexahedra and pyramids: 216 boundary lines, 24 of them refined, all constrained to the line integral
+DEAL::pyramids and tetrahedra: 260 boundary lines, 20 of them refined, all constrained to the line integral
+DEAL::wedges and tetrahedra: 262 boundary lines, 6 of them refined, all constrained to the line integral
+DEAL::hexahedra: 192 boundary lines, 0 of them refined, all constrained to the line integral
