@@ -900,7 +900,7 @@ namespace HeatSpaceTime
     unsigned int last_iterations = 0;
 
     std::map<std::string, double> times;
-    std::map<std::string, double> phase_totals;
+    std::map<std::string, double> phase_totals, phase_min_totals;
     const std::vector<std::string> all_phases = {"slab", "mirror",          "setup",          "setup: dofs",
                                                  "setup: relevant", "setup: sparsity", "setup: distribute",
                                                  "setup: matrix",   "transfer",       "assembly",
@@ -2141,6 +2141,7 @@ namespace HeatSpaceTime
               {
                 t_max[phase] = Utilities::MPI::max(times[phase], mpi_communicator);
                 phase_totals[phase] += t_max[phase];
+                phase_min_totals[phase] += Utilities::MPI::min(times[phase], mpi_communicator);
               }
             times.clear();
             if (csv.is_open())
@@ -2181,11 +2182,14 @@ namespace HeatSpaceTime
           << ", L2 error at t_end " << l2_end << ", final cells " << cells_final << ", final dofs "
           << dofs_final << ", dofs of all solves " << dofs_all << ", wall time "
           << total_timer.wall_time() << " s" << std::endl;
-    // the sums over the cycles of the maxima over the processes (setup contains
-    // the setup: phases and the transfer)
+    // the sums over the cycles of the maxima (and minima) over the processes
+    // (setup contains the setup: phases and the transfer)
     pcout << "phases:";
     for (const std::string &phase : all_phases)
       pcout << ' ' << phase << ' ' << phase_totals[phase] << ',';
+    pcout << std::endl << "phases (min):";
+    for (const std::string &phase : all_phases)
+      pcout << ' ' << phase << ' ' << phase_min_totals[phase] << ',';
     pcout << std::endl;
   }
 } // namespace HeatSpaceTime
