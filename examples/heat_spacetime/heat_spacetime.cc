@@ -62,6 +62,9 @@
  *   precondition=amg  amg; for dg also sweep (block Gauss-Seidel in upwind
  *                     order, couplings between processes dropped) or jacobi
  *                     (block Jacobi)
+ *   sweeps=1          sweep: block Gauss-Seidel passes per application; from
+ *                     the second on with the ghost values of the previous
+ *                     pass (Jacobi between the processes)
  *   penalty=2         dg: SIPG penalty sigma = penalty (p + 1)^2 / h
  *   problem=gaussian  gaussian (the moving source), smooth
  *                     (u = sin(pi x) sin(pi y) sin(pi t + 1), for the rates) or
@@ -271,6 +274,7 @@ namespace HeatSpaceTime
     std::string  renumber        = "";
     std::string  precondition    = "amg";
     double       penalty         = 2.0;
+    unsigned int sweeps          = 1;
     std::string  csv       = "spacetime.csv";
     std::string  output    = "";
 
@@ -342,6 +346,8 @@ namespace HeatSpaceTime
             precondition = value;
           else if (key == "penalty")
             penalty = std::stod(value);
+          else if (key == "sweeps")
+            sweeps = std::stoi(value);
           else if (key == "tol")
             tol = std::stod(value);
           else if (key == "csv")
@@ -564,7 +570,9 @@ namespace HeatSpaceTime
   //   transport and an upwind order it is the exact inverse on one process; the
   //   couplings to other processes are dropped (block Jacobi between the
   //   processes), so GMRES has to carry the information across process
-  //   boundaries;
+  //   boundaries; with n_sweeps > 1 every further pass first takes the ghost
+  //   values of the previous one (Gauss-Seidel within, Jacobi between the
+  //   processes; a fixed linear operator);
   // - jacobi: block Jacobi (no off-diagonal blocks), for comparison.
   class BlockMatrix
   {
@@ -646,10 +654,13 @@ namespace HeatSpaceTime
 
     // the order of the sweep (cell numbers), invert the diagonal blocks
     void
-    initialize_preconditioner(std::vector<unsigned int> &&cell_order, const bool jacobi_)
+    initialize_preconditioner(std::vector<unsigned int> &&cell_order,
+                              const bool                  jacobi_,
+                              const unsigned int          n_sweeps_)
     {
-      order   = std::move(cell_order);
-      jacobi  = jacobi_;
+      order    = std::move(cell_order);
+      jacobi   = jacobi_;
+      n_sweeps = n_sweeps_;
       inverse = diagonal;
       for (auto &block : inverse)
         block.gauss_jordan();
@@ -712,32 +723,44 @@ namespace HeatSpaceTime
     void
     sweep(VectorType &dst, const VectorType &src) const
     {
-      dst = 0;
-      double        *x = dst.begin();
+      // x in the ghosted vector (local indices: owned, then ghosts)
+      ghosted = 0;
       const double  *b = src.begin();
       Vector<double> r, y, xj, t;
-      for (const unsigned int k : order)
+      const auto     subtract = [&](const FullMatrix<double> &block, const std::vector<unsigned int> &local) {
+        for (unsigned int i = 0; i < local.size(); ++i)
+          xj(i) = ghosted.local_element(local[i]);
+        block.vmult(t, xj);
+        r -= t;
+      };
+      for (unsigned int pass = 0; pass < n_sweeps; ++pass)
         {
-          const auto        &local = dofs[k];
-          const unsigned int n     = local.size();
-          r.reinit(n, true);
-          y.reinit(n, true);
-          xj.reinit(n, true);
-          t.reinit(n, true);
-          for (unsigned int i = 0; i < n; ++i)
-            r(i) = b[local[i]];
-          if (!jacobi)
-            for (const auto &[j, block] : couplings[k])
-              {
-                for (unsigned int i = 0; i < n; ++i)
-                  xj(i) = x[dofs[j][i]];
-                block.vmult(t, xj);
-                r -= t;
-              }
-          inverse[k].vmult(y, r);
-          for (unsigned int i = 0; i < n; ++i)
-            x[local[i]] = y(i);
+          if (pass > 0)
+            ghosted.update_ghost_values();
+          for (const unsigned int k : order)
+            {
+              const auto        &local = dofs[k];
+              const unsigned int n     = local.size();
+              r.reinit(n, true);
+              y.reinit(n, true);
+              xj.reinit(n, true);
+              t.reinit(n, true);
+              for (unsigned int i = 0; i < n; ++i)
+                r(i) = b[local[i]];
+              if (!jacobi)
+                {
+                  for (const auto &[j, block] : couplings[k])
+                    subtract(block, dofs[j]);
+                  if (pass > 0)
+                    for (const auto &[ghost, block] : ghost_couplings[k])
+                      subtract(block, ghost);
+                }
+              inverse[k].vmult(y, r);
+              for (unsigned int i = 0; i < n; ++i)
+                ghosted.local_element(local[i]) = y(i);
+            }
         }
+      std::copy(ghosted.begin(), ghosted.begin() + partitioner->locally_owned_size(), dst.begin());
     }
 
     std::vector<unsigned int>                                                          position;
@@ -746,7 +769,8 @@ namespace HeatSpaceTime
     std::vector<std::vector<std::pair<unsigned int, FullMatrix<double>>>>              couplings;
     std::vector<std::vector<std::pair<std::vector<unsigned int>, FullMatrix<double>>>> ghost_couplings;
     std::vector<unsigned int>                                                          order;
-    bool                                                                               jacobi = false;
+    bool                                                                               jacobi   = false;
+    unsigned int                                                                       n_sweeps = 1;
     std::shared_ptr<const Utilities::MPI::Partitioner>                                 partitioner;
     mutable LinearAlgebra::distributed::Vector<double>                                 ghosted;
   };
@@ -1716,7 +1740,9 @@ namespace HeatSpaceTime
           std::vector<unsigned int> order(cells.size());
           for (unsigned int k = 0; k < cells.size(); ++k)
             order[k] = block_matrix.cell(cells[k]->active_cell_index());
-          block_matrix.initialize_preconditioner(std::move(order), parameters.precondition == "jacobi");
+          block_matrix.initialize_preconditioner(std::move(order),
+                                                 parameters.precondition == "jacobi",
+                                                 parameters.sweeps);
           return;
         }
       TrilinosWrappers::PreconditionAMG::AdditionalData data;
