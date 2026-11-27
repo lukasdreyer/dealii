@@ -1,0 +1,29 @@
+
+DEAL::tetrahedra, degree 1, 40 cells, faces between processes: 44 regular, 0 hanging: OK
+DEAL::tetrahedra, degree 2, 40 cells, faces between processes: 44 regular, 0 hanging: OK
+DEAL::wedges, degree 1, 16 cells, faces between processes: 24 regular, 0 hanging: OK
+DEAL::wedges, degree 2, 16 cells, faces between processes: 24 regular, 0 hanging: OK
+DEAL::hexahedra, degree 1, 8 cells, faces between processes: 16 regular, 0 hanging: OK
+DEAL::hexahedra, degree 2, 8 cells, faces between processes: 16 regular, 0 hanging: OK
+DEAL::pyramids, degree 1, 48 cells, faces between processes: 46 regular, 0 hanging: OK
+DEAL::pyramids, degree 2, 48 cells, faces between processes: 46 regular, 0 hanging: OK
+DEAL::pyramids and tetrahedra, degree 1, 52 cells, faces between processes: 48 regular, 0 hanging: OK
+DEAL::pyramids and tetrahedra, degree 2, 52 cells, faces between processes: 48 regular, 0 hanging: OK
+DEAL::hexahedra and pyramids, degree 1, 28 cells, faces between processes: 40 regular, 0 hanging: OK
+DEAL::hexahedra and pyramids, degree 2, 28 cells, faces between processes: 40 regular, 0 hanging: OK
+DEAL::wedges and tetrahedra, degree 1, 32 cells, faces between processes: 36 regular, 0 hanging: OK
+DEAL::wedges and tetrahedra, degree 2, 32 cells, faces between processes: 36 regular, 0 hanging: OK
+DEAL::tetrahedra with hanging faces, degree 1, 1020 cells, faces between processes: 334 regular, 40 hanging: OK
+DEAL::tetrahedra with hanging faces, degree 2, 1020 cells, faces between processes: 334 regular, 40 hanging: OK
+DEAL::wedges with hanging faces, degree 1, 450 cells, faces between processes: 254 regular, 48 hanging: OK
+DEAL::wedges with hanging faces, degree 2, 450 cells, faces between processes: 254 regular, 48 hanging: OK
+DEAL::hexahedra with hanging faces, degree 1, 218 cells, faces between processes: 152 regular, 64 hanging: OK
+DEAL::hexahedra with hanging faces, degree 2, 218 cells, faces between processes: 152 regular, 64 hanging: OK
+DEAL::pyramids with hanging faces, degree 1, 1639 cells, faces between processes: 236 regular, 40 hanging: OK
+DEAL::pyramids with hanging faces, degree 2, 1639 cells, faces between processes: 236 regular, 40 hanging: OK
+DEAL::pyramids and tetrahedra with hanging faces, degree 1, 1523 cells, faces between processes: 428 regular, 88 hanging: OK
+DEAL::pyramids and tetrahedra with hanging faces, degree 2, 1523 cells, faces between processes: 428 regular, 88 hanging: OK
+DEAL::hexahedra and pyramids with hanging faces, degree 1, 962 cells, faces between processes: 376 regular, 136 hanging: OK
+DEAL::hexahedra and pyramids with hanging faces, degree 2, 962 cells, faces between processes: 376 regular, 136 hanging: OK
+DEAL::wedges and tetrahedra with hanging faces, degree 1, 830 cells, faces between processes: 362 regular, 88 hanging: OK
+DEAL::wedges and tetrahedra with hanging faces, degree 2, 830 cells, faces between processes: 362 regular, 88 hanging: OK
