@@ -470,9 +470,8 @@ namespace TriangulationDescription
               const typename dealii::Triangulation<dim, spacedim>::cell_iterator
                                 &cell,
               std::vector<bool> &vertices_on_locally_owned_cells) {
-              for (const unsigned int v : cell->vertex_indices())
-                {
-                  const auto global_vertex_index = cell->vertex_index(v);
+              const auto add_vertex =
+                [&](const unsigned int global_vertex_index) {
                   vertices_on_locally_owned_cells[global_vertex_index] = true;
 
                   const auto coinciding_vertex_group =
@@ -482,7 +481,29 @@ namespace TriangulationDescription
                     for (const auto &co_vertex : coinciding_vertex_groups.at(
                            coinciding_vertex_group->second))
                       vertices_on_locally_owned_cells[co_vertex] = true;
-                }
+                };
+
+              for (const unsigned int v : cell->vertex_indices())
+                add_vertex(cell->vertex_index(v));
+
+              // The middle child of a refined triangle has none of the
+              // vertices of the parent triangle, so the cell behind it does
+              // not share a vertex with this cell. Add the vertices of the
+              // children of refined triangular faces, such that the cells
+              // behind all subfaces become ghost cells. (The children of
+              // quadrilaterals and lines always contain a vertex of their
+              // parent.)
+              if constexpr (dim == 3)
+                if (cell->is_active())
+                  for (const unsigned int f : cell->face_indices())
+                    if (cell->face(f)->has_children() &&
+                        cell->face(f)->reference_cell() ==
+                          ReferenceCells::Triangle)
+                      for (unsigned int c = 0; c < cell->face(f)->n_children();
+                           ++c)
+                        for (const unsigned int v :
+                             cell->face(f)->child(c)->vertex_indices())
+                          add_vertex(cell->face(f)->child(c)->vertex_index(v));
             };
 
         const auto add_vertices =

@@ -1,0 +1,8 @@
+Fixed: parallel::fullydistributed::Triangulation, when created from a
+serial triangulation with refined tetrahedra, wedges or pyramids, now
+contains all cells behind refined triangular faces of locally owned cells
+as ghost cells. Before, the cell behind the middle child of such a face
+could be missing, and MatrixFree computed wrong face integrals on these
+faces.
+<br>
+(Lukas Dreyer, 2026/11/27)
