@@ -16050,8 +16050,12 @@ void Triangulation<dim, spacedim>::create_triangulation(
                 !coarse_cell->id().is_parent_of(CellId(fine_cell_info->id)))
                 ++coarse_cell;
 
-              // set parent for refinement
+              // set parent for refinement, with the same choice for
+              // tetrahedra as set_all_refine_flags() (the description does not
+              // contain the refinement choice)
               coarse_cell->set_refine_flag();
+              coarse_cell->set_refine_choice(
+                static_cast<char>(IsotropicRefinementChoice::cut_tet_68));
             }
 
           // execute refinement
